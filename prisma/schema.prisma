@@ -1,0 +1,361 @@
+// Prisma schema for BB YACHTS
+// SQLite for local dev; can switch to Postgres/MySQL later
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Experience {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  titleFr   String
+  titleEn   String
+  descFr    String
+  descEn    String
+  timeFr    String?
+  timeEn    String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  boatExperiences BoatExperience[]
+  availabilitySlots ExperienceAvailabilitySlot[] // relation inverse pour ExperienceAvailabilitySlot
+}
+
+model Settings {
+  stripeTestPk  String?
+  stripeTestSk  String?
+  stripeLivePk  String?
+  stripeLiveSk  String?
+  id                 Int      @id @default(1)
+  experiencesHeadlineFr String?
+  experiencesHeadlineEn String?
+  experiencesTitleFr   String?
+  experiencesTitleEn   String?
+  stripeMode           String?
+  mainSliderTitle      String?
+  mainSliderSubtitle   String?
+  mainSliderText       String? // Ajouté pour texte sous le slider
+  mainSliderImageUrl   String? // Image de présentation du slider principal
+  mainSliderImageUrls  String? // JSON array d'images pour le slider principal
+  aboutUsText          String?
+  bbServiceText        String?
+  whyChooseTitle       String?
+  whyChooseList        String?
+  platformCommissionPct Int?     @default(0)       // % commission plateforme (base 100)
+  currency              String?  @default("eur")
+  updatedAt             DateTime? @updatedAt
+  whyChooseExpertise    String?
+  whyChooseService      String?
+  aboutUsTitle          String?
+  aboutUsSubtitle       String?
+  whyChooseImageUrl     String?
+  footerInstagram       String?
+  footerFacebook        String?
+  footerX               String?
+  // Mapping des pages légales/footers -> slugs LegalPage
+  legalBaseSlug         String?
+  legalTermsSlug        String?
+  legalPrivacySlug      String?
+}
+
+model City {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  boats Boat[]
+}
+
+model Boat {
+  id           Int           @id @default(autoincrement())
+  slug         String        @unique
+  name         String
+  cityId       Int?
+  city         City?         @relation(fields: [cityId], references: [id])
+  capacity     Int // places
+  speedKn      Int // vitesse en noeuds
+  fuel         Int? // carburant (ex: conso ou réservoir)
+  enginePower  Int? // moteur (cv)
+  pricePerDay  Int // prix en €
+  priceAm      Int? // prix matin (AM)
+  pricePm      Int? // prix après-midi (PM)
+  imageUrl     String?
+  videoUrls    String?       // JSON stringifié (array)
+  photoUrls    String?       // JSON stringifié (array)
+  available    Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  boatExperiences BoatExperience[]
+  // relations
+  reservations Reservation[]
+  availabilitySlots AvailabilitySlot[]
+  agencyRequests AgencyRequest[] // demandes agence liées
+  options       BoatOption[]
+}
+
+model GalleryImage {
+  id        Int      @id @default(autoincrement())
+  imageUrl  String
+  titleFr   String?
+  titleEn   String?
+  createdAt DateTime @default(now())
+}
+
+model InfoCard {
+  id        Int      @id @default(autoincrement())
+  imageUrl  String
+  titleFr   String
+  titleEn   String
+  descFr    String?
+  descEn    String?
+  sort      Int?     @default(0)
+  createdAt DateTime @default(now())
+}
+
+model LegalPage {
+  id             Int      @id @default(autoincrement())
+  slug           String   @unique
+  titleFr        String
+  titleEn        String
+  introFr        String?
+  introEn        String?
+  contentFr      String?
+  contentEn      String?
+  cancellationFr String?
+  cancellationEn String?
+  paymentFr      String?
+  paymentEn      String?
+  fuelDepositFr  String?
+  fuelDepositEn  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String?
+  firstName     String?
+  lastName      String?
+  email         String        @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String        @default("user")
+  phone         String?
+  address       String?
+  city          String?
+  zip           String?
+  country       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  // relations
+  reservations  Reservation[]
+  agencyRequests AgencyRequest[] // nouvelles demandes agence
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Reservation {
+  id                   String   @id @default(cuid())
+  reference            String?  @unique             // Code humain (ex: RES-2025-ABC123)
+  userId               String
+  boatId               Int?
+  startDate            DateTime
+  endDate              DateTime
+  part                 String?                      // 'FULL' | 'AM' | 'PM'
+  passengers           Int?
+  status               String   @default("pending") // pending_deposit | deposit_paid | cancelled | completed
+  totalPrice           Int?
+  lockedPrice          Boolean? @default(true)      // fige le prix même si tarifs changent ensuite
+  depositPercent       Int?                          // copie de Settings au moment de la création
+  depositAmount        Int?
+  remainingAmount      Int?
+  commissionAmount     Int?                          // montant commission calculée
+  commissionRate       Int?                          // pourcentage (base 100) utilisé
+  refundAmount         Int?
+  currency             String?  @default("eur")
+  stripeSessionId      String?
+  stripePaymentIntentId String?
+  stripeCustomerId     String?
+  stripeInvoiceId      String?
+  stripeRefundId       String?
+  depositPaidAt        DateTime?
+  completedAt          DateTime?
+  canceledAt           DateTime?
+  cancellationReason   String?
+  notesInternal        String?                      // notes admin
+  metadata             String?                      // JSON stringifié (SQLite ne supporte pas Json natif)
+  locale               String?                      // fr/en au moment de la réservation
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boat       Boat?    @relation(fields: [boatId], references: [id], onDelete: SetNull)
+  agencyRequests AgencyRequest[] // lien inverse si conversion
+
+  @@index([boatId])
+  @@index([startDate])
+  @@index([status])
+}
+
+model AvailabilitySlot {
+  id        Int      @id @default(autoincrement())
+  boatId    Int
+  date      DateTime            // Jour (stocké à minuit UTC)
+  part      String              // 'AM' | 'PM' | 'FULL'
+  status    String   @default("available") // future extension: 'blocked'
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  boat      Boat     @relation(fields: [boatId], references: [id], onDelete: Cascade)
+
+  @@unique([boatId, date, part])
+  @@index([date])
+}
+
+// Nouvelle table pour demandes d'agence
+model AgencyRequest {
+  id             String       @id @default(cuid())
+  userId         String
+  boatId         Int?
+  reservationId  String?      // si convertie en réservation réelle
+  startDate      DateTime
+  endDate        DateTime
+  part           String?      // FULL | AM | PM
+  passengers     Int?
+  status         String       @default("pending") // pending | approved | rejected | converted
+  totalPrice     Int?
+  currency       String?      @default("eur")
+  locale         String?
+  notesInternal  String?
+  metadata       String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boat           Boat?        @relation(fields: [boatId], references: [id], onDelete: SetNull)
+  reservation    Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  @@index([boatId])
+  @@index([startDate])
+  @@index([status])
+}
+
+model UsedBoat {
+  id             Int      @id @default(autoincrement())
+  slug           String   @unique
+  titleFr        String
+  titleEn        String
+  summaryFr      String?
+  summaryEn      String?
+  descriptionFr  String?
+  descriptionEn  String?
+  year           Int
+  lengthM        Float
+  engineHours    Int?
+  engines        String?
+  fuelType       String?   // diesel | essence | hybride
+  priceEur       Int
+  status         String    @default("listed") // listed | sold | hidden
+  mainImage      String?
+  photoUrls      String?   // JSON array
+  videoUrls      String?   // JSON array
+  sort           Int?      @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  contactMessages ContactMessage[]
+
+  @@index([status])
+  @@index([sort])
+}
+
+model ContactMessage {
+  id          Int       @id @default(autoincrement())
+  name        String
+  email       String
+  message     String
+  usedBoatId  Int?
+  usedBoat    UsedBoat? @relation(fields: [usedBoatId], references: [id], onDelete: SetNull)
+  locale      String?
+  sourcePage  String?   // slug ou URL
+  createdAt   DateTime  @default(now())
+  readAt      DateTime?
+
+  @@index([createdAt])
+  @@index([usedBoatId])
+}
+
+model BoatOption {
+  id        Int      @id @default(autoincrement())
+  boatId    Int
+  label     String
+  price     Int?      // prix en € (optionnel)
+  createdAt DateTime  @default(now())
+  boat      Boat      @relation(fields: [boatId], references: [id], onDelete: Cascade)
+
+  @@index([boatId])
+}
+
+model BoatExperience {
+  boatId       Int
+  experienceId Int
+  price        Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  boat         Boat       @relation(fields: [boatId], references: [id], onDelete: Cascade)
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  @@id([boatId, experienceId])
+  @@index([experienceId])
+}
+
+model ExperienceAvailabilitySlot {
+  id           Int        @id @default(autoincrement())
+  experienceId Int
+  date         DateTime
+  part         String               // 'AM' | 'PM' | 'FULL'
+  status       String    @default("available")
+  note         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  @@unique([experienceId, date, part])
+  @@index([date])
+}

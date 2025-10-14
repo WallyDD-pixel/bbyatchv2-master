@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Ensure this file is processed by Tailwind via PostCSS, not directly by the browser */
+
+:root {
+  --background: #F7F6F2;
+  --foreground: #171717;
+  --primary: #1E40AF;
+  --primary-foreground: #ffffff;
+  --muted: #e2e8f0;
+  --border: #d4d4d8;
+  /* Cartes */
+  --card: #ffffff;
+  --card-border: #e2e8f0;
+  --card-alt: #f2f5f9; /* contraste léger intérieur */
+}
+
+.dark {
+  --background: #0f1217;
+  --foreground: #f1f5f9;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --muted: #1e2530;
+  --border: #27303d;
+  /* Cartes */
+  --card: #1d242e;
+  --card-border: #2c3948;
+  --card-alt: #22303d; /* légèrement plus clair que card foncé */
+}
+
+.card { background: var(--card); border:1px solid var(--card-border); }
+.card-alt { background: var(--card-alt); border:1px solid var(--card-border); }
+
+body {
+  background: radial-gradient(1200px 500px at 50% -200px, rgba(30,64,175,0.12), transparent), var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color .3s, color .3s;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+::selection { background: rgba(30, 64, 175, 0.35); }
+
+/* Utilitaires basés sur variables */
+.bg-surface { background: var(--background); }
+.text-base-fg { color: var(--foreground); }
+.border-base { border-color: var(--border); }
+
+/* ========== DARK OVERRIDES POUR CLASSES EXISTANTES ========= */
+/* Fond des cartes / panneaux codés en bg-white* */
+.dark .bg-white,
+.dark .bg-white\/70,
+.dark .bg-white\/80,
+.dark .bg-white\/90,
+.dark .bg-white\/95 { background-color:#1d242e !important; color: var(--foreground) !important; }
+
+/* Petits overlays badge */
+.dark .bg-white\/60 { background-color:rgba(29,36,46,0.6)!important; color:var(--foreground)!important; }
+
+/* Bordures */
+.dark .border-black\/10,
+.dark .border-black\/15 { border-color:#2c3948 !important; }
+
+/* Hover de bg-black/5 => trop sombre sinon */
+.dark .hover\:bg-black\/5:hover { background-color:rgba(255,255,255,0.05)!important; }
+
+/* Textes gris basés sur black/x -> les remapper vers palette slate */
+.dark .text-black\/40 { color:#64748b !important; }
+.dark .text-black\/50 { color:#76879a !important; }
+.dark .text-black\/60 { color:#90a2b4 !important; }
+.dark .text-black\/70 { color:#a5b4c3 !important; }
+.dark .text-black\/80 { color:#cbd5e1 !important; }
+.dark .text-black\/90, .dark .text-black { color:#e2e8f0 !important; }
+
+/* Boutons avec border-black/15 + bg-white -> lisibilité */
+.dark .border-black\/15.bg-white,
+.dark .border-black\/10.bg-white { background-color:#22303d !important; }
+
+/* Inputs */
+.dark input.bg-white,
+.dark textarea.bg-white,
+.dark select.bg-white { background-color:#1f2732 !important; color:var(--foreground)!important; }
+.dark input::placeholder,
+.dark textarea::placeholder { color:#5f6b78; }
+
+/* Ombres peuvent paraître lourdes sur fond sombre: atténuer */
+.dark .shadow, .dark .shadow-sm, .dark .shadow-md, .dark .shadow-lg, .dark .shadow-xl { --tw-shadow-color: rgba(0,0,0,0.4); }
+
+/* Liens primaires */
+.dark a { color: var(--primary); }
+
+/* Bouton toggle déjà géré mais forcer contraste */
+.dark .bg-surface { background: #141a21; }
+
+/* ========== FIN OVERRIDES ========= */
