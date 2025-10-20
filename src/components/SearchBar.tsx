@@ -377,14 +377,12 @@ export default function SearchBar({
 
       {/* Overlay plein écran pour focus */}
       {pickerOpen && (
-        <div className="fixed inset-0 z-[180] bg-black/50 backdrop-blur-sm animate-fadeIn" onClick={()=>setPickerOpen(false)} />
+        <div className="fixed inset-0 z-[180] bg-black/65 backdrop-blur-md animate-fadeIn" onClick={()=>setPickerOpen(false)} />
       )}
       {/* Popover calendrier */}
       {pickerOpen && part && (mode==='experience' || values.city.trim()) && (
         <div className="fixed inset-0 z-[200] flex items-start lg:items-center justify-center pt-24 sm:pt-32 lg:pt-0 px-4">
-          <div ref={popRef} className="relative w-full max-w-2xl p-6 sm:p-7 rounded-3xl
-          bg-[#0f1f29]/96 dark:bg-[#0f1f29]/95 text-slate-900 dark:text-slate-100
-          border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] animate-fadeIn max-h-[85vh] overflow-auto">
+          <div ref={popRef} className="relative w-full max-w-2xl p-6 sm:p-7 rounded-3xl card-popover text-slate-900 dark:text-slate-100 border dark:border-white/10 shadow-[0_24px_80px_-18px_rgba(0,0,0,0.6)] animate-fadeIn max-h-[85vh] overflow-auto">
             <button type="button" onClick={()=>setPickerOpen(false)} className="absolute top-2 right-2 h-8 w-8 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10">✕</button>
             <div className="flex items-center justify-between mb-4">
               <button type="button" disabled={isCurrentMonth} onClick={()=>setCalMonth(m=>{ const nm = m.m-1; return { y: nm<0? m.y-1 : m.y, m: (nm+12)%12 }; })} className={`text-xs px-3 py-1.5 rounded-full border border-white/10 text-white/80 hover:bg-white/10 ${isCurrentMonth? 'opacity-30 cursor-not-allowed':''}`}>←</button>
@@ -471,7 +469,7 @@ export default function SearchBar({
                       <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-[#0f1f29]/90 border border-white/10 leading-none">{stats.full + stats.pmOnly}</span>
                     )}
                     {!stats && c.date && !past && !unavailable && (
-                      <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-black/40 text-white/60 leading-none">—</span>
+                      <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-black/65 text-white/80 leading-none">—</span>
                     )}
                   </div>
                 );
@@ -501,7 +499,7 @@ export default function SearchBar({
                 <button type="button" onClick={()=>setPickerOpen(false)} className="text-[11px] px-4 py-2 rounded-full bg-[var(--primary)] text-white font-semibold hover:brightness-110">OK</button>
               </div>
             </div>
-            {loadingMonth && <div className="absolute inset-0 rounded-3xl bg-black/40 backdrop-blur-sm flex items-center justify-center text-[11px] font-medium text-white">Chargement...</div>}
+            {loadingMonth && <div className="absolute inset-0 rounded-3xl bg-black/70 backdrop-blur-sm flex items-center justify-center text-[11px] font-medium text-white">Chargement...</div>}
           </div>
         </div>
       )}

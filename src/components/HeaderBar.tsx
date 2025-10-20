@@ -36,54 +36,102 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
   const usedHref = `/used-sale?lang=${locale}`;
 
   return (
-    <header className="px-2 sm:px-4 py-3 flex items-center justify-center sticky top-0 z-[120]">
-      <div className="w-full max-w-6xl relative">
-        {/* Barre principale repensée : gradient clair + légère bordure colorée */}
-        <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-white/95 via-white/90 to-white/95 dark:from-[#222f3b]/90 dark:via-[#253747]/90 dark:to-[#222f3b]/90 backdrop-blur-xl border border-white/70 dark:border-white/10 shadow-[0_4px_18px_-4px_rgba(0,0,0,0.15)] px-3 sm:px-5 py-2 ring-1 ring-[color:var(--primary)]/10">
-          {/* Logo */}
-          <a href={homeBase} className="flex items-center gap-2 group" aria-label={t.app_name}>
-            <Image src="/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png" alt="BB YACHTS" width={150} height={50} priority className="h-10 w-auto object-contain drop-shadow-sm" />
-            <span className="hidden xs:inline text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200 group-hover:text-[color:var(--primary)] transition-colors">{t.app_name}</span>
+    <header className="px-2 sm:px-4 py-4 flex items-center justify-center sticky top-0 z-[120] transition-all duration-300">
+      <div className="w-full max-w-7xl relative">
+        {/* Barre principale ultra-moderne */}
+        <div className="flex items-center gap-4 rounded-3xl bg-gradient-to-r from-white/96 via-white/92 to-white/96 dark:from-slate-900/95 dark:via-slate-800/95 dark:to-slate-900/95 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)] dark:shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)] px-4 sm:px-6 py-3 ring-1 ring-[color:var(--primary)]/15 hover:ring-[color:var(--primary)]/25 transition-all duration-300 group">
+          {/* Logo avec animation sophistiquée */}
+          <a href={homeBase} className="flex items-center gap-3 group hover:scale-[1.02] transition-all duration-300 ease-out" aria-label={t.app_name}>
+            <div className="relative">
+              <Image src="/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png" alt="BB YACHTS" width={150} height={50} priority className="h-12 w-auto object-contain drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--primary)]/0 via-[color:var(--primary)]/5 to-[color:var(--primary)]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
+            </div>
+            <span className="hidden sm:inline text-base font-bold tracking-wide bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 dark:from-slate-100 dark:via-slate-200 dark:to-slate-100 bg-clip-text text-transparent group-hover:from-[color:var(--primary)] group-hover:via-[color:var(--primary)]/80 group-hover:to-[color:var(--primary)] transition-all duration-500">{t.app_name}</span>
           </a>
 
-          {/* Navigation desktop */}
-          <nav className="hidden md:flex flex-1 items-center justify-center gap-1 text-sm">
-            {[{href:fleetHref,label:t.nav_available},{href:experiencesHref,label:t.nav_experiences},{href:usedHref,label:t.nav_used_sale}].map(link => (
-              <a key={link.href} href={link.href} className="relative px-4 py-2 rounded-full font-medium text-slate-700 dark:text-slate-200/90 hover:text-[color:var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/40 transition group">
-                <span>{link.label}</span>
-                <span className="pointer-events-none absolute inset-0 rounded-full bg-[color:var(--primary)]/6 opacity-0 group-hover:opacity-100 group-active:opacity-100 group-focus-visible:opacity-100 transition" />
+          {/* Navigation desktop améliorée */}
+          <nav className="hidden lg:flex flex-1 items-center justify-center gap-2 text-sm">
+            {[
+              {href:fleetHref,label:t.nav_available,icon:'⛵'},
+              {href:experiencesHref,label:t.nav_experiences,icon:'🌊'},
+              {href:usedHref,label:t.nav_used_sale,icon:'💼'}
+            ].map((link, i) => (
+              <a key={link.href} href={link.href} className="group relative px-5 py-3 rounded-2xl font-semibold text-slate-700 dark:text-slate-200/95 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/50 transition-all duration-300 overflow-hidden">
+                <span className="relative z-10 flex items-center gap-2">
+                  <span className="text-base opacity-80 group-hover:opacity-100 transition-opacity duration-300">{link.icon}</span>
+                  <span className="font-medium">{link.label}</span>
+                </span>
+                {/* Effet de survol dégradé */}
+                <span className="absolute inset-0 bg-gradient-to-r from-[color:var(--primary)]/80 via-[color:var(--primary)] to-[color:var(--primary)]/80 opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-2xl scale-0 group-hover:scale-100" />
+                {/* Animation de bordure */}
+                <span className="absolute inset-0 rounded-2xl border border-[color:var(--primary)]/30 opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                {/* Effet de brillance */}
+                <span className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 -skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-700" />
               </a>
             ))}
           </nav>
 
-          {/* Bloc actions (langue + auth) */}
-          <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center gap-1 rounded-full border border-slate-300/50 dark:border-white/10 p-0.5 bg-white/70 dark:bg-white/5 shadow-inner">
+          {/* Bloc actions redesigné */}
+          <div className="hidden lg:flex items-center gap-4">
+            {/* Sélecteur de langue modernisé */}
+            <div className="relative flex items-center gap-1 rounded-2xl border border-slate-300/60 dark:border-white/15 p-1 bg-gradient-to-r from-white/80 via-white/70 to-white/80 dark:from-white/10 dark:via-white/5 dark:to-white/10 shadow-inner backdrop-blur-sm">
               <button
-                className={`h-8 px-3 rounded-full text-xs font-medium transition ${locale === "fr" ? "bg-[color:var(--primary)] text-white shadow" : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-white/10"}`}
+                className={`relative h-9 px-4 rounded-xl text-sm font-bold transition-all duration-300 overflow-hidden ${
+                  locale === "fr" 
+                    ? "bg-gradient-to-r from-[color:var(--primary)] to-[color:var(--primary)]/80 text-white shadow-lg scale-105" 
+                    : "text-slate-600 dark:text-white/90 hover:bg-slate-200/70 dark:hover:bg-white/15 hover:scale-105"
+                }`}
                 aria-pressed={locale === "fr"}
                 onClick={() => setLocale("fr")}
                 type="button"
-              >FR</button>
+              >
+                <span className="relative z-10">FR</span>
+                {locale === "fr" && <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-50" />}
+              </button>
               <button
-                className={`h-8 px-3 rounded-full text-xs font-medium transition ${locale === "en" ? "bg-[color:var(--primary)] text-white shadow" : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-white/10"}`}
+                className={`relative h-9 px-4 rounded-xl text-sm font-bold transition-all duration-300 overflow-hidden ${
+                  locale === "en" 
+                    ? "bg-gradient-to-r from-[color:var(--primary)] to-[color:var(--primary)]/80 text-white shadow-lg scale-105" 
+                    : "text-slate-600 dark:text-white/90 hover:bg-slate-200/70 dark:hover:bg-white/15 hover:scale-105"
+                }`}
                 aria-pressed={locale === "en"}
                 onClick={() => setLocale("en")}
                 type="button"
-              >EN</button>
+              >
+                <span className="relative z-10">EN</span>
+                {locale === "en" && <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-50" />}
+              </button>
             </div>
+            {/* Bouton de connexion premium */}
             {!session && (
               <a
                 href="/signin"
-                className="rounded-full px-5 h-9 flex items-center text-sm font-semibold text-white bg-[color:var(--primary)] hover:brightness-110 active:brightness-95 transition shadow-md"
-              >{t.auth_signin}</a>
+                className="group relative rounded-2xl px-6 h-11 flex items-center text-sm font-bold text-white bg-gradient-to-r from-[color:var(--primary)] via-[color:var(--primary)]/90 to-[color:var(--primary)] hover:from-[color:var(--primary)]/90 hover:via-[color:var(--primary)] hover:to-[color:var(--primary)]/90 active:scale-95 transition-all duration-300 shadow-lg hover:shadow-xl overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  <span className="text-base">👤</span>
+                  {t.auth_signin}
+                </span>
+                {/* Effet de brillance au survol */}
+                <span className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 -skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-700" />
+              </a>
             )}
+            {/* Menu utilisateur premium */}
             {session && (
               <div className="relative">
-                <button type="button" onClick={()=>setUserMenuOpen(v=>!v)} className="h-9 pl-2 pr-3 rounded-full flex items-center gap-2 bg-slate-100/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 text-xs font-medium hover:bg-slate-200/70 dark:hover:bg-white/20 transition ring-1 ring-inset ring-white/50 dark:ring-white/10">
-                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[color:var(--primary)] text-white text-[11px] font-semibold shadow">{session.user?.name?.[0]?.toUpperCase() || session.user?.email?.[0]?.toUpperCase() || 'U'}</span>
-                  <span className="hidden lg:inline max-w-[120px] truncate text-[13px] font-medium">{session.user?.name || session.user?.email}</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition ${userMenuOpen? 'rotate-180':''}`}><path d="M6 9l6 6 6-6"/></svg>
+                <button 
+                  type="button" 
+                  onClick={()=>setUserMenuOpen(v=>!v)} 
+                  className="group h-11 pl-3 pr-4 rounded-2xl flex items-center gap-3 bg-gradient-to-r from-slate-100/90 via-slate-50/90 to-slate-100/90 dark:from-white/15 dark:via-white/10 dark:to-white/15 text-slate-700 dark:text-slate-200 text-sm font-medium hover:from-slate-200/90 hover:via-slate-100/90 hover:to-slate-200/90 dark:hover:from-white/20 dark:hover:via-white/15 dark:hover:to-white/20 transition-all duration-300 ring-1 ring-inset ring-white/60 dark:ring-white/10 shadow-md hover:shadow-lg backdrop-blur-sm"
+                >
+                  <div className="relative">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-[color:var(--primary)] to-[color:var(--primary)]/80 text-white text-sm font-bold shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                      {session.user?.name?.[0]?.toUpperCase() || session.user?.email?.[0]?.toUpperCase() || 'U'}
+                    </span>
+                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full ring-2 ring-white dark:ring-slate-800 animate-pulse" />
+                  </div>
+                  <span className="hidden xl:inline max-w-[140px] truncate text-sm font-semibold">{session.user?.name || session.user?.email}</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-300 ${userMenuOpen? 'rotate-180':''}`}><path d="M6 9l6 6 6-6"/></svg>
                 </button>
                 {userMenuOpen && (
                   <div className="absolute right-0 mt-3 w-64 rounded-2xl border border-slate-300/60 dark:border-white/10 bg-gradient-to-br from-white/95 to-white/90 dark:from-[#243443]/95 dark:to-[#1f2c38]/95 shadow-2xl p-1.5 z-[130] text-sm backdrop-blur-xl">
@@ -109,23 +157,23 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
             )}
           </div>
 
-          {/* Bouton mobile */}
+          {/* Bouton mobile premium */}
           <button
-            className="md:hidden ml-auto inline-flex items-center justify-center w-10 h-10 rounded-xl border border-white/50 dark:border-white/10 bg-white/80 dark:bg-[#253747]/80 text-slate-700 dark:text-slate-200 shadow"
+            className="md:hidden ml-auto group inline-flex items-center justify-center w-12 h-12 rounded-2xl border border-white/60 dark:border-white/15 bg-gradient-to-br from-white/95 via-white/90 to-white/85 dark:from-slate-800/90 dark:via-slate-700/80 dark:to-slate-800/90 text-slate-700 dark:text-slate-200 shadow-lg hover:shadow-xl backdrop-blur-sm hover:scale-105 active:scale-95 transition-all duration-300 ring-1 ring-inset ring-white/40 dark:ring-white/10"
             aria-label="Ouvrir le menu"
             aria-expanded={open}
             aria-controls="mobile-menu"
             onClick={() => setOpen((v) => !v)}
             type="button"
           >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-all duration-300 ${open ? 'rotate-90 scale-110' : 'group-hover:scale-110'}`}>
               {open ? (
                 <path d="M18 6L6 18M6 6l12 12" />
               ) : (
                 <>
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="21" y2="6" className="transform origin-center transition-transform duration-300" />
+                  <line x1="3" y1="12" x2="21" y2="12" className="transform origin-center transition-transform duration-300" />
+                  <line x1="3" y1="18" x2="21" y2="18" className="transform origin-center transition-transform duration-300" />
                 </>
               )}
             </svg>
@@ -144,24 +192,32 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
             >
               <nav className="flex flex-col gap-1 text-sm">
                 {[{href:fleetHref,label:t.nav_available,icon:'⛵'},{href:experiencesHref,label:t.nav_experiences,icon:'🌊'},{href:usedHref,label:t.nav_used_sale,icon:'💼'}].map(l => (
-                  <a key={l.href} href={l.href} onClick={()=>setOpen(false)} className="group px-4 py-3 rounded-xl font-medium flex items-center gap-3 text-slate-700 dark:text-slate-100 hover:text-[color:var(--primary)] transition relative">
-                    <span className="text-lg opacity-70 group-hover:opacity-100">{l.icon}</span>
-                    <span>{l.label}</span>
-                    <span className="absolute inset-0 rounded-xl bg-[color:var(--primary)]/7 opacity-0 group-hover:opacity-100 group-active:bg-[color:var(--primary)]/12 transition"/>
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    onClick={()=>setOpen(false)}
+                    className="group px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition relative bg-transparent"
+                  >
+                    {/* icons: force light color for dark overlay */}
+                    <span className="text-lg opacity-90 group-hover:opacity-100 text-white drop-shadow-sm">{l.icon}</span>
+                    {/* labels: strong white for maximum contrast on dark blurred background */}
+                    <span className="text-white font-semibold drop-shadow-sm">{l.label}</span>
+                    <span className="absolute inset-0 rounded-xl bg-[color:var(--primary)]/7 opacity-0 group-hover:opacity-100 group-active:bg-[color:var(--primary)]/12 transition pointer-events-none"/>
                   </a>
                 ))}
               </nav>
               <div className="my-4 h-px bg-gradient-to-r from-transparent via-slate-300/70 dark:via-white/15 to-transparent" />
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                 <div className="flex items-center gap-1 rounded-full border border-slate-300/80 dark:border-white/15 p-1 flex-1 justify-center bg-white/80 dark:bg-white/5 shadow-inner">
+                  {/* active state stays primary, inactive state forced to white for readability */}
                   <button
-                    className={`h-9 px-4 rounded-full text-sm font-semibold transition leading-none ${locale === "fr" ? "bg-[color:var(--primary)] text-white shadow" : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-white/10"}`}
+                    className={`h-9 px-4 rounded-full text-sm font-semibold transition leading-none ${locale === "fr" ? "bg-[color:var(--primary)] text-white shadow" : "text-white/90 dark:text-white/90 hover:bg-white/10"}`}
                     aria-pressed={locale === "fr"}
                     onClick={() => setLocale("fr")}
                     type="button"
                   >FR</button>
                   <button
-                    className={`h-9 px-4 rounded-full text-sm font-semibold transition leading-none ${locale === "en" ? "bg-[color:var(--primary)] text-white shadow" : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-white/10"}`}
+                    className={`h-9 px-4 rounded-full text-sm font-semibold transition leading-none ${locale === "en" ? "bg-[color:var(--primary)] text-white shadow" : "text-white/90 dark:text-white/90 hover:bg-white/10"}`}
                     aria-pressed={locale === "en"}
                     onClick={() => setLocale("en")}
                     type="button"
@@ -170,8 +226,9 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                 {!session && (
                   <a
                     href="/signin"
-                    className="flex-1 rounded-xl px-6 h-11 flex items-center justify-center text-sm font-semibold text-white bg-[color:var(--primary)] hover:brightness-110 active:brightness-95 transition shadow-md"
+                    className="w-full sm:flex-1 rounded-2xl px-6 py-4 min-h-[56px] flex items-center justify-center text-base font-bold text-white bg-[color:var(--primary)] hover:brightness-105 active:brightness-95 transition shadow-lg"
                     onClick={() => setOpen(false)}
+                    style={{letterSpacing: '0.2px'}}
                   >{t.auth_signin}</a>
                 )}
                 {session && (
@@ -179,7 +236,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                     <a
                       href={userRole==='admin'? '/admin': userRole==='agency'? '/agency':'/dashboard'}
                       onClick={()=>setOpen(false)}
-                      className="group flex-1 rounded-2xl bg-gradient-to-r from-[color:var(--primary)] via-[color:var(--primary)]/90 to-[color:var(--primary)]/80 text-white h-12 flex items-center justify-center gap-2 text-base font-semibold shadow-[0_4px_14px_-2px_rgba(0,0,0,0.3)] hover:brightness-110 active:brightness-95 transition tracking-wide"
+                      className="group flex-1 rounded-2xl bg-gradient-to-r from-[color:var(--primary)] via-[color:var(--primary)]/90 to-[color:var(--primary)]/80 text-white min-h-[56px] flex items-center justify-center gap-2 text-base sm:text-lg font-semibold shadow-[0_6px_18px_-4px_rgba(0,0,0,0.35)] hover:brightness-110 active:brightness-95 transition tracking-wide"
                     >
                       <span className="text-lg drop-shadow-sm">📊</span>
                       <span className="relative">
@@ -189,7 +246,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                     </a>
                     <button
                       onClick={()=>{ setOpen(false); signOut({ callbackUrl: '/?lang='+locale }); }}
-                      className="flex-1 rounded-2xl h-12 text-sm font-semibold border border-red-400/60 dark:border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 active:bg-red-100/70 dark:active:bg-red-500/20 transition shadow-inner"
+                      className="flex-1 rounded-2xl min-h-[56px] text-base font-semibold border border-red-400/60 dark:border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 active:bg-red-100/70 dark:active:bg-red-500/20 transition shadow-inner"
                     >{locale==='fr'? 'Déconnexion':'Sign out'}</button>
                   </div>
                 )}

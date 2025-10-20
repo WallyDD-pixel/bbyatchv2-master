@@ -32,6 +32,10 @@
 .card { background: var(--card); border:1px solid var(--card-border); }
 .card-alt { background: var(--card-alt); border:1px solid var(--card-border); }
 
+/* Popover / modal with near-opaque background to avoid bleed-through from hero images */
+.card-popover { background: rgba(1, 0, 44, 0.995) !important; border:1px solid var(--card-border) !important; }
+.dark .card-popover { background: rgba(15,31,41,0.99) !important; border:1px solid var(--card-border) !important; }
+
 body {
   background: radial-gradient(1200px 500px at 50% -200px, rgba(30,64,175,0.12), transparent), var(--background);
   color: var(--foreground);
