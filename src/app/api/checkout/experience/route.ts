@@ -82,6 +82,12 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
     if (!user) return NextResponse.json({ error: 'user_not_found' }, { status: 401 });
 
+    // Récupérer les données supplémentaires du formulaire
+    const departurePort = raw?.departurePort?.trim() || undefined;
+    const preferredTime = raw?.preferredTime?.trim() || undefined;
+    const children = Array.isArray(raw?.children) ? raw.children : undefined;
+    const specialRequest = raw?.specialRequest?.trim() || undefined;
+
     const reservation = await prisma.reservation.create({
       data: {
         userId: user.id,
@@ -100,7 +106,11 @@ export async function POST(req: Request) {
           experienceId: experience.id,
           expSlug: experience.slug,
           experienceTitleFr: experience.titleFr,
-          experienceTitleEn: experience.titleEn
+          experienceTitleEn: experience.titleEn,
+          departurePort,
+          preferredTime,
+          children,
+          specialRequest
         })
       }
     });
@@ -109,7 +119,7 @@ export async function POST(req: Request) {
     const secretKey = mode === 'live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
     if (!secretKey) return NextResponse.json({ error: 'stripe_key_missing' }, { status: 500 });
 
-    const stripe = new Stripe(secretKey, { apiVersion: '2025-07-30.basil' });
+    const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
 
     const lineName = locale === 'fr'
       ? `Acompte expérience: ${experience.titleFr}`

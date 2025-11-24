@@ -138,12 +138,29 @@ export async function POST(req: Request) {
     }
   }
 
+  // Gérer la relation avec City
+  let cityId: number | null = null;
+  if (city && city.trim()) {
+    try {
+      // Chercher la ville existante
+      let existingCity = await (prisma as any).city.findUnique({ where: { name: city.trim() } });
+      if (!existingCity) {
+        // Créer la ville si elle n'existe pas
+        existingCity = await (prisma as any).city.create({ data: { name: city.trim() } });
+      }
+      cityId = existingCity.id;
+    } catch (e) {
+      console.error('Error handling city:', e);
+      // Continue sans ville si erreur
+    }
+  }
+
   try {
     const created = await (prisma as any).boat.create({
       data: {
         slug: finalSlug,
         name,
-        city: city ?? null,
+        cityId: cityId,
         capacity: capacity != null && capacity !== "" ? Number(capacity) : 0,
         speedKn: speedKn != null && speedKn !== "" ? Number(speedKn) : 0,
         fuel: fuel != null && fuel !== "" ? Number(fuel) : null,

@@ -30,6 +30,26 @@ async function updateReservationStatus(formData: FormData){
   revalidatePath('/admin/reservations');
 }
 
+// Action serveur pour mettre à jour le montant final du carburant
+async function updateFinalFuelAmount(formData: FormData){
+  'use server';
+  const session = await getServerSession(auth as any) as any;
+  if(!session?.user){ redirect('/signin'); }
+  const role = (session.user as any)?.role || 'user';
+  if(role !== 'admin') redirect('/dashboard');
+  const id = formData.get('id') as string|undefined;
+  const fuelAmountStr = formData.get('finalFuelAmount') as string|undefined;
+  if(!id) return;
+  try {
+    const finalFuelAmount = fuelAmountStr ? Math.max(0, parseInt(fuelAmountStr, 10) || 0) : null;
+    await (prisma as any).reservation.update({ 
+      where:{ id }, 
+      data: { finalFuelAmount } 
+    });
+  } catch(e){ console.error(e); }
+  revalidatePath('/admin/reservations');
+}
+
 export default async function AdminReservationsPage({ searchParams }: { searchParams?: { lang?: string } }) {
   const session = (await getServerSession(auth as any)) as any;
   if (!session?.user) redirect("/signin");
@@ -42,10 +62,11 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
 
   let reservations: any[] = [];
   try {
-    reservations = await prisma.reservation.findMany({
+    reservations = await (prisma as any).reservation.findMany({
       orderBy: { createdAt: "desc" },
       take: 100,
-      include: { user:{ select:{ email:true, firstName:true, lastName:true } }, boat:{ select:{ name:true, slug:true } } }
+      include: { user:{ select:{ email:true, firstName:true, lastName:true } }, boat:{ select:{ name:true, slug:true } } },
+      select: undefined // Récupérer tous les champs y compris finalFuelAmount
     });
   } catch {}
 
@@ -83,7 +104,8 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{locale === "fr" ? "Réservations" : "Reservations"}</h1>
           <div className="flex items-center gap-2">
-            <Link href="/admin/agency/requests" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">🤝 {locale==='fr'? 'Demandes agence':'Agency'}</Link>
+            <Link href={`/admin/reservations/new${locale==='en'? '?lang=en':''}`} className="text-sm rounded-full bg-[color:var(--primary)] text-white px-3 h-9 inline-flex items-center hover:brightness-110">➕ {locale==='fr'? 'Créer réservation agence':'Create agency reservation'}</Link>
+            <Link href={`/admin/agency-requests${locale==='en'? '?lang=en':''}`} className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">🤝 {locale==='fr'? 'Demandes agence':'Agency requests'}</Link>
             <Link href="/admin" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale === "fr" ? "Retour" : "Back"}</Link>
           </div>
         </div>
@@ -131,12 +153,13 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
                 <th className="py-2.5 px-3">{locale==='fr'? 'Statut':'Status'}</th>
                 <th className="py-2.5 px-3">{locale==='fr'? 'Fact. acompte':'Dep. Inv.'}</th>
                 <th className="py-2.5 px-3">{locale==='fr'? 'Fact. finale':'Final Inv.'}</th>
+                <th className="py-2.5 px-3">{locale==='fr'? 'Carburant':'Fuel'}</th>
                 <th className="py-2.5 px-3">{locale==='fr'? 'Changer':'Change'}</th>
               </tr>
             </thead>
             <tbody>
             {reservations.length===0 && (
-              <tr><td colSpan={15} className="py-8 text-center text-black/60">{locale==='fr'? 'Aucune réservation.':'No reservations.'}</td></tr>
+              <tr><td colSpan={16} className="py-8 text-center text-black/60">{locale==='fr'? 'Aucune réservation.':'No reservations.'}</td></tr>
             )}
             {reservations.map(r=>{
               const userName = [r.user?.firstName, r.user?.lastName].filter(Boolean).join(' ') || r.user?.email || r.userId;
@@ -163,6 +186,29 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
                   </td>
                   <td className="py-2.5 px-3">
                     <a href={`/api/invoices/final/${r.id}`} target="_blank" className={`inline-flex items-center rounded-full border border-black/15 px-2.5 h-7 text-[10px] hover:bg-black/5 ${r.status!=='completed'?'pointer-events-none opacity-40':''}`}>PDF</a>
+                  </td>
+                  <td className="py-2.5 px-3 min-w-[120px]">
+                    <form action={updateFinalFuelAmount} className="flex items-center gap-1">
+                      <input type="hidden" name="id" value={r.id} />
+                      <input 
+                        type="number" 
+                        name="finalFuelAmount" 
+                        defaultValue={r.finalFuelAmount || ''} 
+                        placeholder="0"
+                        min="0"
+                        step="1"
+                        disabled={r.status !== 'completed'}
+                        className="border border-black/20 rounded-md h-7 px-2 text-[11px] bg-white w-20 disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      <button 
+                        type="submit" 
+                        disabled={r.status !== 'completed'}
+                        className="h-7 px-2 rounded-md bg-blue-600 text-white text-[10px] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={locale==='fr'? 'Mettre à jour le montant du carburant':'Update fuel amount'}
+                      >
+                        €
+                      </button>
+                    </form>
                   </td>
                   <td className="py-2.5 px-3 min-w-[160px]">
                     <form action={updateReservationStatus} className="flex items-center gap-1">

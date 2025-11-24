@@ -15,15 +15,25 @@ export default async function UsedSalePage({ searchParams }: { searchParams?: { 
   const listed = boats.filter((b:any)=> b.status === 'listed');
   const sold = boats.filter((b:any)=> b.status === 'sold');
   const fmt = (v:number)=> new Intl.NumberFormat(locale==='fr'?'fr-FR':'en-US',{ style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(v);
+  
+  // Récupérer les paramètres de la page depuis Settings
+  const settings = await prisma.settings.findFirst() as any;
+  const title = locale === 'fr' 
+    ? (settings?.usedSaleTitleFr || "Bateaux d'occasion")
+    : (settings?.usedSaleTitleEn || 'Pre-owned boats');
+  const text = locale === 'fr'
+    ? (settings?.usedSaleTextFr || "Notre sélection de bateaux d'occasion immédiatement disponibles. Contactez-nous pour une visite ou plus d'informations.")
+    : (settings?.usedSaleTextEn || "Our curated selection of immediately available pre-owned yachts. Contact us for a viewing or more details.");
+  
   return (
     <div className='min-h-screen flex flex-col bg-gradient-to-b from-white to-[#f3f6f9]'>
       <HeaderBar initialLocale={locale} />
       <main className='flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14'>
         <div className='flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10'>
           <div>
-            <h1 className='text-3xl sm:text-4xl font-bold tracking-tight'>{locale==='fr'? "Bateaux d'occasion" : 'Pre-owned boats'}</h1>
-            <p className='mt-3 text-sm sm:text-base text-black/60 max-w-2xl'>
-              {locale==='fr' ? "Notre sélection de bateaux d'occasion immédiatement disponibles. Contactez-nous pour une visite ou plus d'informations." : "Our curated selection of immediately available pre-owned yachts. Contact us for a viewing or more details."}
+            <h1 className='text-3xl sm:text-4xl font-bold tracking-tight'>{title}</h1>
+            <p className='mt-3 text-sm sm:text-base text-black/60 max-w-2xl whitespace-pre-line'>
+              {text}
             </p>
           </div>
           {listed.length>0 && (

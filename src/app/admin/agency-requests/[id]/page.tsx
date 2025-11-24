@@ -34,6 +34,8 @@ export default async function AgencyRequestDetailPage(
   const { id } = await params;
   const sp = await (searchParams || Promise.resolve({} as any));
   const langParam = Array.isArray((sp as any).lang)? (sp as any).lang[0] : (sp as any).lang;
+  const errorParam = Array.isArray((sp as any).error)? (sp as any).error[0] : (sp as any).error;
+  const updatedParam = Array.isArray((sp as any).updated)? (sp as any).updated[0] : (sp as any).updated;
   const locale:Locale = langParam==='en'? 'en':'fr';
   const t = messages[locale];
 
@@ -67,6 +69,86 @@ export default async function AgencyRequestDetailPage(
           <h1 className='text-2xl font-bold'>{locale==='fr'? 'Demande agence':'Agency request'}</h1>
           <Link href='/admin/agency-requests' className='text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5'>← {locale==='fr'? 'Retour':'Back'}</Link>
         </div>
+        
+        {/* Message d'erreur */}
+        {errorParam === 'overlap' && (
+          <div className='mt-6 rounded-2xl border border-red-200 bg-red-50/50 p-5 shadow-sm'>
+            <div className='flex items-start gap-3'>
+              <div className='text-2xl'>⚠️</div>
+              <div className='flex-1'>
+                <h2 className='font-semibold text-red-900 mb-1'>{locale==='fr'? 'Impossible de convertir':'Cannot convert'}</h2>
+                <p className='text-sm text-red-800/80'>
+                  {locale==='fr' 
+                    ? 'Un conflit existe avec une autre réservation pour ces dates. Veuillez vérifier le calendrier et libérer les créneaux nécessaires avant de convertir cette demande.'
+                    : 'A conflict exists with another reservation for these dates. Please check the calendar and free up the necessary slots before converting this request.'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Message de succès */}
+        {updatedParam === '1' && !errorParam && (
+          <div className='mt-6 rounded-2xl border border-green-200 bg-green-50/50 p-5 shadow-sm'>
+            <div className='flex items-start gap-3'>
+              <div className='text-2xl'>✅</div>
+              <div className='flex-1'>
+                <p className='text-sm text-green-800/80'>
+                  {locale==='fr' 
+                    ? 'La demande a été mise à jour avec succès.'
+                    : 'The request has been updated successfully.'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Section d'informations */}
+        <div className='mt-6 rounded-2xl border border-blue-200 bg-blue-50/50 p-5 shadow-sm'>
+          <div className='flex items-start gap-3'>
+            <div className='text-2xl'>ℹ️</div>
+            <div className='flex-1 space-y-2'>
+              <h2 className='font-semibold text-blue-900'>{locale==='fr'? 'Demande de réservation d\'agence':'Agency booking request'}</h2>
+              <p className='text-sm text-blue-800/80'>
+                {locale==='fr' 
+                  ? 'Cette demande provient d\'une agence partenaire. Avant d\'accepter cette demande, veuillez suivre les étapes suivantes :'
+                  : 'This request comes from a partner agency. Before accepting this request, please follow these steps:'
+                }
+              </p>
+              <ul className='text-sm text-blue-800/80 space-y-1.5 mt-3 list-disc list-inside'>
+                <li>
+                  {locale==='fr'? 'Vérifier la disponibilité du bateau aux dates demandées':'Check boat availability for the requested dates'}
+                  {row.boatId && (
+                    <Link 
+                      href={`/admin/calendar?boatId=${row.boatId}&from=${start}&to=${end}${locale==='en'? '&lang=en':''}`}
+                      className='ml-2 text-blue-600 hover:underline font-medium'
+                      target='_blank'
+                    >
+                      {locale==='fr'? '(Voir le calendrier)':'(View calendar)'}
+                    </Link>
+                  )}
+                </li>
+                <li>{locale==='fr'? 'Contacter l\'agence pour confirmer les détails et valider la demande':'Contact the agency to confirm details and validate the request'}</li>
+                <li>{locale==='fr'? 'S\'assurer que toutes les informations sont correctes (dates, nombre de passagers, prix)':'Ensure all information is correct (dates, number of passengers, price)'}</li>
+                <li>{locale==='fr'? 'Une fois acceptée, la demande peut être convertie en réservation':'Once approved, the request can be converted into a reservation'}</li>
+              </ul>
+              {row.user?.email && (
+                <div className='mt-3 pt-3 border-t border-blue-200'>
+                  <p className='text-xs text-blue-700/70 mb-1'>{locale==='fr'? 'Contact agence':'Agency contact'}:</p>
+                  <a 
+                    href={`mailto:${row.user.email}?subject=${encodeURIComponent(locale==='fr'? 'Demande de réservation':'Booking request')} ${row.id.slice(0,8)}`}
+                    className='text-sm text-blue-700 hover:underline font-medium'
+                  >
+                    ✉ {row.user.email}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className='mt-6 rounded-2xl border border-black/10 bg-white p-5 shadow-sm space-y-5'>
           <div className='grid gap-1 text-sm'>
             <span className='text-black/50'>{locale==='fr'? 'ID':'ID'}</span>
@@ -84,29 +166,36 @@ export default async function AgencyRequestDetailPage(
           <div className='grid gap-1 text-sm'>
             <span className='text-black/50'>{locale==='fr'? 'Dates':'Dates'}</span>
             <span>{dateDisplay}</span>
-            <span className='text-xs text-black/50'>{locale==='fr'? 'Partie':'Part'}: {row.part||'FULL'}</span>
+            <span className='text-xs text-black/50'>{locale==='fr'? 'Partie':'Part'}: {row.part ? (row.part === 'AM' ? (locale==='fr'? 'Matin':'AM') : row.part === 'PM' ? (locale==='fr'? 'Après-midi':'PM') : row.part) : (locale==='fr'? 'Journée':'FULL')}</span>
           </div>
           <div className='grid gap-1 text-sm'>
             <span className='text-black/50'>{locale==='fr'? 'Passagers':'Passengers'}</span>
             <span>{row.passengers ?? '—'}</span>
           </div>
           <div className='grid gap-1 text-sm'>
-            <span className='text-black/50'>Status</span>
-            <span><span className='inline-flex text-[11px] px-2 h-5 rounded-full border border-black/15 bg-black/5 capitalize'>{row.status}</span></span>
+            <span className='text-black/50'>{locale==='fr'? 'Statut':'Status'}</span>
+            <span>
+              <span className='inline-flex text-[11px] px-2 h-5 rounded-full border border-black/15 bg-black/5'>
+                {locale==='fr' 
+                  ? (row.status === 'pending' ? 'En attente' : row.status === 'approved' ? 'Approuvé' : row.status === 'rejected' ? 'Refusé' : row.status === 'converted' ? 'Converti' : row.status)
+                  : row.status
+                }
+              </span>
+            </span>
           </div>
           <div className='grid gap-1 text-sm'>
             <span className='text-black/50'>{locale==='fr'? 'Montant total':'Total amount'}</span>
             <span>{row.totalPrice? (row.totalPrice/100).toFixed(2)+' €':'—'}</span>
           </div>
-          {row.metadata && <div className='grid gap-1 text-sm'><span className='text-black/50'>Metadata</span><pre className='text-[11px] bg-black/5 rounded p-2 overflow-auto max-h-60'>{row.metadata}</pre></div>}
+          {row.metadata && <div className='grid gap-1 text-sm'><span className='text-black/50'>{locale==='fr'? 'Métadonnées':'Metadata'}</span><pre className='text-[11px] bg-black/5 rounded p-2 overflow-auto max-h-60'>{row.metadata}</pre></div>}
           <div className='pt-4 flex gap-2 flex-wrap'>
             <form action={`/api/admin/agency-requests/${row.id}`} method='post' className='flex gap-2 flex-wrap'>
               <input type='hidden' name='_method' value='PATCH' />
               <select name='status' defaultValue={row.status} className='h-10 rounded-full border border-black/15 px-3 text-sm'>
-                <option value='pending'>pending</option>
-                <option value='approved'>approved</option>
-                <option value='rejected'>rejected</option>
-                <option value='converted'>converted</option>
+                <option value='pending'>{locale==='fr'? 'En attente':'pending'}</option>
+                <option value='approved'>{locale==='fr'? 'Approuvé':'approved'}</option>
+                <option value='rejected'>{locale==='fr'? 'Refusé':'rejected'}</option>
+                <option value='converted'>{locale==='fr'? 'Converti':'converted'}</option>
               </select>
               <button className='h-10 px-5 rounded-full bg-[color:var(--primary)] text-white text-sm font-semibold hover:opacity-90'>{locale==='fr'? 'Mettre à jour':'Update'}</button>
             </form>

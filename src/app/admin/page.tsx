@@ -88,9 +88,10 @@ export default async function AdminPage({ searchParams }: { searchParams?: { lan
           <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm hover:shadow-md transition">
             <div className="text-sm text-black/60">{locale === "fr" ? "Occasion" : "Pre‑owned"}</div>
             <div className="mt-1 text-3xl font-extrabold">{stats.usedBoats}</div>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex gap-2 flex-wrap">
               <Link href="/admin/used-boats" className="inline-flex items-center rounded-full border border-black/15 bg-white text-sm h-9 px-4 hover:bg-black/5">{locale === "fr" ? "Gérer" : "Manage"}</Link>
               <Link href="/admin/used-boats/new" className="inline-flex items-center rounded-full bg-[color:var(--primary)] text-white text-sm h-9 px-4 hover:opacity-90">{locale === "fr" ? "Créer" : "Create"}</Link>
+              <Link href="/admin/used-sale-settings" className="inline-flex items-center rounded-full border border-blue-300 bg-blue-50 text-blue-700 text-sm h-9 px-4 hover:bg-blue-100">{locale === "fr" ? "Paramètres LP" : "LP Settings"}</Link>
             </div>
           </div>
           <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm hover:shadow-md transition">
@@ -155,6 +156,35 @@ export default async function AdminPage({ searchParams }: { searchParams?: { lan
               <Link href="/admin/legal-pages" className="inline-block bg-amber-600 text-white text-xs px-3 py-1 rounded-full">Pages légales</Link>
             </div>
           </div>
+          {/* Card Landing Pages */}
+          <div className="rounded-2xl border border-purple-400/30 bg-purple-50 p-6 shadow-sm flex flex-col gap-3 hover:bg-purple-100 transition">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">📄</span>
+              <span className="font-bold text-purple-700 text-lg">{locale === "fr" ? "Landing Pages" : "Landing Pages"}</span>
+            </div>
+            <div className="text-sm text-purple-700/80 mb-2">{locale === "fr" ? "Gérez le contenu des pages dédiées" : "Manage dedicated pages content"}</div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <Link href="/admin/used-sale-settings" className="inline-block bg-purple-600 text-white text-xs px-3 py-1 rounded-full">{locale === "fr" ? "LP Bateaux d'occasion" : "Used Boats LP"}</Link>
+            </div>
+          </div>
+          {/* Card page À propos */}
+          <Link href="/admin/about-settings" className="group rounded-2xl border border-purple-400/30 bg-purple-50 p-6 shadow-sm flex flex-col gap-3 hover:bg-purple-100 transition">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">ℹ️</span>
+              <span className="font-bold text-purple-700 text-lg">{locale === 'fr' ? 'Page À propos' : 'About Page'}</span>
+            </div>
+            <div className="text-sm text-purple-700/80 mb-2">{locale === 'fr' ? 'Gérez le contenu de la page À propos : histoire, mission, valeurs, équipe, galerie…' : 'Manage the About page content: history, mission, values, team, gallery…'}</div>
+            <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-purple-600 group-hover:underline">{locale === 'fr' ? 'Modifier' : 'Edit'} →</span>
+          </Link>
+          {/* Card Paramètres généraux */}
+          <Link href="/admin/general-settings" className="group rounded-2xl border border-gray-400/30 bg-gray-50 p-6 shadow-sm flex flex-col gap-3 hover:bg-gray-100 transition">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">⚙️</span>
+              <span className="font-bold text-gray-700 text-lg">{locale === 'fr' ? 'Paramètres généraux' : 'General Settings'}</span>
+            </div>
+            <div className="text-sm text-gray-700/80 mb-2">{locale === 'fr' ? 'Gérez le logo du site et le prix par défaut du skipper' : 'Manage site logo and default skipper price'}</div>
+            <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-gray-600 group-hover:underline">{locale === 'fr' ? 'Modifier' : 'Edit'} →</span>
+          </Link>
         </section>
 
         <section className="mt-10 rounded-2xl border border-black/10 bg-white p-6 shadow-sm">

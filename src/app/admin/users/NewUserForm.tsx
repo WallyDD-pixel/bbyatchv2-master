@@ -8,9 +8,10 @@ export default function NewUserForm({ locale }: { locale: 'fr' | 'en' }){
   async function submit(e:React.FormEvent){
     e.preventDefault();
     setLoading(true); setDone(false);
-    const fd = new FormData(e.currentTarget as HTMLFormElement);
+    const form = e.currentTarget as HTMLFormElement;
+    const fd = new FormData(form);
     const res = await fetch('/api/admin/users', { method:'POST', body: fd });
-    if(res.ok){ (e.currentTarget as HTMLFormElement).reset(); setDone(true); }
+    if(res.ok && form){ form.reset(); setDone(true); }
     setLoading(false);
   }
   return (

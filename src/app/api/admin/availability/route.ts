@@ -36,7 +36,10 @@ export async function GET(req: Request) {
       }),
       (prisma as any).reservation.findMany({
         where: { startDate: { lte: end }, endDate: { gte: start }, status: { not: 'canceled' } },
-        select: { id: true, boatId: true, startDate: true, endDate: true, status: true }
+        include: {
+          boat: { include: { options: { select: { id: true, label: true, price: true } } } },
+          user: { select: { id: true, name: true, firstName: true, lastName: true, email: true } }
+        }
       })
     ]);
     return NextResponse.json({ boats, slots, reservations });

@@ -363,7 +363,7 @@ export default function AdminHomepageSettingsPage() {
         {/* Bloc Liens réseaux sociaux du footer */}
         <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-xl shadow p-6 border border-blue-100">
           <h2 className="text-lg font-bold mb-2 text-blue-700">Liens réseaux sociaux du footer</h2>
-          <p className="text-sm text-black/60 mb-4">Modifiez les liens affichés dans le footer pour Instagram, Facebook et X.</p>
+          <p className="text-sm text-black/60 mb-4">Modifiez les liens affichés dans le footer pour les réseaux sociaux.</p>
           <div className="grid gap-4">
             <label className="block">
               <span className="font-semibold">Lien Instagram</span>
@@ -386,12 +386,32 @@ export default function AdminHomepageSettingsPage() {
               />
             </label>
             <label className="block">
-              <span className="font-semibold">Lien X (Twitter)</span>
+              <span className="font-semibold">Lien LinkedIn</span>
               <input
                 type="url"
-                name="footerX"
-                defaultValue={settings?.footerX ?? ''}
-                placeholder="https://x.com/votrepage"
+                name="footerLinkedIn"
+                defaultValue={(settings as any)?.footerLinkedIn ?? ''}
+                placeholder="https://linkedin.com/company/votrepage"
+                className="w-full mt-2 border rounded px-3 py-2"
+              />
+            </label>
+            <label className="block">
+              <span className="font-semibold">Lien YouTube</span>
+              <input
+                type="url"
+                name="footerYouTube"
+                defaultValue={(settings as any)?.footerYouTube ?? ''}
+                placeholder="https://youtube.com/@votrepage"
+                className="w-full mt-2 border rounded px-3 py-2"
+              />
+            </label>
+            <label className="block">
+              <span className="font-semibold">Lien TikTok</span>
+              <input
+                type="url"
+                name="footerTikTok"
+                defaultValue={(settings as any)?.footerTikTok ?? ''}
+                placeholder="https://tiktok.com/@votrepage"
                 className="w-full mt-2 border rounded px-3 py-2"
               />
             </label>

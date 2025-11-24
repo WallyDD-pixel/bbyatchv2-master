@@ -40,14 +40,14 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
               <tr className='text-left text-black/70 bg-black/[0.035]'>
                 <th className='py-2.5 px-3'>ID</th>
                 <th className='py-2.5 px-3'>{locale==='fr'? 'Créé':'Created'}</th>
-                <th className='py-2.5 px-3'>User</th>
+                <th className='py-2.5 px-3'>{locale==='fr'? 'Utilisateur':'User'}</th>
                 <th className='py-2.5 px-3'>{locale==='fr'? 'Bateau':'Boat'}</th>
                 <th className='py-2.5 px-3'>{locale==='fr'? 'Dates':'Dates'}</th>
-                <th className='py-2.5 px-3'>Part</th>
+                <th className='py-2.5 px-3'>{locale==='fr'? 'Partie':'Part'}</th>
                 <th className='py-2.5 px-3'>{locale==='fr'? 'Passagers':'Pax'}</th>
-                <th className='py-2.5 px-3'>Status</th>
+                <th className='py-2.5 px-3'>{locale==='fr'? 'Statut':'Status'}</th>
                 {/* Colonne Prix supprimée */}
-                <th className='py-2.5 px-3'>Actions</th>
+                <th className='py-2.5 px-3'>{locale==='fr'? 'Actions':'Actions'}</th>
               </tr>
             </thead>
             <tbody>
@@ -66,34 +66,24 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
                     <td className='py-2.5 px-3'>{userName}</td>
                     <td className='py-2.5 px-3'>{r.boat?.name||'—'}</td>
                     <td className='py-2.5 px-3'>{dateDisplay}</td>
-                    <td className='py-2.5 px-3'>{r.part||'FULL'}</td>
+                    <td className='py-2.5 px-3'>{r.part ? (r.part === 'AM' ? (locale==='fr'? 'Matin':'AM') : r.part === 'PM' ? (locale==='fr'? 'Après-midi':'PM') : r.part) : (locale==='fr'? 'Journée':'FULL')}</td>
                     <td className='py-2.5 px-3'>{r.passengers??'—'}</td>
-                    <td className='py-2.5 px-3'><span className='inline-flex text-[11px] px-2 h-5 rounded-full border border-black/15 bg-black/5 capitalize'>{r.status}</span></td>
+                    <td className='py-2.5 px-3'>
+                      <span className='inline-flex text-[11px] px-2 h-5 rounded-full border border-black/15 bg-black/5'>
+                        {locale==='fr' 
+                          ? (r.status === 'pending' ? 'En attente' : r.status === 'approved' ? 'Approuvé' : r.status === 'rejected' ? 'Refusé' : r.status === 'converted' ? 'Converti' : r.status)
+                          : r.status
+                        }
+                      </span>
+                    </td>
                     {/* Cellule prix supprimée */}
                     <td className='py-2.5 px-3'>
-                      <div className='flex items-center gap-1 flex-wrap'>
-                        <form action={`/api/admin/agency-requests/${r.id}`} method='post'>
-                          <input type='hidden' name='_method' value='PATCH' />
-                          <input type='hidden' name='status' value='approved' />
-                          <button type='submit' disabled={r.status==='approved'} className='text-[11px] rounded-full px-3 h-7 inline-flex items-center border border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 disabled:opacity-40 disabled:cursor-not-allowed'>
-                            {locale==='fr'? 'Accepter':'Approve'}
-                          </button>
-                        </form>
-                        <form action={`/api/admin/agency-requests/${r.id}`} method='post' data-confirm={r.status==='rejected'? '' : (locale==='fr'? 'Refuser cette demande ?':'Reject this request?')}>
-                          <input type='hidden' name='_method' value='PATCH' />
-                          <input type='hidden' name='status' value='rejected' />
-                          <button type='submit' disabled={r.status==='rejected'} className='text-[11px] rounded-full px-3 h-7 inline-flex items-center border border-red-600/30 text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed'>
-                            {locale==='fr'? 'Refuser':'Reject'}
-                          </button>
-                        </form>
-                        <form action={`/api/admin/agency-requests/${r.id}`} method='post'>
-                          <input type='hidden' name='_method' value='PATCH' />
-                          <input type='hidden' name='status' value='converted' />
-                          <button type='submit' disabled={r.status==='converted'} className='text-[11px] rounded-full px-3 h-7 inline-flex items-center border border-indigo-600/30 text-indigo-700 hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed'>
-                            {locale==='fr'? 'Convertir':'Convert'}
-                          </button>
-                        </form>
-                      </div>
+                      <Link 
+                        href={`/admin/agency-requests/${r.id}${locale==='en'? '?lang=en':''}`}
+                        className='text-[11px] rounded-full px-3 h-7 inline-flex items-center border border-black/15 text-black/70 hover:bg-black/5 transition-colors'
+                      >
+                        {locale==='fr'? 'Voir':'View'}
+                      </Link>
                     </td>
                   </tr>
                 );
@@ -103,7 +93,6 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
         </div>
       </main>
       <Footer locale={locale} t={t} />
-      <script dangerouslySetInnerHTML={{ __html:`document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('form[data-confirm]').forEach(f=>{f.addEventListener('submit',e=>{const msg=f.getAttribute('data-confirm'); if(msg && !confirm(msg)) e.preventDefault();});});});` }} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
+import DeleteLegalPageButton from '../DeleteLegalPageButton';
 
 export default async function AdminLegalEdit({ params, searchParams }: { params:{ id:string }, searchParams?: { lang?: string } }){
   const session = await getServerSession(auth as any) as any;
@@ -41,7 +42,7 @@ export default async function AdminLegalEdit({ params, searchParams }: { params:
             <label className='grid gap-1 text-sm'><span>Carburant & Dépôt (FR)</span><textarea name='fuelDepositFr' rows={4} defaultValue={page.fuelDepositFr||''} className='rounded-lg border border-black/15 px-3 py-2' /></label>
             <label className='grid gap-1 text-sm'><span>Fuel & Deposit (EN)</span><textarea name='fuelDepositEn' rows={4} defaultValue={page.fuelDepositEn||''} className='rounded-lg border border-black/15 px-3 py-2' /></label>
             <div className='flex justify-between items-center pt-2'>
-              <button formAction={`/api/admin/legal-pages/${id}`} name='_method' value='DELETE' className='rounded-full h-10 px-4 bg-red-600 text-white hover:brightness-110' onClick={(e)=>{ if(!confirm('Supprimer cette page ?')) e.preventDefault(); }}>Supprimer</button>
+              <DeleteLegalPageButton id={id} locale={locale} />
               <div className='flex gap-2'>
                 <a href='/admin/legal-pages' className='rounded-full h-10 px-4 border border-black/15 bg-white hover:bg-black/5'>{locale==='fr'? 'Annuler':'Cancel'}</a>
                 <button type='submit' className='rounded-full h-10 px-6 bg-[color:var(--primary)] text-white font-semibold hover:opacity-90'>{locale==='fr'? 'Enregistrer':'Save'}</button>

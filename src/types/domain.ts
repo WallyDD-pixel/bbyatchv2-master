@@ -10,6 +10,10 @@ export interface ExperienceCheckoutBody {
   end?: string;              // YYYY-MM-DD (optionnel si FULL sur un jour)
   part?: DayPart;            // défaut 'FULL'
   locale?: string;           // 'fr' | 'en'
+  departurePort?: string;    // Port de départ
+  preferredTime?: string;    // Horaire souhaité (HH:MM)
+  children?: Array<{ age: number }>; // Enfants avec leurs âges
+  specialRequest?: string;  // Demande spécifique
 }
 
 export interface ExperienceBasic {

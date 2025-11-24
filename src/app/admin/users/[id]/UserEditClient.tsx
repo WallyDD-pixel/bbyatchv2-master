@@ -147,6 +147,7 @@ export default function UserEditClient({ user, locale }: { user: User; locale: "
           <select name="role" value={form.role || "user"} onChange={onChange} className="w-full h-10 rounded-md border border-black/15 px-3">
             <option value="user">user</option>
             <option value="admin">admin</option>
+            <option value="agency">agence</option>
           </select>
         </div>
       </div>

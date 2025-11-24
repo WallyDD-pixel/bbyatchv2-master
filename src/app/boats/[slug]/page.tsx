@@ -4,9 +4,11 @@ import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 import Image from 'next/image';
 import Link from 'next/link';
-import BoatSlider from '@/components/BoatSlider';
+import BoatMediaCarousel from '@/components/BoatMediaCarousel';
 import RequestBookingButton from '@/components/RequestBookingButton';
 import BoatOptionsAndBooking from '@/components/BoatOptionsAndBooking';
+import { getServerSession } from 'next-auth';
+import { auth } from '@/lib/auth';
 
 interface Props { params: { slug: string }; searchParams?: { lang?: string; start?: string; end?: string; startTime?: string; endTime?: string; part?: string; } }
 
@@ -26,6 +28,7 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
     description: string;
     imageUrl: string | null;
     photoUrls: string | null;
+    videoUrls: string | null;
     pricePerDay: number;
     priceAm: number | null;
     pricePm: number | null;
@@ -33,10 +36,30 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
     speedKn: number;
     enginePower: number | null;
     fuel: string | null;
+    lengthM: number | null;
+    avantagesFr: string | null;
+    avantagesEn: string | null;
+    optionsInclusesFr: string | null;
+    optionsInclusesEn: string | null;
+    skipperRequired: boolean;
+    skipperPrice: number | null;
     available: boolean;
     city?: string | null;
     options: { id: number; boatId: number; createdAt: Date; label: string; price: number | null; }[];
   };
+
+  // Vérifier si l'utilisateur est une agence
+  const session = await getServerSession(auth as any) as any;
+  let isAgency = false;
+  if (session?.user?.email) {
+    try {
+      const user = await prisma.user.findUnique({ 
+        where: { email: session.user.email }, 
+        select: { role: true } 
+      });
+      isAgency = user?.role === 'agency';
+    } catch {}
+  }
 
   const boat = await prisma.boat.findUnique({
     where: { slug },
@@ -147,9 +170,20 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
           </div>
         </div>
 
-        {/* Slider principal */}
+        {/* Carrousel médias (images + vidéos) */}
         <div className='mt-8'>
-          <BoatSlider images={photos.length? photos : (boat.imageUrl? [boat.imageUrl] : [])} />
+          <BoatMediaCarousel 
+            images={photos.length? photos : (boat.imageUrl? [boat.imageUrl] : [])} 
+            videos={(() => {
+              try {
+                if (boat.videoUrls) {
+                  const parsed = typeof boat.videoUrls === 'string' ? JSON.parse(boat.videoUrls) : boat.videoUrls;
+                  return Array.isArray(parsed) ? parsed : [];
+                }
+              } catch {}
+              return [];
+            })()}
+          />
         </div>
 
         <div className='mt-10 grid gap-10 lg:grid-cols-3'>
@@ -160,24 +194,65 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
           )}
           {/* Colonne gauche: infos */}
           <div className='lg:col-span-2 space-y-10'>
-            {/* Détails techniques */}
+            {/* Caractéristiques techniques simplifiées */}
             <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
               <h2 className='text-xl font-bold mb-4'>{t.boat_info_tech}</h2>
-              <div className='grid sm:grid-cols-2 gap-4 text-sm'>
-                {boat.city && <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'><span className='text-black/60'>{t.boat_field_city}</span><span className='font-semibold'>{boat.city}</span></div>}
-                <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'><span className='text-black/60'>{t.boat_field_capacity}</span><span className='font-semibold'>{boat.capacity} pax</span></div>
-                <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'><span className='text-black/60'>{t.boat_field_speed}</span><span className='font-semibold'>{boat.speedKn} kn</span></div>
-                {boat.enginePower!=null && <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'><span className='text-black/60'>{t.boat_field_engine}</span><span className='font-semibold'>{boat.enginePower} cv</span></div>}
-                {boat.fuel!=null && <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'><span className='text-black/60'>{t.boat_field_fuel}</span><span className='font-semibold'>{boat.fuel}</span></div>}
-                <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'><span className='text-black/60'>{t.boat_field_day_price}</span><span className='font-semibold'>{boat.pricePerDay} €</span></div>
-                {(boat.priceAm!=null || boat.pricePm!=null) && (
-                  <div className='flex flex-col gap-2 sm:col-span-2'>
-                    {boat.priceAm!=null && <div className='flex items-start justify-between bg-blue-50 rounded-lg px-3 py-2'><span className='text-blue-700 text-xs'>{t.boat_field_morning}</span><span className='font-semibold text-blue-700'>{boat.priceAm} €</span></div>}
-                    {boat.pricePm!=null && <div className='flex items-start justify-between bg-purple-50 rounded-lg px-3 py-2'><span className='text-purple-700 text-xs'>{t.boat_field_afternoon}</span><span className='font-semibold text-purple-700'>{boat.pricePm} €</span></div>}
+              <div className='grid sm:grid-cols-3 gap-4 text-sm'>
+                {(boat as any).lengthM != null && (
+                  <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'>
+                    <span className='text-black/60'>{locale === 'fr' ? 'Taille' : 'Length'}</span>
+                    <span className='font-semibold'>{(boat as any).lengthM} m</span>
                   </div>
                 )}
-                {mismatch && <div className='sm:col-span-2 text-[11px] rounded-lg px-3 py-2 bg-amber-100 text-amber-900 font-medium'>{t.boat_price_mismatch}</div>}
-                <div className='flex items-start justify-between bg-emerald-50 rounded-lg px-3 py-2 sm:col-span-2'><span className='text-emerald-700 text-xs'>{t.boat_total} {totalLabel}</span><span className='font-bold text-emerald-700'>{total!=null? total.toLocaleString('fr-FR')+' €' : '—'}</span></div>
+                {(boat as any).enginePower != null && (
+                  <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'>
+                    <span className='text-black/60'>{t.boat_field_engine}</span>
+                    <span className='font-semibold'>{(boat as any).enginePower} cv</span>
+                  </div>
+                )}
+                <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'>
+                  <span className='text-black/60'>{t.boat_field_capacity}</span>
+                  <span className='font-semibold'>{boat.capacity} {locale === 'fr' ? 'places max' : 'max places'}</span>
+                </div>
+              </div>
+            </section>
+
+            {/* Avantages du bateau */}
+            {((boat as any).avantagesFr || (boat as any).avantagesEn) && (
+              <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
+                <h2 className='text-xl font-bold mb-4'>{locale === 'fr' ? 'Avantages du bateau' : 'Boat Advantages'}</h2>
+                <div className='text-sm text-black/80 leading-relaxed whitespace-pre-line'>
+                  {locale === 'fr' ? (boat as any).avantagesFr : (boat as any).avantagesEn}
+                </div>
+              </section>
+            )}
+
+            {/* Options incluses */}
+            {((boat as any).optionsInclusesFr || (boat as any).optionsInclusesEn) && (
+              <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
+                <h2 className='text-xl font-bold mb-4'>{locale === 'fr' ? 'Options incluses' : 'Included Options'}</h2>
+                <div className='text-sm text-black/80 leading-relaxed whitespace-pre-line'>
+                  {locale === 'fr' ? (boat as any).optionsInclusesFr : (boat as any).optionsInclusesEn}
+                </div>
+              </section>
+            )}
+
+            {/* Informations importantes */}
+            <section className='rounded-2xl border border-amber-200 bg-amber-50/50 p-6 shadow-sm'>
+              <h2 className='text-lg font-semibold mb-3 text-amber-900'>{locale === 'fr' ? 'Informations importantes' : 'Important Information'}</h2>
+              <div className='space-y-3 text-sm text-amber-900/80'>
+                <p className='leading-relaxed'>
+                  {locale === 'fr' 
+                    ? 'Carburant non inclus dans le tarif, à régler en fonction de la consommation à la fin de la location.'
+                    : 'Fuel not included in the rate, to be paid according to consumption at the end of the rental.'}
+                </p>
+                {(boat as any).skipperRequired && (
+                  <p className='leading-relaxed font-semibold'>
+                    {locale === 'fr' 
+                      ? `Skipper : Obligatoire à ${(boat as any).skipperPrice || 350}€/jour`
+                      : `Skipper: Required at ${(boat as any).skipperPrice || 350}€/day`}
+                  </p>
+                )}
               </div>
             </section>
           </div>
@@ -195,6 +270,9 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
             disabled={disabledAction}
             disabledMessage={disabledMessage}
             slug={boat.slug}
+            isAgency={isAgency}
+            skipperRequired={(boat as any).skipperRequired || false}
+            skipperPrice={(boat as any).skipperPrice || 350}
             startDate={start}
             endDate={end}
           />

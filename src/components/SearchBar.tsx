@@ -9,6 +9,10 @@ export type SearchValues = {
   startTime: string; // compat
   endTime: string;   // compat
   passengers: number;
+  waterToys?: 'yes' | 'no';
+  childrenCount?: string;
+  specialNeeds?: string;
+  wantsExcursion?: boolean;
 };
 
 
@@ -17,10 +21,11 @@ export type SearchValues = {
 type City = { id: string; name: string };
 
 // Remplacement: PARTS ne dépend plus de labels (évite ReferenceError)
-const PARTS: { key: "FULL" | "AM" | "PM"; start: string; end: string }[] = [
-  { key: "FULL", start: "08:00", end: "18:00" },
-  { key: "AM", start: "08:00", end: "12:00" },
-  { key: "PM", start: "13:00", end: "18:00" },
+const PARTS: { key: "FULL" | "AM" | "PM" | "SUNSET"; start: string; end: string; duration?: string; flexible?: boolean }[] = [
+  { key: "FULL", start: "08:00", end: "18:00", duration: "8h", flexible: true },
+  { key: "AM", start: "08:00", end: "12:00", duration: "4h", flexible: true },
+  { key: "PM", start: "13:00", end: "18:00", duration: "4h", flexible: true },
+  { key: "SUNSET", start: "20:00", end: "22:00", duration: "2h", flexible: true },
 ];
 
 export default function SearchBar({
@@ -32,6 +37,7 @@ export default function SearchBar({
   hideCity,
   hidePassengers,
   partFixed,
+  locale,
 }: {
   labels: Record<string, string>;
   onSubmit: (values: SearchValues & { part?: string }) => void;
@@ -41,9 +47,14 @@ export default function SearchBar({
   hideCity?: boolean;
   hidePassengers?: boolean;
   partFixed?: 'FULL'|'AM'|'PM';
+  locale?: string;
 }) {
     // Liste dynamique des villes depuis l'API
     const [cities, setCities] = useState<string[]>([]);
+    const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
+    const cityInputRef = useRef<HTMLInputElement>(null);
+    const cityDropdownRef = useRef<HTMLDivElement>(null);
+    
     useEffect(() => {
       fetch('/admin/api/cities')
         .then(res => res.json())
@@ -59,6 +70,24 @@ export default function SearchBar({
           setCities(cityList);
         });
     }, []);
+
+    // Fermer le dropdown si on clique en dehors
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          cityDropdownRef.current &&
+          !cityDropdownRef.current.contains(event.target as Node) &&
+          cityInputRef.current &&
+          !cityInputRef.current.contains(event.target as Node)
+        ) {
+          setCityDropdownOpen(false);
+        }
+      };
+      if (cityDropdownOpen) {
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+      }
+    }, [cityDropdownOpen]);
   const [values, setValues] = useState<SearchValues>({
     city: mode==='experience'? '': '',
     startDate: '',
@@ -67,10 +96,21 @@ export default function SearchBar({
     endTime: '18:00',
     passengers: 2,
   });
-  const [part, setPart] = useState<"FULL" | "AM" | "PM" | null>(partFixed || null);
+  const [part, setPart] = useState<"FULL" | "AM" | "PM" | "SUNSET" | null>(partFixed || null);
   const [passengersField, setPassengersField] = useState('2');
   const [otherCityNotice, setOtherCityNotice] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const needsCity = mode !== 'experience';
+  const currentLocale = locale || 'fr';
+  // Nouveaux champs pour la réservation
+  const [waterToys, setWaterToys] = useState<'yes' | 'no' | ''>('');
+  const [childrenCount, setChildrenCount] = useState('');
+  const [specialNeeds, setSpecialNeeds] = useState('');
+  const [wantsExcursion, setWantsExcursion] = useState(false);
+  const [showAdditionalFields, setShowAdditionalFields] = useState(false);
+  // Horaires flexibles
+  const [customStartTime, setCustomStartTime] = useState('');
+  const [customEndTime, setCustomEndTime] = useState('');
 
   // --- Date picker état ---
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -148,22 +188,27 @@ export default function SearchBar({
   const todayObj = new Date();
   const isCurrentMonth = calMonth.y===todayObj.getFullYear() && calMonth.m===todayObj.getMonth();
 
-  const applyPart = (p: "FULL" | "AM" | "PM") => {
+  const applyPart = (p: "FULL" | "AM" | "PM" | "SUNSET") => {
     const def = PARTS.find((x) => x.key === p)!;
     setValues((v) => ({
       ...v,
-      startTime: def.start,
-      endTime: def.end,
-      endDate: p === "FULL" ? v.endDate : v.startDate,
+      startTime: customStartTime || def.start,
+      endTime: customEndTime || def.end,
+      endDate: (p === "FULL" || p === "SUNSET") ? v.endDate : v.startDate,
     }));
     setPart(p);
     setTempStart(null);
+    // Réinitialiser les horaires personnalisés si on change de créneau
+    if (!def.flexible) {
+      setCustomStartTime('');
+      setCustomEndTime('');
+    }
   };
 
   const update = (key: keyof SearchValues, val: string | number) =>
     setValues((v) => {
       const next: any = { ...v, [key]: val };
-      if (key === "startDate" && part && part !== "FULL") {
+      if (key === "startDate" && part && part !== "FULL" && part !== "SUNSET") {
         next.endDate = val; // impose même jour pour AM/PM
       }
       return next;
@@ -197,7 +242,7 @@ export default function SearchBar({
   };
   const selectDay = (d: string) => {
     setDateHint(false);
-    if (part === 'FULL') {
+    if (part === 'FULL' || part === 'SUNSET') {
       if (!tempStart) {
         // Premier clic: on initialise la plage
         setTempStart(d);
@@ -230,15 +275,15 @@ export default function SearchBar({
      focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/30 dark:focus:ring-white/40 \
      focus:border-[color:var(--primary)]/50 dark:focus:border-white/80 shadow-inner transition";
 
+  // Détecter si on est dans un modal (pas de padding/border/background)
+  const isInModal = className?.includes('bg-transparent') || className?.includes('border-0');
+  
   return (
     <form
-      className={`relative w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 items-end
-      rounded-2xl p-4 sm:p-5 border shadow-[0_4px_28px_-6px_rgba(0,0,0,0.25)]
-      bg-gradient-to-br from-white/55 via-white/35 to-white/25 dark:from-[#1c2a35]/70 dark:via-[#1c2a35]/55 dark:to-[#1c2a35]/35
-      backdrop-blur-xl border-white/60 dark:border-white/10
-      ring-1 ring-[color:var(--primary)]/15
+      className={`relative w-full grid ${isInModal ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6'} gap-3 sm:gap-4 items-end
+      ${isInModal ? '' : 'rounded-2xl p-4 sm:p-5 border shadow-[0_4px_28px_-6px_rgba(0,0,0,0.25)] bg-gradient-to-br from-white/55 via-white/35 to-white/25 dark:from-[#1c2a35]/70 dark:via-[#1c2a35]/55 dark:to-[#1c2a35]/35 backdrop-blur-xl border-white/60 dark:border-white/10 ring-1 ring-[color:var(--primary)]/15'}
       ${className ?? ""}`}
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         if (mode!=='experience' && !values.city.trim()) { setCityHint(true); return; }
         if (!part && !partFixed) { setPartHint(true); return; }
@@ -246,7 +291,20 @@ export default function SearchBar({
         let pax = parseInt(passengersField || '0', 10);
         if (!pax || pax < 1) pax = 1;
         if (pax !== values.passengers) setValues(v=>({...v, passengers: pax }));
-        onSubmit({ ...values, passengers: pax, part: partFixed || part || undefined });
+        setIsSubmitting(true);
+        try {
+          await Promise.resolve(onSubmit({ 
+            ...values, 
+            passengers: pax, 
+            part: partFixed || part || undefined,
+            waterToys: mode === 'boats' && waterToys ? (waterToys as 'yes' | 'no') : undefined,
+            childrenCount: mode === 'boats' ? childrenCount : undefined,
+            specialNeeds: mode === 'boats' ? specialNeeds : undefined,
+            wantsExcursion: mode === 'boats' ? wantsExcursion : undefined,
+          }));
+        } finally {
+          setIsSubmitting(false);
+        }
         setPickerOpen(false);
       }}
     >
@@ -259,24 +317,74 @@ export default function SearchBar({
               (non restrictif)
             </span>
           </label>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-black/50 dark:text-white/50">
+          <div className="relative" ref={cityDropdownRef}>
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-black/50 dark:text-white/50 z-10">
               📍
             </span>
             <input
-              className={`${baseInput} pl-9`}
-              list="city-list"
+              ref={cityInputRef}
+              type="text"
+              className={`${baseInput} pl-9 pr-9`}
               placeholder={labels.search_city}
               value={values.city}
-              onChange={(e) => { update("city", e.target.value); if(e.target.value.trim()) setCityHint(false); }}
+              onChange={(e) => { 
+                update("city", e.target.value); 
+                if(e.target.value.trim()) setCityHint(false);
+                setCityDropdownOpen(true);
+              }}
+              onFocus={() => {
+                if (cities.length > 0) {
+                  setCityDropdownOpen(true);
+                }
+              }}
+              autoComplete="off"
             />
+            {/* Icône de dropdown */}
+            <button
+              type="button"
+              onClick={() => setCityDropdownOpen(!cityDropdownOpen)}
+              className="pointer-events-auto absolute right-2 top-1/2 -translate-y-1/2 text-black/40 hover:text-black/60 z-10"
+              tabIndex={-1}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
             {!values.city.trim() && cityHint && <p className="mt-1 text-[10px] text-red-600">{labels.search_hint_city_first}</p>}
+            {/* Dropdown personnalisé */}
+            {cityDropdownOpen && cities.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#1c2a35] border border-black/15 dark:border-white/20 rounded-lg shadow-lg z-[10000] max-h-60 overflow-y-auto">
+                {cities
+                  .filter(city => 
+                    !values.city || 
+                    city.toLowerCase().includes(values.city.toLowerCase())
+                  )
+                  .map((city) => (
+                    <button
+                      key={city}
+                      type="button"
+                      onClick={() => {
+                        update("city", city);
+                        setCityDropdownOpen(false);
+                        setCityHint(false);
+                        cityInputRef.current?.blur();
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                    >
+                      {city}
+                    </button>
+                  ))}
+                {cities.filter(city => 
+                  !values.city || 
+                  city.toLowerCase().includes(values.city.toLowerCase())
+                ).length === 0 && (
+                  <div className="px-4 py-2 text-sm text-black/50 dark:text-white/50">
+                    Aucune ville trouvée
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          <datalist id="city-list">
-            {cities.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
         </div>
       )}
       {/* Suppression du bloc slug / créneau explicatif en mode expérience */}
@@ -297,12 +405,62 @@ export default function SearchBar({
           >
             <option value="" disabled>{labels.search_part || 'Créneau'}...</option>
             {PARTS.map((p) => {
-              const lbl = p.key === 'FULL' ? (labels.search_part_full || 'Journée entière') : p.key === 'AM' ? (labels.search_part_am || 'Matin') : (labels.search_part_pm || 'Après-midi');
-              return <option key={p.key} value={p.key}>{lbl}</option>;
+              let lbl = '';
+              if (p.key === 'FULL') lbl = labels.search_part_full || 'Journée entière (8h)';
+              else if (p.key === 'AM') lbl = labels.search_part_am || 'Matin (4h)';
+              else if (p.key === 'PM') lbl = labels.search_part_pm || 'Après-midi (4h)';
+              else if (p.key === 'SUNSET') lbl = labels.search_part_sunset || 'Sunset (2h)';
+              return <option key={p.key} value={p.key}>{lbl} {p.flexible ? '(horaires flexibles)' : ''}</option>;
             })}
           </select>
         </div>
       )}
+      
+      {/* Horaires personnalisés si créneau flexible et sélectionné */}
+      {part && PARTS.find(p => p.key === part)?.flexible && (
+        <div className="col-span-full grid grid-cols-2 gap-3 pt-2 border-t border-black/10">
+          <div>
+            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+              {labels.search_custom_start_time || (currentLocale === 'fr' ? 'Heure de début (optionnel)' : 'Start time (optional)')}
+            </label>
+            <input
+              type="time"
+              value={customStartTime}
+              onChange={(e) => {
+                setCustomStartTime(e.target.value);
+                if (e.target.value) {
+                  setValues(v => ({ ...v, startTime: e.target.value }));
+                }
+              }}
+              className={baseInput}
+              placeholder={PARTS.find(p => p.key === part)?.start}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+              {labels.search_custom_end_time || (currentLocale === 'fr' ? 'Heure de fin (optionnel)' : 'End time (optional)')}
+            </label>
+            <input
+              type="time"
+              value={customEndTime}
+              onChange={(e) => {
+                setCustomEndTime(e.target.value);
+                if (e.target.value) {
+                  setValues(v => ({ ...v, endTime: e.target.value }));
+                }
+              }}
+              className={baseInput}
+              placeholder={PARTS.find(p => p.key === part)?.end}
+            />
+          </div>
+          <p className="col-span-2 text-[10px] text-black/50 dark:text-white/50">
+            {labels.search_flexible_hours_note || (currentLocale === 'fr' 
+              ? 'Les horaires sont flexibles. Laissez vide pour utiliser les horaires par défaut.'
+              : 'Hours are flexible. Leave empty to use default hours.')}
+          </p>
+        </div>
+      )}
+      
       {/* Date début */}
       <div>
         <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
@@ -324,19 +482,19 @@ export default function SearchBar({
       <div>
         <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
           {labels.search_end_date}
-          {part !== "FULL" && (
+          {(part !== "FULL" && part !== "SUNSET") && (
             <span className="text-[10px] font-normal text-black dark:text-white">(= début)</span>
           )}
         </label>
         <input
           type="text"
           readOnly
-          onClick={()=> part==='FULL' && openPicker()}
-          onFocus={()=> part==='FULL' && openPicker()}
-          placeholder={part==='FULL'? (needsCity ? (!values.city.trim()? 'Choisir la ville' : 'Sélectionner...') : 'Sélectionner...') : (!part? '' : values.startDate? values.startDate : '')}
-          className={baseInput + ' ' + ((!part || (needsCity && !values.city.trim()))? 'opacity-50 cursor-not-allowed': (part !== "FULL" ? "opacity-60" : "cursor-pointer"))}
+          onClick={()=> (part==='FULL' || part==='SUNSET') && openPicker()}
+          onFocus={()=> (part==='FULL' || part==='SUNSET') && openPicker()}
+          placeholder={(part==='FULL' || part==='SUNSET')? (needsCity ? (!values.city.trim()? 'Choisir la ville' : 'Sélectionner...') : 'Sélectionner...') : (!part? '' : values.startDate? values.startDate : '')}
+          className={baseInput + ' ' + ((!part || (needsCity && !values.city.trim()))? 'opacity-50 cursor-not-allowed': ((part !== "FULL" && part !== "SUNSET") ? "opacity-60" : "cursor-pointer"))}
           value={values.endDate}
-          disabled={!part || (needsCity && !values.city.trim()) || part !== "FULL"}
+          disabled={!part || (needsCity && !values.city.trim()) || (part !== "FULL" && part !== "SUNSET")}
         />
       </div>
       {/* Passagers (caché en mode expérience) */}
@@ -364,27 +522,160 @@ export default function SearchBar({
           />
         </div>
       )}
+      
+      {/* Champs supplémentaires pour la réservation (uniquement en mode boats) */}
+      {mode === 'boats' && values.startDate && (
+        <div className="col-span-full space-y-4 pt-4 border-t border-black/10">
+          <button
+            type="button"
+            onClick={() => setShowAdditionalFields(!showAdditionalFields)}
+            className="text-sm font-medium text-[var(--primary)] hover:underline flex items-center gap-2"
+          >
+            <span>{labels.search_additional_info || (currentLocale === 'fr' ? 'Informations complémentaires' : 'Additional information')}</span>
+            <span>{showAdditionalFields ? '▼' : '▶'}</span>
+          </button>
+          
+          {showAdditionalFields && (
+            <div className="space-y-4 pl-4 border-l-2 border-[var(--primary)]/20">
+              {/* Jeux d'eau */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-800 dark:text-white/85">
+                  {labels.search_water_toys || (currentLocale === 'fr' ? 'Jeux d\'eau' : 'Water Toys')}
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="waterToys"
+                      value="yes"
+                      checked={waterToys === 'yes'}
+                      onChange={(e) => setWaterToys(e.target.value as 'yes')}
+                      className="h-4 w-4 accent-[var(--primary)]"
+                    />
+                    <span className="text-sm">{labels.search_yes || (currentLocale === 'fr' ? 'Oui' : 'Yes')}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="waterToys"
+                      value="no"
+                      checked={waterToys === 'no'}
+                      onChange={(e) => setWaterToys(e.target.value as 'no')}
+                      className="h-4 w-4 accent-[var(--primary)]"
+                    />
+                    <span className="text-sm">{labels.search_no || (currentLocale === 'fr' ? 'Non' : 'No')}</span>
+                  </label>
+                </div>
+                {waterToys === 'yes' && (
+                  <p className="text-xs text-black/60 dark:text-white/60 mt-2 leading-relaxed">
+                    {labels.search_water_toys_note || (currentLocale === 'fr' 
+                      ? 'Nous pouvons nous occuper de la réservation des jeux d\'eau mais le prix ne sera pas calculé avec. Merci de nous indiquer dans le champ commentaire le/les jeux souhaités '
+                      : 'We can handle the water toys reservation but the price will not be calculated with it. Please indicate in the comment field the desired toy(s) ')}
+                    <a 
+                      href={labels.search_water_toys_url || 'https://example.com/water-toys'} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-[var(--primary)] hover:underline font-medium"
+                    >
+                      ({labels.search_link || (currentLocale === 'fr' ? 'Lien' : 'Link')})
+                    </a>
+                  </p>
+                )}
+              </div>
+
+              {/* Nombre d'enfants */}
+              <div>
+                <label htmlFor="childrenCount" className="block text-sm font-medium text-slate-800 dark:text-white/85 mb-2">
+                  {labels.search_children_count || (currentLocale === 'fr' 
+                    ? 'Nombre d\'enfants à bord' 
+                    : 'Number of children on board')}
+                </label>
+                <input
+                  type="number"
+                  id="childrenCount"
+                  min="0"
+                  value={childrenCount}
+                  onChange={(e) => setChildrenCount(e.target.value.replace(/\D/g, ''))}
+                  className={baseInput}
+                  placeholder="0"
+                />
+                <p className="text-xs text-black/50 dark:text-white/50 mt-1">
+                  {labels.search_children_note || (currentLocale === 'fr' 
+                    ? 'Afin de prévoir les gilets de sauvetage adaptés'
+                    : 'To provide appropriate life jackets')}
+                </p>
+              </div>
+
+              {/* Besoin supplémentaire */}
+              <div>
+                <label htmlFor="specialNeeds" className="block text-sm font-medium text-slate-800 dark:text-white/85 mb-2">
+                  {labels.search_special_needs || (currentLocale === 'fr' 
+                    ? 'Besoin supplémentaire' 
+                    : 'Additional needs')}
+                </label>
+                <textarea
+                  id="specialNeeds"
+                  value={specialNeeds}
+                  onChange={(e) => setSpecialNeeds(e.target.value)}
+                  className={`${baseInput} min-h-[100px] resize-y`}
+                  placeholder={labels.search_special_needs_placeholder || (currentLocale === 'fr' 
+                    ? 'Si besoin particulier, merci de nous l\'indiquer ici...'
+                    : 'If you have any special needs, please let us know here...')}
+                />
+              </div>
+
+              {/* Excursion (si journée entière ou demi-journée) */}
+              {(part === 'FULL' || part === 'AM' || part === 'PM') && (
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={wantsExcursion}
+                      onChange={(e) => setWantsExcursion(e.target.checked)}
+                      className="h-4 w-4 accent-[var(--primary)]"
+                    />
+                    <span className="text-sm font-medium text-slate-800 dark:text-white/85">
+                      {labels.search_wants_excursion || (currentLocale === 'fr' 
+                        ? 'Souhaitez-vous compléter avec une excursion ?'
+                        : 'Would you like to add an excursion?')}
+                    </span>
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      
       {/* Submit */}
       <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-6 flex justify-end pt-1">
         <button
           type="submit"
-          disabled={(!values.city.trim() && needsCity) || !part || !values.startDate}
-          className={`rounded-full px-6 h-12 text-sm font-semibold text-white bg-[var(--primary)] hover:brightness-110 active:brightness-95 transition shadow-sm ${((!values.city.trim() && needsCity) || !part || !values.startDate)? 'opacity-40 cursor-not-allowed hover:brightness-100': ''}`}
+          disabled={((!values.city.trim() && needsCity) || !part || !values.startDate) || isSubmitting}
+          className={`rounded-full px-6 h-12 text-sm font-semibold text-white bg-[var(--primary)] hover:brightness-110 active:brightness-95 transition shadow-sm flex items-center justify-center gap-2 ${((!values.city.trim() && needsCity) || !part || !values.startDate || isSubmitting)? 'opacity-40 cursor-not-allowed hover:brightness-100': ''}`}
         >
-          {labels.search_submit}
+          {isSubmitting ? (
+            <>
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Chargement...</span>
+            </>
+          ) : (
+            labels.search_submit
+          )}
         </button>
       </div>
 
       {/* Overlay plein écran pour focus */}
       {pickerOpen && (
-        <div className="fixed inset-0 z-[180] bg-black/50 backdrop-blur-sm animate-fadeIn" onClick={()=>setPickerOpen(false)} />
+        <div className="fixed inset-0 z-[180] bg-black/65 backdrop-blur-md animate-fadeIn" onClick={()=>setPickerOpen(false)} />
       )}
       {/* Popover calendrier */}
       {pickerOpen && part && (mode==='experience' || values.city.trim()) && (
         <div className="fixed inset-0 z-[200] flex items-start lg:items-center justify-center pt-24 sm:pt-32 lg:pt-0 px-4">
-          <div ref={popRef} className="relative w-full max-w-2xl p-6 sm:p-7 rounded-3xl
-          bg-[#0f1f29]/96 dark:bg-[#0f1f29]/95 text-slate-900 dark:text-slate-100
-          border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] animate-fadeIn max-h-[85vh] overflow-auto">
+          <div ref={popRef} className="relative w-full max-w-2xl p-6 sm:p-7 rounded-3xl card-popover text-slate-900 dark:text-slate-100 border dark:border-white/10 shadow-[0_24px_80px_-18px_rgba(0,0,0,0.6)] animate-fadeIn max-h-[85vh] overflow-auto">
             <button type="button" onClick={()=>setPickerOpen(false)} className="absolute top-2 right-2 h-8 w-8 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10">✕</button>
             <div className="flex items-center justify-between mb-4">
               <button type="button" disabled={isCurrentMonth} onClick={()=>setCalMonth(m=>{ const nm = m.m-1; return { y: nm<0? m.y-1 : m.y, m: (nm+12)%12 }; })} className={`text-xs px-3 py-1.5 rounded-full border border-white/10 text-white/80 hover:bg-white/10 ${isCurrentMonth? 'opacity-30 cursor-not-allowed':''}`}>←</button>
@@ -405,7 +696,7 @@ export default function SearchBar({
                 if (c.date && !past) {
                   if (!stats && !tempStart) {
                     clickable = false;
-                  } else if (part === 'FULL') {
+                  } else if (part === 'FULL' || part === 'SUNSET') {
                     const anyAvail = !!(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
                     if (!tempStart) {
                       clickable = anyAvail;
@@ -461,7 +752,7 @@ export default function SearchBar({
                     onClick={()=>{ if(!c.date) return; if(!clickable) return; selectDay(c.date); }}
                   >
                     {c.label || ''}
-                    {stats && !past && !unavailable && part==='FULL' && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0) && (
+                    {stats && !past && !unavailable && (part==='FULL' || part==='SUNSET') && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0) && (
                       <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-[#0f1f29]/90 border border-white/10 leading-none">{stats.full + stats.amOnly + stats.pmOnly}</span>
                     )}
                     {stats && !past && !unavailable && part==='AM' && clickable && (
@@ -471,7 +762,7 @@ export default function SearchBar({
                       <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-[#0f1f29]/90 border border-white/10 leading-none">{stats.full + stats.pmOnly}</span>
                     )}
                     {!stats && c.date && !past && !unavailable && (
-                      <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-black/40 text-white/60 leading-none">—</span>
+                      <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-black/65 text-white/80 leading-none">—</span>
                     )}
                   </div>
                 );
@@ -495,13 +786,13 @@ export default function SearchBar({
               )}
             </div>
             <div className="flex items-center justify-between mt-5 gap-4">
-              <p className="text-[10px] text-white/60 flex-1">{part==='FULL'? (tempStart? labels.search_help_pick_end_full : labels.search_help_pick_start_full) : labels.search_help_pick_half}.</p>
+              <p className="text-[10px] text-white/60 flex-1">{(part==='FULL' || part==='SUNSET')? (tempStart? labels.search_help_pick_end_full : labels.search_help_pick_start_full) : labels.search_help_pick_half}.</p>
               <div className="flex items-center gap-2">
                 {values.startDate && <button type="button" onClick={()=>{ setValues(v=>({...v,startDate:'', endDate:''})); setTempStart(null); }} className="text-[10px] px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80">Reset</button>}
                 <button type="button" onClick={()=>setPickerOpen(false)} className="text-[11px] px-4 py-2 rounded-full bg-[var(--primary)] text-white font-semibold hover:brightness-110">OK</button>
               </div>
             </div>
-            {loadingMonth && <div className="absolute inset-0 rounded-3xl bg-black/40 backdrop-blur-sm flex items-center justify-center text-[11px] font-medium text-white">Chargement...</div>}
+            {loadingMonth && <div className="absolute inset-0 rounded-3xl bg-black/70 backdrop-blur-sm flex items-center justify-center text-[11px] font-medium text-white">Chargement...</div>}
           </div>
         </div>
       )}
