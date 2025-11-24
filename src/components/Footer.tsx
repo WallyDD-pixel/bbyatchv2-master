@@ -205,24 +205,16 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
                 <span className="text-[#999999] flex-shrink-0">
                   <PhoneIcon />
                 </span>
-                <div className="flex items-center gap-2">
-                  <a 
-                    href={`tel:+33${phoneNumber.replace(/\s/g, "")}`} 
-                    className="text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
-                  >
-                    06 09 17 62 82
-                  </a>
-                  <a 
-                    href={whatsappUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#25D366] text-white hover:bg-[#20BA5A] transition-colors duration-200"
-                    aria-label="WhatsApp"
-                    title="Contacter via WhatsApp"
-                  >
-                    <WhatsAppIcon />
-                  </a>
-                </div>
+                <a 
+                  href={whatsappUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#25D366] text-white hover:bg-[#20BA5A] transition-colors duration-200"
+                  aria-label="WhatsApp"
+                  title="Contacter via WhatsApp"
+                >
+                  <WhatsAppIcon />
+                </a>
               </li>
             </ul>
             {/* Réseaux sociaux avec espacement uniforme */}
