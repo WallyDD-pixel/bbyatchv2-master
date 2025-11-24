@@ -1,10 +1,22 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function AdminUsedSaleSettingsPage() {
-  const router = useRouter();
+function SuccessMessage() {
   const searchParams = useSearchParams();
+  const success = searchParams?.get('success') === '1';
+  
+  if (!success) return null;
+  
+  return (
+    <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+      Paramètres sauvegardés avec succès !
+    </div>
+  );
+}
+
+function AdminUsedSaleSettingsContent() {
+  const router = useRouter();
   const [settings, setSettings] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
@@ -44,8 +56,6 @@ export default function AdminUsedSaleSettingsPage() {
 
   if (!settings) return <div className="min-h-screen flex items-center justify-center">Chargement…</div>;
 
-  const success = searchParams?.get('success') === '1';
-
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-10 py-10">
@@ -56,11 +66,9 @@ export default function AdminUsedSaleSettingsPage() {
           </p>
         </div>
 
-        {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-            Paramètres sauvegardés avec succès !
-          </div>
-        )}
+        <Suspense fallback={null}>
+          <SuccessMessage />
+        </Suspense>
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Titre et texte FR */}
@@ -136,6 +144,14 @@ export default function AdminUsedSaleSettingsPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function AdminUsedSaleSettingsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Chargement…</div>}>
+      <AdminUsedSaleSettingsContent />
+    </Suspense>
   );
 }
 
