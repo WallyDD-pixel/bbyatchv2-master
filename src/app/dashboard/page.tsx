@@ -223,7 +223,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm hover:shadow-md transition">
             <h2 className="text-lg font-semibold">{locale === "fr" ? "Actions rapides" : "Quick actions"}</h2>
             <div className="mt-3 flex flex-wrap gap-2">
-              <a href={locale === "fr" ? "/?lang=fr#fleet" : "/?lang=en#fleet"} className="inline-flex items-center rounded-full bg-[color:var(--primary)] text-white text-sm h-9 px-4 hover:opacity-90">{locale === "fr" ? "Réserver un bateau" : "Book a boat"}</a>
+              <a href={locale === "fr" ? "/?lang=fr#fleet" : "/?lang=en#fleet"} className="inline-flex items-center rounded-full bg-[color:var(--primary)] text-white text-sm h-9 px-4 hover:brightness-110 transition">{locale === "fr" ? "Réserver un bateau" : "Book a boat"}</a>
               <a href="#edit-profile" className="inline-flex items-center rounded-full border border-black/15 bg-white text-sm h-9 px-4 hover:bg-black/5">{locale === "fr" ? "Mettre à jour mon profil" : "Update profile"}</a>
             </div>
           </div>

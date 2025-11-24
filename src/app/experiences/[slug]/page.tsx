@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { messages, type Locale } from "@/i18n/messages";
 import HeaderBar from "@/components/HeaderBar";
 import Footer from "@/components/Footer";
-import Image from "next/image";
 import ExperienceBoatSelector from "@/components/ExperienceBoatSelector";
+import BoatMediaCarousel from "@/components/BoatMediaCarousel";
 
 export default async function ExperienceDetailPage({ params, searchParams }: { params: { slug: string }; searchParams?: { lang?: string } }) {
   const { slug } = params;
@@ -11,8 +11,35 @@ export default async function ExperienceDetailPage({ params, searchParams }: { p
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
 
-  const exp = await prisma.experience.findUnique({ where: { slug } }).catch(()=>null) as any;
+  const exp = await (prisma as any).experience.findUnique({ where: { slug } }).catch(()=>null) as any;
   if(!exp){ return <div className="min-h-screen flex flex-col"><HeaderBar initialLocale={locale} /><main className="flex-1 flex items-center justify-center"><div className="text-center text-sm text-black/60">{locale==='fr'? 'Expérience introuvable':'Experience not found'}</div></main><Footer locale={locale} t={t} /></div>; }
+
+  // Parser photoUrls depuis JSON ou array
+  const parsePhotoUrls = (val: any): string[] => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  // Construire la liste des images : imageUrl principale + photoUrls
+  const parsedPhotoUrls = parsePhotoUrls(exp.photoUrls);
+  const allImages: string[] = [];
+  
+  // Ajouter imageUrl si elle existe et n'est pas déjà dans photoUrls
+  if (exp.imageUrl && !parsedPhotoUrls.includes(exp.imageUrl)) {
+    allImages.push(exp.imageUrl);
+  }
+  
+  // Ajouter les autres photos
+  allImages.push(...parsedPhotoUrls);
 
   // Charger les bateaux liés avec leurs options
   const boatExperiences = await prisma.boatExperience.findMany({
@@ -44,33 +71,45 @@ export default async function ExperienceDetailPage({ params, searchParams }: { p
           <span className="text-black/40">/</span>
           <span className="font-semibold text-black/70">{locale==='fr'? exp.titleFr: exp.titleEn}</span>
         </div>
-        <div className="grid lg:grid-cols-3 gap-10">
-          <div className="lg:col-span-2">
-            <div className="relative rounded-3xl overflow-hidden border border-black/10 bg-white shadow">
-              {exp.imageUrl && (
-                <div className="relative h-60 sm:h-80">
-                  <Image src={exp.imageUrl} alt={locale==='fr'? exp.titleFr: exp.titleEn} fill className="object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow">{locale==='fr'? exp.titleFr: exp.titleEn}</h1>
-                  </div>
+        <div className="grid lg:grid-cols-3 gap-8 lg:gap-10">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Carousel d'images */}
+            {allImages.length > 0 ? (
+              <div className="rounded-3xl overflow-hidden border border-black/10 bg-white shadow-lg">
+                <BoatMediaCarousel images={allImages} videos={[]} />
+              </div>
+            ) : (
+              <div className="relative h-60 sm:h-80 rounded-3xl overflow-hidden border border-black/10 bg-gradient-to-br from-black/5 to-black/10 flex items-center justify-center">
+                <div className="text-black/40 text-sm">{locale==='fr'? 'Pas d\'image':'No image'}</div>
+              </div>
+            )}
+            
+            {/* Titre et description */}
+            <div className="rounded-3xl border border-black/10 bg-white shadow-sm p-6 sm:p-8">
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-black mb-4 leading-tight">
+                {locale==='fr'? exp.titleFr: exp.titleEn}
+              </h1>
+              <p className="text-sm sm:text-base leading-relaxed text-black/70 whitespace-pre-line mb-6">
+                {locale==='fr'? exp.descFr: exp.descEn}
+              </p>
+              {(locale==='fr'? exp.timeFr: exp.timeEn) && (
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[color:var(--primary)]/10 border border-[color:var(--primary)]/20 text-[12px] font-semibold text-[color:var(--primary)]">
+                  <span>⏱️</span>
+                  <span>{(locale==='fr'? exp.timeFr: exp.timeEn)}</span>
                 </div>
               )}
-              {!exp.imageUrl && (
-                <div className="h-40 flex items-center justify-center text-black/40 text-sm">{locale==='fr'? 'Pas d\'image':'No image'}</div>
+              {exp.hasFixedTimes && exp.fixedDepartureTime && exp.fixedReturnTime && (
+                <div className="mt-4 p-4 rounded-xl bg-blue-50 border border-blue-200">
+                  <p className="text-xs font-semibold text-blue-900 mb-2">{locale==='fr'? 'Horaires fixes (événement)' : 'Fixed times (event)'}</p>
+                  <p className="text-sm text-blue-800">
+                    {locale==='fr'? 'Départ' : 'Departure'}: <strong>{exp.fixedDepartureTime}</strong> • {locale==='fr'? 'Retour' : 'Return'}: <strong>{exp.fixedReturnTime}</strong>
+                  </p>
+                </div>
               )}
-              <div className="p-6">
-                <p className="text-sm sm:text-base leading-relaxed text-black/70 whitespace-pre-line">{locale==='fr'? exp.descFr: exp.descEn}</p>
-                {(locale==='fr'? exp.timeFr: exp.timeEn) && (
-                  <div className="mt-6 inline-flex items-center gap-2 px-4 h-9 rounded-full bg-black/5 text-[11px] font-semibold text-black/70">
-                    ⏱️ {(locale==='fr'? exp.timeFr: exp.timeEn)}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
           <aside className="lg:col-span-1 space-y-6">
-            <ExperienceBoatSelector locale={locale} experienceSlug={slug} boats={boatsForClient} experienceTitle={locale==='fr'? exp.titleFr: exp.titleEn} />
+            <ExperienceBoatSelector locale={locale} experienceSlug={slug} boats={boatsForClient} experienceTitle={locale==='fr'? exp.titleFr: exp.titleEn} experience={exp} />
           </aside>
         </div>
       </main>

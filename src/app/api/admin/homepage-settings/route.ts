@@ -23,7 +23,9 @@ export async function POST(req: Request) {
   const bbServiceText = data.get('bbServiceText') as string;
   const footerInstagram = data.get('footerInstagram') as string;
   const footerFacebook = data.get('footerFacebook') as string;
-  const footerX = data.get('footerX') as string;
+  const footerLinkedIn = data.get('footerLinkedIn') as string;
+  const footerYouTube = data.get('footerYouTube') as string;
+  const footerTikTok = data.get('footerTikTok') as string;
 
   // Récupère dynamiquement la liste d’avantages
 
@@ -85,7 +87,9 @@ export async function POST(req: Request) {
     bbServiceText,
     footerInstagram,
     footerFacebook,
-    footerX,
+    footerLinkedIn,
+    footerYouTube,
+    footerTikTok,
   };
 
   if (uploadedUrls.length > 0) {

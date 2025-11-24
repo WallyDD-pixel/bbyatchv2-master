@@ -43,7 +43,7 @@ export async function PUT(req: Request, ctx: { params: { id: string } }) {
     body = await req.json().catch(()=>({}));
   }
 
-  const { slug, name, city, capacity, speedKn, fuel, enginePower, pricePerDay, priceAm, pricePm, imageUrl, available, videoUrls, photoUrls } = body || {};
+  const { slug, name, city, capacity, speedKn, fuel, enginePower, lengthM, pricePerDay, priceAm, pricePm, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice } = body || {};
   const optionsPayload = body.options; // tableau attendu {id?, label, price|null}
   const experiencesPayload = body.experiences; // [{experienceId, price|null}]
   // Dérivation éventuelle prix AM/PM si uniquement day fourni
@@ -139,6 +139,7 @@ export async function PUT(req: Request, ctx: { params: { id: string } }) {
         speedKn: speedKn != null && speedKn !== '' ? Number(speedKn) : undefined,
         fuel: fuel != null && fuel !== '' ? Number(fuel) : undefined,
         enginePower: enginePower != null && enginePower !== '' ? Number(enginePower) : undefined,
+        lengthM: lengthM != null && lengthM !== '' ? Number(lengthM) : undefined,
         pricePerDay: derivedPricePerDay != null && derivedPricePerDay !== '' ? Number(derivedPricePerDay) : undefined,
         priceAm: derivedPriceAm != null && derivedPriceAm !== '' ? Number(derivedPriceAm) : undefined,
         pricePm: derivedPricePm != null && derivedPricePm !== '' ? Number(derivedPricePm) : undefined,
@@ -146,6 +147,12 @@ export async function PUT(req: Request, ctx: { params: { id: string } }) {
         available: available != null ? (typeof available === 'string' ? (available === 'true' || available === 'on') : Boolean(available)) : undefined,
         videoUrls: (() => { const arr = toList(videoUrls); const merged = Array.from(new Set([...(arr||[]), ...uploadedVideos])); return merged.length ? JSON.stringify(merged) : (arr ? null : undefined); })(),
         photoUrls: mergedPhotos.length ? JSON.stringify(mergedPhotos) : null,
+        avantagesFr: avantagesFr != null ? String(avantagesFr).trim() || null : undefined,
+        avantagesEn: avantagesEn != null ? String(avantagesEn).trim() || null : undefined,
+        optionsInclusesFr: optionsInclusesFr != null ? String(optionsInclusesFr).trim() || null : undefined,
+        optionsInclusesEn: optionsInclusesEn != null ? String(optionsInclusesEn).trim() || null : undefined,
+        skipperRequired: skipperRequired != null ? (typeof skipperRequired === 'string' ? (skipperRequired === 'true' || skipperRequired === 'on') : Boolean(skipperRequired)) : undefined,
+        skipperPrice: skipperPrice != null && skipperPrice !== '' ? Number(skipperPrice) : undefined,
         ...(Array.isArray(optionsPayload) ? {
           options: {
             deleteMany: { boatId: id, NOT: optionsPayload.filter((o:any)=> o.id).map((o:any)=> ({ id: Number(o.id) })) },

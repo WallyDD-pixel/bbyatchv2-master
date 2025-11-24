@@ -6,6 +6,7 @@ import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 import Link from 'next/link';
+import DeleteUsedBoatButton from './DeleteUsedBoatButton';
 
 export default async function AdminUsedBoatsPage({ searchParams }: { searchParams?: { lang?: string } }){
   const session = await getServerSession(auth as any) as any;
@@ -53,7 +54,12 @@ export default async function AdminUsedBoatsPage({ searchParams }: { searchParam
                   <td className="py-2.5 px-3">{b.lengthM}</td>
                   <td className="py-2.5 px-3 text-right">{money(b.priceEur)}</td>
                   <td className="py-2.5 px-3"><span className={`inline-flex items-center rounded-full px-2.5 h-6 text-[10px] font-semibold ${b.status==='listed'? 'bg-emerald-100 text-emerald-700': b.status==='sold'? 'bg-red-100 text-red-700':'bg-black/10 text-black/60'}`}>{b.status}</span></td>
-                  <td className="py-2.5 px-3"><Link href={`/admin/used-boats/${b.id}`} className="text-[11px] rounded-full border border-black/15 px-3 h-7 inline-flex items-center hover:bg-black/5">{locale==='fr'? 'Éditer':'Edit'}</Link></td>
+                  <td className="py-2.5 px-3">
+                    <div className="flex items-center gap-2">
+                      <Link href={`/admin/used-boats/${b.id}`} className="text-[11px] rounded-full border border-black/15 px-3 h-7 inline-flex items-center hover:bg-black/5">{locale==='fr'? 'Éditer':'Edit'}</Link>
+                      <DeleteUsedBoatButton id={b.id} locale={locale} />
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

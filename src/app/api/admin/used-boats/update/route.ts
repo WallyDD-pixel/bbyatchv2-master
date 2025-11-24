@@ -64,6 +64,48 @@ export async function POST(req: Request){
     // Fusion finale (ordre: basePhotos existantes réordonnées + nouvelles)
     const mergedPhotos = Array.from(new Set([...basePhotos, ...newUrls]));
 
+    // Gestion des vidéos
+    let videoUrls: string[] = [];
+    const videoUrlsInput = String(data.get('videoUrls') || '').trim();
+    if (videoUrlsInput) {
+      try {
+        const parsed = JSON.parse(videoUrlsInput);
+        if (Array.isArray(parsed)) videoUrls = parsed.filter(v => typeof v === 'string');
+      } catch {}
+    }
+    // Si pas de vidéos dans l'input, récupérer les existantes
+    if (videoUrls.length === 0) {
+      const existingBoat = await (prisma as any).usedBoat.findUnique({ where: { id }, select: { videoUrls: true } });
+      if (existingBoat?.videoUrls) {
+        try {
+          const parsed = typeof existingBoat.videoUrls === 'string' ? JSON.parse(existingBoat.videoUrls) : existingBoat.videoUrls;
+          if (Array.isArray(parsed)) videoUrls = parsed.filter(v => typeof v === 'string');
+        } catch {}
+      }
+    }
+    
+    // Upload fichiers vidéo (si présents dans le formulaire)
+    const videoFiles = data.getAll('videoFiles') as File[];
+    if (videoFiles && videoFiles.length) {
+      const fs = await import('fs');
+      const path = await import('path');
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+      
+      for (const file of videoFiles) {
+        if (!file || (file as any).size === 0) continue;
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
+        const allowedExt = ['mp4', 'webm', 'ogg', 'mov'];
+        if (!allowedExt.includes(ext)) continue;
+        
+        const fname = `video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const filepath = path.join(uploadsDir, fname);
+        fs.writeFileSync(filepath, buffer);
+        videoUrls.push(`/uploads/${fname}`);
+      }
+    }
+
     const update:any = {
       slug: existing.slug,
       titleFr: String(data.get('titleFr')).trim(),
@@ -82,7 +124,7 @@ export async function POST(req: Request){
       status: data.get('status')? String(data.get('status')): 'listed',
       sort: data.get('sort')? parseInt(String(data.get('sort')),10): 0,
       photoUrls: mergedPhotos.length ? JSON.stringify(mergedPhotos) : null,
-      videoUrls: null, // vidéos retirées
+      videoUrls: videoUrls.length ? JSON.stringify(videoUrls) : null,
     };
 
     await (prisma as any).usedBoat.update({ where:{ id }, data: update });

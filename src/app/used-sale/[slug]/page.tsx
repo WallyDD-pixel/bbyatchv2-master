@@ -5,6 +5,7 @@ import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { messages, type Locale } from '@/i18n/messages';
+import BoatMediaCarousel from '@/components/BoatMediaCarousel';
 
 export async function generateStaticParams(){
   try {
@@ -34,6 +35,16 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
   if (boat.photoUrls) {
     try { const parsed = JSON.parse(boat.photoUrls); if(Array.isArray(parsed)) photos = parsed.filter(p=> typeof p === 'string'); } catch {}
   }
+  // Parse JSON videos
+  let videos: string[] = [];
+  if (boat.videoUrls) {
+    try {
+      const parsed = typeof boat.videoUrls === 'string' ? JSON.parse(boat.videoUrls) : boat.videoUrls;
+      if (Array.isArray(parsed)) videos = parsed.filter(v => typeof v === 'string');
+    } catch {}
+  }
+  // Combiner mainImage avec photos pour le carousel
+  const allImages = boat.mainImage ? [boat.mainImage, ...photos.filter(p => p !== boat.mainImage)] : photos;
   const priceLabel = boat.status === 'sold' ? (locale==='fr'? 'Vendu':'Sold') : new Intl.NumberFormat(locale==='fr'?'fr-FR':'en-US',{ style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(boat.priceEur);
 
   return (
@@ -63,23 +74,21 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
           </nav>
 
           <div className="grid md:grid-cols-2 gap-10 items-start">
-            {/* Galerie */}
+            {/* Galerie avec images et vidéos */}
             <div className="space-y-5">
-              {boat.mainImage && (
-                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-3xl bg-white border border-black/10 shadow-sm group">
-                  <Image src={boat.mainImage} alt={boat.titleFr} fill className="object-cover transition group-hover:scale-[1.02]" />
-                  {boat.status==='sold' && (
-                    <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/75 text-white text-[11px] font-semibold tracking-wide">{locale==='fr'? 'Vendu':'Sold'}</span>
-                  )}
+              {(allImages.length > 0 || videos.length > 0) ? (
+                <BoatMediaCarousel 
+                  images={allImages}
+                  videos={videos}
+                />
+              ) : (
+                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-3xl bg-black/5 border border-black/10 flex items-center justify-center">
+                  <span className="text-black/40 text-sm">{locale==='fr'? 'Aucune image':'No image'}</span>
                 </div>
               )}
-              {photos.length>0 && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {photos.slice(0,12).map((p)=> (
-                    <div key={p} className="relative aspect-square overflow-hidden rounded-xl bg-white border border-black/10 shadow-sm">
-                      <Image src={p} alt={boat.titleFr+ ' photo'} fill className="object-cover" />
-                    </div>
-                  ))}
+              {boat.status==='sold' && (allImages.length > 0 || videos.length > 0) && (
+                <div className="flex justify-center">
+                  <span className="px-4 py-2 rounded-full bg-black/75 text-white text-xs font-semibold tracking-wide">{locale==='fr'? 'Vendu':'Sold'}</span>
                 </div>
               )}
             </div>
@@ -89,6 +98,17 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
               <div className="space-y-4">
                 <h1 className="text-3xl sm:text-4xl font-bold leading-tight tracking-tight">{boat.titleFr}</h1>
                 {boat.summaryFr && <p className="text-sm sm:text-base text-black/60 leading-relaxed">{boat.summaryFr}</p>}
+                {/* Prix en dessous du texte descriptif, moins visible */}
+                {boat.status !== 'sold' && (
+                  <p className="text-sm text-black/50">
+                    {locale === 'fr' ? 'À partir de' : 'From'} <span className="font-medium text-black/70">{priceLabel}</span>
+                  </p>
+                )}
+                {boat.status === 'sold' && (
+                  <p className="text-sm text-black/40 line-through">
+                    {locale === 'fr' ? 'Vendu' : 'Sold'} — {priceLabel}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2 text-[11px] sm:text-[12px]">
                   <span className="px-3 py-1 rounded-full bg-black/5 text-black/70 font-medium">{locale==='fr'? 'Année':'Year'} {boat.year}</span>
                   <span className="px-3 py-1 rounded-full bg-black/5 text-black/70 font-medium">{boat.lengthM} m</span>
@@ -98,16 +118,12 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
                 </div>
               </div>
 
-              <div className="p-6 rounded-2xl bg-white border border-black/10 shadow-sm flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-[11px] uppercase tracking-wide text-black/45 font-semibold">{locale==='fr'? 'Prix':'Price'}</span>
-                  <span className={`mt-1 text-2xl sm:text-3xl font-bold ${boat.status==='sold'? 'text-black/40 line-through decoration-red-400/60':''}`}>{priceLabel}</span>
-                </div>
-                {boat.status!=='sold' && (
+              {boat.status!=='sold' && (
+                <div className="p-6 rounded-2xl bg-white border border-black/10 shadow-sm">
                   <a
                     href="#contact"
                     aria-label={(locale==='fr'? 'Contacter au sujet de ':'Contact about ')+boat.titleFr}
-                    className="group relative inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-[color:var(--primary)] text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-4 focus:ring-[color:var(--primary)]/30 overflow-hidden"
+                    className="group relative w-full inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-[color:var(--primary)] text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-4 focus:ring-[color:var(--primary)]/30 overflow-hidden"
                     data-cta="usedboat-contact"
                   >
                     <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-transparent to-white/10 opacity-0 group-hover:opacity-100 transition duration-500" />
@@ -118,8 +134,8 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
                     </svg>
                     <span className="relative z-10 leading-none pt-px">{locale==='fr'? 'Contact rapide':'Quick contact'}</span>
                   </a>
-                )}
-              </div>
+                </div>
+              )}
 
               {boat.descriptionFr && (
                 <article className="prose prose-sm sm:prose-base max-w-none prose-p:leading-relaxed">

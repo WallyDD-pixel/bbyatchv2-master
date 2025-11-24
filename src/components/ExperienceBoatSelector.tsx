@@ -2,11 +2,12 @@
 import Image from "next/image";
 import { useState, useMemo } from "react";
 import SearchBar from './SearchBar';
+import ExperienceBookingForm from '@/app/booking/experience/ExperienceBookingForm';
 
 type BoatOption = { id:number; label:string; price:number|null }; 
 interface BoatItem { boatId:number; slug:string; name:string; imageUrl?:string|null; capacity:number; speedKn:number; priceExperience:number|null; options:BoatOption[] }
 
-export default function ExperienceBoatSelector({ locale, experienceSlug, boats, experienceTitle }: { locale:'fr'|'en'; experienceSlug:string; boats:BoatItem[]; experienceTitle?:string }) {
+export default function ExperienceBoatSelector({ locale, experienceSlug, boats, experienceTitle, experience }: { locale:'fr'|'en'; experienceSlug:string; boats:BoatItem[]; experienceTitle?:string; experience?: { hasFixedTimes?: boolean; fixedDepartureTime?: string | null; fixedReturnTime?: string | null } }) {
   const [selectedBoatId, setSelectedBoatId] = useState<number|undefined>();
   const [selectedOptions, setSelectedOptions] = useState<Record<number, boolean>>({});
   const [searchOpen, setSearchOpen] = useState(false);
@@ -65,8 +66,47 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
             <div className="flex justify-between"><span>{locale==='fr'? 'Options':'Options'}</span><span>{totalOptions} €</span></div>
             <div className="flex justify-between text-sm font-extrabold pt-1 border-t border-black/10"><span>{locale==='fr'? 'Total':'Total'}</span><span>{total} €</span></div>
           </div>
+          
+          {/* Formulaire d'informations de réservation */}
+          <div className="mt-4 border-t border-black/10 pt-4">
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60 mb-3">{locale==='fr'? 'Informations de réservation':'Booking information'}</h3>
+            <ExperienceBookingForm 
+              locale={locale}
+              hasFixedTimes={experience?.hasFixedTimes || false}
+              fixedDepartureTime={experience?.fixedDepartureTime || null}
+              fixedReturnTime={experience?.fixedReturnTime || null}
+              onSubmit={(data) => {
+                // Les données sont sauvegardées dans sessionStorage par le formulaire
+                // On peut maintenant ouvrir le modal de sélection de date
+                if (selectedBoat) {
+                  setSearchOpen(true);
+                }
+              }} 
+            />
+          </div>
+          
           <div className="mt-4">
-            <button type="button" onClick={()=> selectedBoat && setSearchOpen(true)} className={`inline-flex items-center justify-center gap-2 w-full h-11 rounded-full text-sm font-semibold shadow ${selectedBoat? 'bg-[color:var(--primary)] text-white hover:brightness-110':'bg-black/10 text-black/40 cursor-not-allowed'}`}>
+            <button 
+              type="button" 
+              onClick={()=> {
+                // Vérifier que le formulaire est valide avant d'ouvrir le modal
+                const form = document.getElementById('experience-booking-form') as HTMLFormElement;
+                if (form && !form.checkValidity()) {
+                  form.reportValidity();
+                  return;
+                }
+                // Déclencher la soumission du formulaire pour sauvegarder les données
+                if (form) {
+                  const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                  form.dispatchEvent(submitEvent);
+                }
+                // Puis ouvrir le modal de sélection de date
+                if (selectedBoat) {
+                  setSearchOpen(true);
+                }
+              }} 
+              className={`inline-flex items-center justify-center gap-2 w-full h-11 rounded-full text-sm font-semibold shadow ${selectedBoat? 'bg-[color:var(--primary)] text-white hover:brightness-110':'bg-black/10 text-black/40 cursor-not-allowed'}`}
+            >
               {ctaLabel} <span className="text-base">→</span>
             </button>
           </div>

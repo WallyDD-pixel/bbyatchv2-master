@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Calendar, Views } from 'react-big-calendar';
+import { Calendar, Views, View } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { startOfDay, endOfDay, addDays } from 'date-fns';
 import { dateFnsLocalizer } from 'react-big-calendar';
@@ -15,9 +15,23 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-interface Boat { id: number; name: string; slug: string; imageUrl?: string|null }
-interface Slot { id: number; boatId: number; date: string; part: 'AM'|'PM'|'FULL'; status: string; note?: string|null }
-interface Reservation { id: string; boatId?: number|null; startDate: string; endDate: string; status: string }
+interface Boat { id: number; name: string; slug: string; imageUrl?: string|null; options?: Array<{ id: number; label: string; price: number | null }> }
+interface Slot { id: number; boatId: number; date: string; part: 'AM'|'PM'|'FULL'|'SUNSET'; status: string; note?: string|null }
+interface Reservation {
+  id: string;
+  boatId?: number|null;
+  startDate: string;
+  endDate: string;
+  status: string;
+  part?: string | null;
+  passengers?: number | null;
+  totalPrice?: number | null;
+  depositAmount?: number | null;
+  remainingAmount?: number | null;
+  metadata?: string | null;
+  boat?: Boat | null;
+  user?: { id: string; name: string | null; firstName: string | null; lastName: string | null; email: string } | null;
+}
 
 function localKey(dateStr: string) { const d = new Date(dateStr); const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
 function keyToDate(key: string) { return new Date(key + 'T00:00:00'); }
@@ -26,7 +40,27 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   // Couleurs pour les créneaux
   const [showMoreDay, setShowMoreDay] = useState<{date: Date, events: any[]} | null>(null);
   const eventPropGetter = (event: any) => {
+    // Réservations : Rouge (événements spéciaux)
     if (event.type === 'reservation') {
+      const part = event.resData?.part || 'FULL';
+      // Si c'est un événement spécial (expérience avec horaires fixes), on garde le rouge
+      const isSpecialEvent = event.resData?.metadata ? (() => {
+        try {
+          const meta = JSON.parse(event.resData.metadata);
+          return meta?.experienceTitleFr || meta?.expSlug;
+        } catch { return false; }
+      })() : false;
+      
+      return {
+        style: {
+          background: isSpecialEvent ? 'linear-gradient(90deg,#ef4444 60%,#f87171 100%)' : 'linear-gradient(90deg,#ef4444 60%,#f87171 100%)',
+          border: '2px solid #b91c1c',
+          color: '#fff',
+        }
+      };
+    }
+    // Expériences : Rouge (événements spéciaux)
+    if (event.type === 'expSlot') {
       return {
         style: {
           background: 'linear-gradient(90deg,#ef4444 60%,#f87171 100%)',
@@ -35,39 +69,33 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         }
       };
     }
-    // Expériences : violet
-    if (event.type === 'expSlot') {
-      return {
-        style: {
-          background: 'linear-gradient(135deg,#a78bfa,#fff)',
-          border: '2px solid #7c3aed',
-          color: '#fff',
-        }
-      };
-    }
-    // Slots classiques
+    // Slots classiques - Nouveau code couleur
     if (event.type === 'slot') {
       switch (event.slotData?.part) {
         case 'AM':
-          return {
-            style: {
-              background: 'linear-gradient(135deg,#fde047,#fff)',
-              border: '2px solid #facc15',
-              color: '#333',
-            }
-          };
         case 'PM':
+          // Vert : Demi-journée (4h)
           return {
             style: {
-              background: 'linear-gradient(135deg,#22c55e,#fff)',
+              background: '#22c55e',
               border: '2px solid #16a34a',
               color: '#fff',
             }
           };
-        case 'FULL':
+        case 'SUNSET':
+          // Orange : Sunset (2h)
           return {
             style: {
-              background: 'linear-gradient(135deg,#2563eb,#fff)',
+              background: '#f97316',
+              border: '2px solid #ea580c',
+              color: '#fff',
+            }
+          };
+        case 'FULL':
+          // Bleu : Journée complète (8h)
+          return {
+            style: {
+              background: '#2563eb',
               border: '2px solid #1d4ed8',
               color: '#fff',
             }
@@ -106,6 +134,9 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   const [experiences, setExperiences] = useState<any[]>([]);
   const [expSlots, setExpSlots] = useState<any[]>([]);
   const [selectedExperience, setSelectedExperience] = useState<number|null>(null);
+  const [view, setView] = useState<View>(Views.MONTH);
+  const [hoveredEvent, setHoveredEvent] = useState<any>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{x: number, y: number} | null>(null);
 
   const load = useCallback(async (anchor: Date) => {
     const from = startOfDay(addDays(anchor, -31));
@@ -157,8 +188,16 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
       reservations.forEach(r => {
         if (!r.boatId) return;
         const start = new Date(r.startDate); const end = new Date(r.endDate);
-        const boatName = boats.find(b=>b.id===r.boatId)?.name || '#';
-        ev.push({ id: 'res-'+r.id, title: boatName+': '+(locale==='fr'?'Réservation':'Reservation'), start, end, type:'reservation', resData:r });
+        const boatName = r.boat?.name || boats.find(b=>b.id===r.boatId)?.name || '#';
+        const price = r.totalPrice ? `${r.totalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}` : '';
+        ev.push({ 
+          id: 'res-'+r.id, 
+          title: `${boatName}${price ? ' - ' + price : ''}`, 
+          start, 
+          end, 
+          type:'reservation', 
+          resData:r 
+        });
       });
       return ev;
     }
@@ -202,8 +241,16 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
 
   // Nouveau: agrégat par bateau pour affichage cartes (compte de slots disponibles)
   const boatAvail = useMemo(()=>{
-    const agg: Record<number,{ FULL:number; AM:number; PM:number; total:number }> = {};
-    slots.forEach(s=>{ if(s.status && s.status!=='available') return; const b = (agg[s.boatId] ||= { FULL:0, AM:0, PM:0, total:0 }); b[s.part]++; b.total++; });
+    const agg: Record<number,{ FULL:number; AM:number; PM:number; SUNSET:number; total:number }> = {};
+    slots.forEach(s=>{ 
+      if(s.status && s.status!=='available') return; 
+      const b = (agg[s.boatId] ||= { FULL:0, AM:0, PM:0, SUNSET:0, total:0 }); 
+      const part = s.part as 'FULL'|'AM'|'PM'|'SUNSET';
+      if (part === 'FULL' || part === 'AM' || part === 'PM' || part === 'SUNSET') {
+        b[part]++;
+      }
+      b.total++; 
+    });
     return agg;
   },[slots]);
 
@@ -219,28 +266,68 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     return agg;
   },[expSlots]);
 
-  // DateHeader custom (vue mois) pour mettre en avant les jours avec disponibilité
+  // DateHeader custom (vue mois) style Google Calendar avec badge de notification
   const DateHeader = ({ label, date }: { label: string; date: Date }) => {
     const key = localKey(date.toISOString());
     const data = availabilityMap[key];
     const has = !!data;
-    const isActive = activeDay === key && showAll && !selectedBoat;
-    let wrapperCls = 'relative flex items-center justify-between pr-1 pl-1 pt-1 pb-0.5 rounded-sm transition-colors duration-150';
-    if (isActive) {
-      // Sélection active: plein fond primaire
-      wrapperCls += ' bg-[color:var(--primary)] text-white border border-[color:var(--primary)] shadow-sm';
-    } else if (has) {
-      wrapperCls += ' bg-gradient-to-br from-blue-50 to-blue-100/60 border border-blue-200 shadow-[0_0_0_1px_#bfdbfe] text-blue-900 hover:brightness-105';
-    } else {
-      wrapperCls += ' bg-slate-50 border border-slate-100 text-slate-300';
-    }
-    const badgeCls = isActive
-      ? 'ml-1 inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur px-1.5 py-[2px] border border-white/30 text-[9px] font-semibold text-white shadow-sm'
-      : 'ml-1 inline-flex items-center gap-1 rounded-full bg-white/80 backdrop-blur px-1.5 py-[2px] border border-blue-200 text-[9px] font-semibold text-blue-700 shadow-sm';
+    const today = new Date();
+    const isToday = date.toDateString() === today.toDateString();
+    
+    // Compter les événements pour ce jour
+    const dayEvents = events.filter((ev: any) => {
+      const evDate = new Date(ev.start);
+      return evDate.toDateString() === date.toDateString();
+    });
+    const eventCount = dayEvents.length;
+    const hasMultipleEvents = eventCount > 3; // Afficher badge si plus de 3 événements
+    
     return (
-      <div className={wrapperCls}>
-        <span>{label}</span>
-        {has && <span className={badgeCls}>{data.boats.size}</span>}
+      <div className="rbc-date-cell" style={{ padding: '8px', textAlign: 'right', position: 'relative' }}>
+        <a 
+          href="#" 
+          onClick={(e) => { e.preventDefault(); }}
+          style={{
+            display: 'inline-block',
+            minWidth: '24px',
+            textAlign: 'center',
+            padding: '2px 4px',
+            borderRadius: '50%',
+            color: isToday ? '#fff' : '#3c4043',
+            backgroundColor: isToday ? '#1a73e8' : 'transparent',
+            fontWeight: isToday ? 500 : 400,
+            textDecoration: 'none',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            if (!isToday) {
+              (e.target as HTMLElement).style.backgroundColor = '#f1f3f4';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isToday) {
+              (e.target as HTMLElement).style.backgroundColor = 'transparent';
+            }
+          }}
+        >
+          {label}
+        </a>
+        {hasMultipleEvents && (
+          <span 
+            style={{
+              position: 'absolute',
+              top: '4px',
+              right: '4px',
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: '#ea4335',
+              border: '1px solid #fff',
+              boxShadow: '0 0 0 1px #ea4335',
+            }}
+            title={`${eventCount} ${locale === 'fr' ? 'événements' : 'events'}`}
+          />
+        )}
       </div>
     );
   };
@@ -263,11 +350,17 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         );
         setEditingSlot(null);
       } else {
-        // Optionally handle error
-        alert('Failed to save note');
+        const errorData = await res.json().catch(() => ({ error: 'unknown' }));
+        alert(locale === 'fr' 
+          ? `Impossible d'enregistrer la note: ${errorData.error || 'Erreur inconnue'}` 
+          : `Failed to save note: ${errorData.error || 'Unknown error'}`
+        );
       }
-    } catch {
-      alert('Error saving note');
+    } catch (e: any) {
+      alert(locale === 'fr' 
+        ? `Erreur lors de l'enregistrement: ${e?.message || 'Erreur inconnue'}` 
+        : `Error saving note: ${e?.message || 'Unknown error'}`
+      );
     } finally {
       setSaving(false);
     }
@@ -298,52 +391,326 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   // Main render
   return (
     <div className="flex flex-row gap-6">
-      <div className='h-[75vh] bg-white/90 backdrop-blur rounded-xl border border-black/10 p-2 shadow-inner shadow-white/40 relative overflow-hidden'>
-        <div className='absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_85%_15%,rgba(59,130,246,0.15),transparent_70%)]' />
+      <div className='h-[75vh] bg-white rounded-xl border border-gray-200 shadow-lg relative overflow-hidden transition-all duration-300' style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
         <Calendar
           localizer={localizer}
           date={date}
-          onNavigate={setDate}
-          view={Views.MONTH}
-          onView={()=>{}}
+          onNavigate={(newDate) => {
+            setDate(newDate);
+          }}
+          view={view}
+          onView={(newView) => {
+            setView(newView);
+          }}
           events={events}
           startAccessor='start'
           endAccessor='end'
-          components={{ month: { dateHeader: DateHeader } }}
+          components={{ 
+            month: { dateHeader: DateHeader },
+            event: (props: any) => {
+              const event = props.event;
+              const isReservation = event.type === 'reservation';
+              const boatName = isReservation ? (event.resData?.boat?.name || boats.find((b: Boat) => b.id === event.resData?.boatId)?.name || '') : (boats.find((b: Boat) => b.id === event.slotData?.boatId)?.name || '');
+              const price = isReservation && event.resData?.totalPrice ? `${event.resData.totalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}` : '';
+              
+              return (
+                <div
+                  className="w-full h-full px-1.5 py-0.5 text-xs font-normal cursor-pointer group/event"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-start',
+                    overflow: 'hidden',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (isReservation) {
+                      setHoveredEvent(event);
+                      setTooltipPosition({ x: e.clientX, y: e.clientY });
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredEvent(null);
+                    setTooltipPosition(null);
+                  }}
+                  onClick={() => onSelectEvent(event)}
+                  title={boatName + (price ? ' - ' + price : '')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectEvent(event);
+                    }
+                  }}
+                >
+                  <div className="truncate leading-tight font-medium group-hover/event:font-semibold transition-all" style={{ lineHeight: '1.3' }}>{boatName}</div>
+                  {price && <div className="text-[10px] opacity-75 truncate mt-0.5 group-hover/event:opacity-100 transition-opacity" style={{ lineHeight: '1.2' }}>{price}</div>}
+                </div>
+              );
+            }
+          }}
           onSelectEvent={onSelectEvent}
           eventPropGetter={eventPropGetter}
-          style={{ height: '90vh', fontSize: '1.1rem' }}
+          style={{ height: '90vh' }}
           onShowMore={(evts, date) => setShowMoreDay({ date, events: evts })}
         />
-        {/* Modal infos réservation */}
-        {reservationInfo && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md relative">
-              <button className="absolute top-2 right-2 text-lg" onClick={()=>setReservationInfo(null)}>×</button>
-              <h2 className="text-xl font-bold mb-2 text-red-600">Détails de la réservation</h2>
-              <div className="space-y-2 text-sm">
-                <div><strong>Bateau :</strong> {boats.find(b=>b.id===reservationInfo.boatId)?.name || reservationInfo.boatId || 'N/A'}</div>
-                <div><strong>Période :</strong> {reservationInfo.startDate.slice(0,10)} → {reservationInfo.endDate.slice(0,10)}
-                  <span className='ml-2 text-xs text-black/60'>({(() => {
-                    const d1 = new Date(reservationInfo.startDate);
-                    const d2 = new Date(reservationInfo.endDate);
-                    const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000*60*60*24)) + 1;
-                    return diff > 1 ? diff + ' jours' : '1 jour';
-                  })()})</span>
-                </div>
-                <div><strong>Statut :</strong> {
-                  reservationInfo.status === 'pending' ? 'En attente' :
-                  reservationInfo.status === 'pending_deposit' ? 'Acompte payé, paiement complet en attente' :
-                  reservationInfo.status === 'confirmed' ? 'Confirmée' :
-                  reservationInfo.status === 'cancelled' ? 'Annulée' :
-                  reservationInfo.status === 'paid' ? 'Payée' :
-                  reservationInfo.status
-                }</div>
-                {/* Ajoutez d'autres infos si dispo, ex: client, acompte, facture */}
+        {/* Modal "X autres" événements - Amélioré */}
+        {showMoreDay && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200" 
+            onClick={() => setShowMoreDay(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title"
+          >
+            <div 
+              className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200" 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-200">
+                <h3 id="modal-title" className="text-xl font-bold text-gray-900">
+                  {locale === 'fr' ? 'Événements du' : 'Events on'} {showMoreDay.date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </h3>
+                <button 
+                  onClick={() => setShowMoreDay(null)}
+                  className="text-2xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition-all"
+                  aria-label={locale === 'fr' ? 'Fermer' : 'Close'}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="space-y-2 overflow-y-auto flex-1 pr-2">
+                {showMoreDay.events.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">{locale === 'fr' ? 'Aucun événement' : 'No events'}</p>
+                ) : (
+                  showMoreDay.events.map((ev: any, idx: number) => {
+                    const isReservation = ev.type === 'reservation';
+                    const boatName = isReservation 
+                      ? (ev.resData?.boat?.name || boats.find((b: Boat) => b.id === ev.resData?.boatId)?.name || 'N/A')
+                      : (boats.find((b: Boat) => b.id === ev.slotData?.boatId)?.name || 'N/A');
+                    const partLabel = ev.resData?.part === 'FULL' ? (locale==='fr'?'Journée entière':'Full day') : 
+                                     ev.resData?.part === 'AM' ? (locale==='fr'?'Matin':'Morning') : 
+                                     ev.resData?.part === 'PM' ? (locale==='fr'?'Après-midi':'Afternoon') : 
+                                     ev.resData?.part === 'SUNSET' ? 'Sunset' : ev.slotData?.part || '';
+                    
+                    const eventColor = isReservation ? '#ea4335' : 
+                                      ev.slotData?.part === 'FULL' ? '#4285f4' :
+                                      ev.slotData?.part === 'AM' || ev.slotData?.part === 'PM' ? '#34a853' :
+                                      ev.slotData?.part === 'SUNSET' ? '#fbbc04' : '#999';
+                    
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setShowMoreDay(null);
+                          onSelectEvent(ev);
+                        }}
+                        className="p-4 rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gradient-to-r hover:from-gray-50 hover:to-white cursor-pointer transition-all duration-200 group"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setShowMoreDay(null);
+                            onSelectEvent(ev);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <div 
+                            className="w-4 h-4 rounded flex-shrink-0 shadow-sm"
+                            style={{ backgroundColor: eventColor }}
+                          />
+                          <span className="font-bold text-base text-gray-900 group-hover:text-[color:var(--primary)] transition-colors">{boatName}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-gray-600 ml-7">
+                          <span className="font-medium">{partLabel}</span>
+                          {isReservation && ev.resData?.totalPrice && (
+                            <>
+                              <span className="text-gray-300">•</span>
+                              <span className="font-semibold text-[color:var(--primary)]">
+                                {ev.resData.totalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>
         )}
+        
+        {/* Modal infos réservation détaillée */}
+        {reservationInfo && (() => {
+          const r = reservationInfo;
+          const boatName = r.boat?.name || boats.find(b=>b.id===r.boatId)?.name || 'N/A';
+          const clientName = r.user?.name || `${r.user?.firstName || ''} ${r.user?.lastName || ''}`.trim() || r.user?.email || 'N/A';
+          const meta = r.metadata ? (() => { try { return JSON.parse(r.metadata); } catch { return null; } })() : null;
+          const partLabel = r.part === 'FULL' ? (locale==='fr'?'Journée entière (8h)':'Full day (8h)') : 
+                           r.part === 'AM' ? (locale==='fr'?'Matin (4h)':'Morning (4h)') : 
+                           r.part === 'PM' ? (locale==='fr'?'Après-midi (4h)':'Afternoon (4h)') : 
+                           r.part === 'SUNSET' ? 'Sunset (2h)' : r.part || '';
+          
+          // Horaires
+          const getTimeRange = () => {
+            if (r.part === 'AM') return '9h-13h';
+            if (r.part === 'PM') return '14h-18h';
+            if (r.part === 'SUNSET') return '18h-20h';
+            if (r.part === 'FULL') return '9h-17h';
+            return '';
+          };
+          
+          // Options sélectionnées
+          const selectedOptionIds = meta?.optionIds || [];
+          const selectedOptions = r.boat?.options?.filter((o: any) => selectedOptionIds.includes(o.id)) || [];
+          
+          // Expérience
+          const experienceTitle = meta?.experienceTitleFr || meta?.experienceTitleEn || meta?.expSlug || null;
+          
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+                <button className="absolute top-4 right-4 text-2xl text-black/50 hover:text-black" onClick={()=>setReservationInfo(null)}>×</button>
+                <h2 className="text-2xl font-bold mb-4 text-red-600">{locale==='fr'?'Détails de la réservation':'Reservation details'}</h2>
+                
+                <div className="space-y-4 text-sm">
+                  {/* Informations principales */}
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <strong className="text-gray-700">{locale==='fr'?'Bateau':'Boat'}:</strong>
+                      <div className="text-base font-semibold text-[color:var(--primary)]">{boatName}</div>
+                    </div>
+                    <div>
+                      <strong className="text-gray-700">{locale==='fr'?'Client':'Client'}:</strong>
+                      <div className="text-base font-semibold">{clientName}</div>
+                      {r.user?.email && <div className="text-xs text-gray-500">{r.user.email}</div>}
+                    </div>
+                  </div>
+                  
+                  {/* Période et type */}
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <div className="mb-2">
+                      <strong className="text-gray-700">{locale==='fr'?'Période':'Period'}:</strong>
+                      <div className="text-base">{r.startDate.slice(0,10)} → {r.endDate.slice(0,10)}
+                        <span className='ml-2 text-xs text-gray-600'>({(() => {
+                          const d1 = new Date(r.startDate);
+                          const d2 = new Date(r.endDate);
+                          const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000*60*60*24)) + 1;
+                          return diff > 1 ? diff + (locale==='fr'?' jours':' days') : (locale==='fr'?'1 jour':'1 day');
+                        })()})</span>
+                      </div>
+                    </div>
+                    <div>
+                      <strong className="text-gray-700">{locale==='fr'?'Type de prestation':'Service type'}:</strong>
+                      <div className="text-base">{partLabel}</div>
+                      {getTimeRange() && <div className="text-xs text-gray-600">{locale==='fr'?'Horaires':'Times'}: {getTimeRange()}</div>}
+                    </div>
+                  </div>
+                  
+                  {/* Expérience si applicable */}
+                  {experienceTitle && (
+                    <div className="p-4 bg-purple-50 rounded-lg">
+                      <strong className="text-gray-700">{locale==='fr'?'Expérience':'Experience'}:</strong>
+                      <div className="text-base font-semibold">{experienceTitle}</div>
+                    </div>
+                  )}
+                  
+                  {/* Passagers et enfants */}
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    {r.passengers && (
+                      <div className="mb-2">
+                        <strong className="text-gray-700">{locale==='fr'?'Nombre de passagers':'Number of passengers'}:</strong>
+                        <div className="text-base">{r.passengers}</div>
+                      </div>
+                    )}
+                    {meta?.childrenCount && (
+                      <div>
+                        <strong className="text-gray-700">{locale==='fr'?'Enfants à bord':'Children on board'}:</strong>
+                        <div className="text-base">{meta.childrenCount}</div>
+                        {meta.childrenAges && <div className="text-xs text-gray-600">{locale==='fr'?'Âges':'Ages'}: {meta.childrenAges}</div>}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Options sélectionnées */}
+                  {selectedOptions.length > 0 && (
+                    <div className="p-4 bg-yellow-50 rounded-lg">
+                      <strong className="text-gray-700">{locale==='fr'?'Options sélectionnées':'Selected options'}:</strong>
+                      <ul className="mt-2 space-y-1">
+                        {selectedOptions.map((opt: any) => (
+                          <li key={opt.id} className="text-sm">• {opt.label} {opt.price ? `(+${opt.price}€)` : ''}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {/* Demandes spécifiques */}
+                  {meta?.specialNeeds && (
+                    <div className="p-4 bg-orange-50 rounded-lg">
+                      <strong className="text-gray-700">{locale==='fr'?'Demandes spécifiques':'Special requests'}:</strong>
+                      <div className="text-sm mt-1 whitespace-pre-wrap">{meta.specialNeeds}</div>
+                    </div>
+                  )}
+                  
+                  {/* Horaires flexibles */}
+                  {meta?.preferredTime && (
+                    <div className="p-4 bg-indigo-50 rounded-lg">
+                      <strong className="text-gray-700">{locale==='fr'?'Horaire souhaité':'Preferred time'}:</strong>
+                      <div className="text-sm mt-1">{meta.preferredTime}</div>
+                    </div>
+                  )}
+                  
+                  {/* Prix */}
+                  <div className="p-4 bg-gray-100 rounded-lg border-2 border-gray-300">
+                    <div className="grid grid-cols-2 gap-4">
+                      {r.totalPrice && (
+                        <div>
+                          <strong className="text-gray-700">{locale==='fr'?'Prix total':'Total price'}:</strong>
+                          <div className="text-lg font-bold text-[color:var(--primary)]">{r.totalPrice?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</div>
+                        </div>
+                      )}
+                      {r.depositAmount !== null && r.depositAmount !== undefined && (
+                        <div>
+                          <strong className="text-gray-700">{locale==='fr'?'Acompte':'Deposit'}:</strong>
+                          <div className="text-base font-semibold">{r.depositAmount?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</div>
+                        </div>
+                      )}
+                      {r.remainingAmount !== null && r.remainingAmount !== undefined && (
+                        <div>
+                          <strong className="text-gray-700">{locale==='fr'?'Reste à payer':'Remaining'}:</strong>
+                          <div className="text-base font-semibold">{r.remainingAmount?.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Statut */}
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <strong className="text-gray-700">{locale==='fr'?'Statut':'Status'}:</strong>
+                    <div className="mt-1">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                        r.status === 'completed' ? 'bg-green-100 text-green-700' :
+                        r.status === 'deposit_paid' ? 'bg-blue-100 text-blue-700' :
+                        r.status === 'pending_deposit' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {r.status === 'pending' ? (locale==='fr'?'En attente':'Pending') :
+                         r.status === 'pending_deposit' ? (locale==='fr'?'Acompte en attente':'Deposit pending') :
+                         r.status === 'deposit_paid' ? (locale==='fr'?'Acompte payé':'Deposit paid') :
+                         r.status === 'completed' ? (locale==='fr'?'Terminée':'Completed') :
+                         r.status === 'cancelled' ? (locale==='fr'?'Annulée':'Cancelled') :
+                         r.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         {/* Modal showMore (liste des événements du jour) */}
         {showMoreDay && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -391,14 +758,28 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         <p className='mt-2 text-[10px] text-slate-500'>Jours surlignés = au moins un bateau dispo ({locale==='fr'?'nombre de bateaux':'boat count'}). Glisser pour créer plusieurs jours (sélectionnez un bateau).</p>
       </div>
       <aside className='w-full lg:w-72 shrink-0 space-y-6'>
-        <div className='mb-6 p-4 rounded-xl bg-white/80 border border-black/10 shadow-sm'>
-          <h3 className='font-bold text-sm mb-2'>{locale==='fr' ? 'Code couleur des créneaux' : 'Slot color legend'}</h3>
-          <ul className='space-y-2 text-xs'>
-            <li className='flex items-center gap-2'><span style={{display:'inline-block',width:18,height:18,borderRadius:6,background:'linear-gradient(135deg,#fde047,#fff)',border:'2px solid #facc15'}}></span> <span>AM (matin) : jaune</span></li>
-            <li className='flex items-center gap-2'><span style={{display:'inline-block',width:18,height:18,borderRadius:6,background:'linear-gradient(135deg,#22c55e,#fff)',border:'2px solid #16a34a'}}></span> <span>PM (après-midi) : vert</span></li>
-            <li className='flex items-center gap-2'><span style={{display:'inline-block',width:18,height:18,borderRadius:6,background:'linear-gradient(135deg,#2563eb,#fff)',border:'2px solid #1d4ed8'}}></span> <span>Journée complète : bleu</span></li>
-            <li className='flex items-center gap-2'><span style={{display:'inline-block',width:18,height:18,borderRadius:6,background:'linear-gradient(135deg,#a78bfa,#fff)',border:'2px solid #7c3aed'}}></span> <span>Expérience : violet</span></li>
-            <li className='flex items-center gap-2'><span style={{display:'inline-block',width:18,height:18,borderRadius:6,background:'linear-gradient(90deg,#ef4444 60%,#f87171 100%)',border:'2px solid #b91c1c'}}></span> <span>Rouge : réservé</span></li>
+        <div className='mb-6 p-4 rounded-xl bg-gradient-to-br from-white to-gray-50 border border-gray-200 shadow-sm'>
+          <h3 className='font-bold text-sm mb-3 text-gray-800 flex items-center gap-2'>
+            <span className="text-lg">🗂</span>
+            {locale==='fr' ? 'Code couleur' : 'Color code'}
+          </h3>
+          <ul className='space-y-2.5 text-xs'>
+            <li className='flex items-center gap-3 p-2 rounded-lg hover:bg-white/50 transition-colors'>
+              <span style={{display:'inline-block',width:20,height:20,borderRadius:4,background:'#4285f4',borderLeft:'3px solid #1967d2'}}></span> 
+              <span className="text-gray-700 font-medium">{locale==='fr'?'Bleu : Journée complète (8h)':'Blue: Full day (8h)'}</span>
+            </li>
+            <li className='flex items-center gap-3 p-2 rounded-lg hover:bg-white/50 transition-colors'>
+              <span style={{display:'inline-block',width:20,height:20,borderRadius:4,background:'#34a853',borderLeft:'3px solid #137333'}}></span> 
+              <span className="text-gray-700 font-medium">{locale==='fr'?'Vert : Demi-journée (4h)':'Green: Half-day (4h)'}</span>
+            </li>
+            <li className='flex items-center gap-3 p-2 rounded-lg hover:bg-white/50 transition-colors'>
+              <span style={{display:'inline-block',width:20,height:20,borderRadius:4,background:'#fbbc04',borderLeft:'3px solid #f9ab00'}}></span> 
+              <span className="text-gray-700 font-medium">{locale==='fr'?'Orange : Sunset (2h)':'Orange: Sunset (2h)'}</span>
+            </li>
+            <li className='flex items-center gap-3 p-2 rounded-lg hover:bg-white/50 transition-colors'>
+              <span style={{display:'inline-block',width:20,height:20,borderRadius:4,background:'#ea4335',borderLeft:'3px solid #c5221f'}}></span> 
+              <span className="text-gray-700 font-medium">{locale==='fr'?'Rouge : Événements spéciaux':'Red: Special events'}</span>
+            </li>
           </ul>
         </div>
         <div className='space-y-4'>
@@ -459,6 +840,75 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           </div>
         )}
       </aside>
+      
+      {/* Tooltip au survol */}
+      {hoveredEvent && hoveredEvent.type === 'reservation' && tooltipPosition && (() => {
+        const r = hoveredEvent.resData;
+        const boatName = r.boat?.name || boats.find((b: Boat) => b.id === r.boatId)?.name || 'N/A';
+        const clientName = r.user?.name || `${r.user?.firstName || ''} ${r.user?.lastName || ''}`.trim() || r.user?.email || 'N/A';
+        const meta = r.metadata ? (() => { try { return JSON.parse(r.metadata); } catch { return null; } })() : null;
+        const partLabel = r.part === 'FULL' ? (locale==='fr'?'Journée entière':'Full day') : 
+                         r.part === 'AM' ? (locale==='fr'?'Matin':'Morning') : 
+                         r.part === 'PM' ? (locale==='fr'?'Après-midi':'Afternoon') : 
+                         r.part === 'SUNSET' ? 'Sunset' : r.part || '';
+        const getTimeRange = () => {
+          if (r.part === 'AM') return '9h-13h';
+          if (r.part === 'PM') return '14h-18h';
+          if (r.part === 'SUNSET') return '18h-20h';
+          if (r.part === 'FULL') return '9h-17h';
+          return '';
+        };
+        const experienceTitle = meta?.experienceTitleFr || meta?.experienceTitleEn || meta?.expSlug || null;
+        const selectedOptionIds = meta?.optionIds || [];
+        const selectedOptions = r.boat?.options?.filter((o: any) => selectedOptionIds.includes(o.id)) || [];
+        
+        return (
+          <div
+            className="fixed z-[60] bg-white border-2 border-gray-200 rounded-xl shadow-2xl p-4 max-w-sm pointer-events-none animate-in fade-in zoom-in-95 duration-150"
+            style={{ 
+              left: `${Math.min(tooltipPosition.x + 15, window.innerWidth - 320)}px`, 
+              top: `${Math.min(tooltipPosition.y + 15, window.innerHeight - 200)}px`,
+              transform: 'translateZ(0)'
+            }}
+          >
+            <div className="space-y-2.5 text-xs">
+              <div className="font-bold text-base text-[color:var(--primary)] border-b border-gray-200 pb-2">{boatName}</div>
+              <div className="grid grid-cols-2 gap-2">
+                {getTimeRange() && (
+                  <div>
+                    <strong className="text-gray-600">{locale==='fr'?'Horaires':'Times'}:</strong>
+                    <div className="text-gray-800 font-medium">{getTimeRange()}</div>
+                  </div>
+                )}
+                <div>
+                  <strong className="text-gray-600">{locale==='fr'?'Type':'Type'}:</strong>
+                  <div className="text-gray-800 font-medium">{partLabel}</div>
+                </div>
+              </div>
+              {experienceTitle && (
+                <div className="bg-purple-50 rounded-lg p-2 border border-purple-200">
+                  <strong className="text-purple-700">{locale==='fr'?'Expérience':'Experience'}:</strong>
+                  <div className="text-purple-900 font-medium">{experienceTitle}</div>
+                </div>
+              )}
+              <div>
+                <strong className="text-gray-600">{locale==='fr'?'Client':'Client'}:</strong>
+                <div className="text-gray-800 font-medium">{clientName}</div>
+              </div>
+              {selectedOptions.length > 0 && (
+                <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-200">
+                  <strong className="text-yellow-700">{locale==='fr'?'Options':'Options'}:</strong>
+                  <ul className="mt-1 space-y-0.5">
+                    {selectedOptions.map((opt: any) => (
+                      <li key={opt.id} className="text-yellow-900">• {opt.label}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 import Link from 'next/link';
+import MessageViewClient from './MessageViewClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,24 +62,20 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
             </tbody>
           </table>
         </div>
-        <div id='message-modal' className='hidden fixed inset-0 z-40 items-center justify-center'>
-          <div className='absolute inset-0 bg-black/40 backdrop-blur-sm' data-close></div>
-          <div className='relative w-full max-w-xl mx-auto rounded-2xl bg-white border border-black/10 shadow-xl p-6 flex flex-col gap-5'>
-            <div className='flex items-start justify-between gap-4'>
-              <div>
-                <h2 className='text-lg font-semibold' id='mm-title'>Message</h2>
-                <p className='text-xs text-black/50' id='mm-meta'></p>
-              </div>
-              <button className='h-8 w-8 rounded-full border border-black/15 text-black/60 hover:bg-black/5' data-close aria-label='Close'>✕</button>
-            </div>
-            <div className='rounded-lg border border-black/10 bg-black/[0.02] p-4 max-h-[50vh] overflow-auto text-sm leading-relaxed font-sans whitespace-pre-wrap' id='mm-body'></div>
-            <div className='flex justify-end gap-3'>
-              <button className='h-9 px-4 rounded-full border border-black/15 text-[12px] hover:bg-black/5' data-close>{locale==='fr'? 'Fermer':'Close'}</button>
-              <a id='mm-mail' href='#' className='h-9 px-4 rounded-full bg-[color:var(--primary)] text-white text-[12px] font-medium inline-flex items-center justify-center hover:brightness-110'>{locale==='fr'? 'Répondre':'Reply'}</a>
-            </div>
-          </div>
-        </div>
-        <script dangerouslySetInnerHTML={{__html:`(()=>{const modal=document.getElementById('message-modal');if(!modal)return;const body=modal.querySelector('#mm-body');const meta=modal.querySelector('#mm-meta');const title=modal.querySelector('#mm-title');const mail=modal.querySelector('#mm-mail');const map=${JSON.stringify(contactMessages.reduce((acc,m)=>{acc[m.id]={message:m.message,name:m.name,email:m.email,boat:m.usedBoat?m.usedBoat.titleFr||m.usedBoat.titleEn:'',slug:m.usedBoat?m.usedBoat.slug:''};return acc;},{}))};function open(id){const d=map[id];if(!d)return;body.textContent=d.message;title.textContent=d.name;meta.textContent=(d.email||'')+(d.boat?' • '+d.boat:'');mail.href='mailto:'+d.email+'?subject=' + encodeURIComponent('Réponse: '+ (d.boat||'Demande'));modal.classList.remove('hidden');modal.classList.add('flex');document.body.style.overflow='hidden';}function close(){modal.classList.add('hidden');modal.classList.remove('flex');document.body.style.overflow='';}modal.addEventListener('click',e=>{const t=e.target; if(t instanceof HTMLElement && t.hasAttribute('data-close')) close();});document.querySelectorAll('button[data-view]').forEach(btn=>btn.addEventListener('click',()=>open(btn.getAttribute('data-id'))));document.addEventListener('keydown',e=>{if(e.key==='Escape') close();});})();`}} />
+        <MessageViewClient
+          messages={contactMessages.map(m => ({
+            id: m.id,
+            message: m.message,
+            name: m.name,
+            email: m.email,
+            phone: m.phone || undefined,
+            boat: m.usedBoat ? (locale === 'fr' ? m.usedBoat.titleFr : m.usedBoat.titleEn) : undefined,
+            slug: m.usedBoat?.slug,
+            createdAt: m.createdAt,
+            sourcePage: m.sourcePage,
+          }))}
+          locale={locale}
+        />
       </main>
       <Footer locale={locale} t={t} />
     </div>

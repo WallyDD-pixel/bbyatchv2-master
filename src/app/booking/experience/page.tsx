@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import ExperiencePayButton from './pay-button';
+import ExperienceBookingDisplay from './ExperienceBookingDisplay';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ export default async function BookingExperiencePage({ searchParams }:{ searchPar
     redirect('/');
   }
 
-  const experience = await prisma.experience.findUnique({ where:{ slug: expSlug }, select:{ id:true, slug:true, titleFr:true, titleEn:true, imageUrl:true, descFr:true, descEn:true, timeFr:true, timeEn:true } });
+  const experience = await (prisma as any).experience.findUnique({ where:{ slug: expSlug }, select:{ id:true, slug:true, titleFr:true, titleEn:true, imageUrl:true, descFr:true, descEn:true, timeFr:true, timeEn:true, fixedDepartureTime:true, fixedReturnTime:true, hasFixedTimes:true } });
   if(!experience){ redirect('/'); }
 
   const boat = await prisma.boat.findUnique({ where:{ id: boatId }, select:{ id:true, name:true, slug:true, capacity:true, speedKn:true, imageUrl:true } });
@@ -73,11 +74,23 @@ export default async function BookingExperiencePage({ searchParams }:{ searchPar
               <h2 className="text-base font-semibold mb-3">{locale==='fr'? 'Dates':'Dates'}</h2>
               <p className="text-sm">{locale==='fr'? 'Du':'From'} <strong>{start}</strong> {locale==='fr'? 'au':'to'} <strong>{end}</strong> {fullDay && dayCount>1 && <span>({dayCount} {locale==='fr'? 'jours':'days'})</span>}</p>
               <p className="text-sm mt-1">{locale==='fr'? 'Créneau':'Slot'} : <strong>{part==='FULL'? (locale==='fr'? 'Journée entière':'Full day'): part==='AM'? (locale==='fr'? 'Matin':'Morning') : (locale==='fr'? 'Après-midi':'Afternoon')}</strong></p>
+              {experience.hasFixedTimes && experience.fixedDepartureTime && experience.fixedReturnTime && (
+                <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
+                  <p className="text-xs font-semibold text-blue-900 mb-1">{locale==='fr'? 'Horaires fixes (non modifiables)' : 'Fixed times (non-editable)'}</p>
+                  <p className="text-sm text-blue-800">
+                    {locale==='fr'? 'Départ' : 'Departure'}: <strong>{experience.fixedDepartureTime}</strong> • {locale==='fr'? 'Retour' : 'Return'}: <strong>{experience.fixedReturnTime}</strong>
+                  </p>
+                </div>
+              )}
             </div>
             <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
               <h2 className="text-base font-semibold mb-3">{locale==='fr'? 'Bateau':'Boat'}</h2>
               {boat? <p className="text-sm font-medium">{boat.name}</p> : <p className="text-xs text-red-600">{locale==='fr'? 'Bateau introuvable':'Boat not found'}</p>}
               {boat && <p className="text-xs text-black/60 mt-1">{boat.capacity} pax • {boat.speedKn} kn</p>}
+            </div>
+            <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-semibold mb-4">{locale==='fr'? 'Informations de réservation':'Booking information'}</h2>
+              <ExperienceBookingDisplay locale={locale} />
             </div>
           </div>
           <div className="md:col-span-1 space-y-6">

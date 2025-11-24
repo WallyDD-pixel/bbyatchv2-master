@@ -1,9 +1,8 @@
 'use client';
 export const dynamic = 'force-dynamic';
 import Link from 'next/link';
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import HeaderBar from '@/components/HeaderBar';
-import Footer from '@/components/Footer';
 import { messages } from '@/i18n/messages';
 import { useRouter } from 'next/navigation';
 
@@ -356,7 +355,7 @@ function AutreVillePageInner() {
         )}
         <p className="mt-4 text-[10px] text-black/40">Nous te répondons rapidement (souvent &lt; 2h ouvrées).</p>
       </div>
-      <Footer locale={locale as any} t={t} />
+      <FooterWrapper locale={locale as any} t={t} />
       {showSuccess && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-black/10 p-8 text-center overflow-hidden">
@@ -378,9 +377,5 @@ function AutreVillePageInner() {
 }
 
 export default function AutreVillePage(){
-  return (
-    <Suspense fallback={<div className="max-w-3xl mx-auto py-12 px-4 text-sm text-black/50">Chargement...</div>}>
-      <AutreVillePageInner />
-    </Suspense>
-  );
+  return <AutreVillePageInner />;
 }

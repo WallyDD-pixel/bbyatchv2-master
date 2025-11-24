@@ -15,6 +15,22 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
   const { data: session } = useSession();
   const userRole = (session?.user as any)?.role || 'user';
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string>("/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png");
+
+  useEffect(() => {
+    async function fetchLogo() {
+      try {
+        const res = await fetch("/api/settings/logo");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.logoUrl) setLogoUrl(data.logoUrl);
+        }
+      } catch (e) {
+        // Fallback to default logo
+      }
+    }
+    fetchLogo();
+  }, []);
 
   const setLocale = (l: Locale) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -34,6 +50,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
   const experiencesHref = isHome ? "#experiences" : `${homeBase}#experiences`;
   const fleetHref = isHome ? "#fleet" : `${homeBase}#fleet`;
   const usedHref = `/used-sale?lang=${locale}`;
+  const aboutHref = `/about${locale === 'en' ? '?lang=en' : ''}`;
 
   return (
     <header className="px-2 sm:px-4 py-4 flex items-center justify-center sticky top-0 z-[120] transition-all duration-300">
@@ -43,7 +60,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
           {/* Logo avec animation sophistiquée */}
           <a href={homeBase} className="flex items-center gap-3 group hover:scale-[1.02] transition-all duration-300 ease-out" aria-label={t.app_name}>
             <div className="relative">
-              <Image src="/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png" alt="BB YACHTS" width={150} height={50} priority className="h-12 w-auto object-contain drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300" />
+              <Image src={logoUrl} alt="BB YACHTS" width={150} height={50} priority className="h-12 w-auto object-contain drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300" />
               <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--primary)]/0 via-[color:var(--primary)]/5 to-[color:var(--primary)]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
             </div>
             <span className="hidden sm:inline text-base font-bold tracking-wide bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 dark:from-slate-100 dark:via-slate-200 dark:to-slate-100 bg-clip-text text-transparent group-hover:from-[color:var(--primary)] group-hover:via-[color:var(--primary)]/80 group-hover:to-[color:var(--primary)] transition-all duration-500">{t.app_name}</span>
@@ -54,9 +71,10 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
             {[
               {href:fleetHref,label:t.nav_available,icon:'⛵'},
               {href:experiencesHref,label:t.nav_experiences,icon:'🌊'},
-              {href:usedHref,label:t.nav_used_sale,icon:'💼'}
+              {href:usedHref,label:t.nav_used_sale,icon:'💼'},
+              {href:aboutHref,label:t.nav_about,icon:'ℹ️'}
             ].map((link, i) => (
-              <a key={link.href} href={link.href} className="group relative px-5 py-3 rounded-2xl font-semibold text-slate-700 dark:text-slate-200/95 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/50 transition-all duration-300 overflow-hidden">
+              <a key={link.href} href={link.href} className="group relative px-5 py-3 rounded-2xl font-semibold text-slate-700 dark:text-slate-200/95 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/50 transition-all duration-300 overflow-hidden no-underline visited:text-slate-700 visited:dark:text-slate-200/95 hover:visited:text-white active:text-white" style={{ textDecoration: 'none' }}>
                 <span className="relative z-10 flex items-center gap-2">
                   <span className="text-base opacity-80 group-hover:opacity-100 transition-opacity duration-300">{link.icon}</span>
                   <span className="font-medium">{link.label}</span>
@@ -191,7 +209,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
               className="md:hidden fixed left-1/2 -translate-x-1/2 top-[76px] w-[94%] max-w-6xl rounded-3xl bg-gradient-to-b from-white/98 via-white/95 to-white/92 dark:from-[#1f2c38]/96 dark:via-[#203241]/96 dark:to-[#1f2c38]/96 border border-white/70 dark:border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)] p-5 z-[110] backdrop-blur-xl"
             >
               <nav className="flex flex-col gap-1 text-sm">
-                {[{href:fleetHref,label:t.nav_available,icon:'⛵'},{href:experiencesHref,label:t.nav_experiences,icon:'🌊'},{href:usedHref,label:t.nav_used_sale,icon:'💼'}].map(l => (
+                {[{href:fleetHref,label:t.nav_available,icon:'⛵'},{href:experiencesHref,label:t.nav_experiences,icon:'🌊'},{href:usedHref,label:t.nav_used_sale,icon:'💼'},{href:aboutHref,label:t.nav_about,icon:'ℹ️'}].map(l => (
                   <a
                     key={l.href}
                     href={l.href}

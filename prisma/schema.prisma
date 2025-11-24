@@ -20,6 +20,11 @@ model Experience {
   timeFr    String?
   timeEn    String?
   imageUrl  String?
+  photoUrls String?  // JSON array
+  // Horaires fixes pour événements (ex: feux d'artifice)
+  fixedDepartureTime String?  // Format HH:mm (ex: "20:30")
+  fixedReturnTime    String?  // Format HH:mm (ex: "23:00")
+  hasFixedTimes      Boolean  @default(false) // Si true, les horaires sont fixes et non modifiables par le client
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -57,11 +62,37 @@ model Settings {
   whyChooseImageUrl     String?
   footerInstagram       String?
   footerFacebook        String?
-  footerX               String?
+  footerLinkedIn        String?
+  footerYouTube         String?
+  footerTikTok          String?
   // Mapping des pages légales/footers -> slugs LegalPage
   legalBaseSlug         String?
   legalTermsSlug        String?
   legalPrivacySlug      String?
+  // Page À propos
+  aboutHistoryFr        String?
+  aboutHistoryEn        String?
+  aboutMissionFr        String?
+  aboutMissionEn        String?
+  aboutTeamFr           String?
+  aboutTeamEn           String?
+  aboutValuesSafetyFr   String?
+  aboutValuesSafetyEn   String?
+  aboutValuesComfortFr  String?
+  aboutValuesComfortEn  String?
+  aboutValuesAuthFr     String?
+  aboutValuesAuthEn     String?
+  aboutValuesPleasureFr String?
+  aboutValuesPleasureEn String?
+  aboutImageUrls        String?  // JSON array d'images pour la galerie
+  // Page Bateaux d'occasion
+  usedSaleTitleFr       String?
+  usedSaleTitleEn       String?
+  usedSaleTextFr        String?
+  usedSaleTextEn        String?
+  // Paramètres généraux
+  logoUrl               String?  // URL du logo administrable
+  defaultSkipperPrice   Int?     @default(350) // Prix par défaut du skipper/jour
 }
 
 model City {
@@ -80,13 +111,27 @@ model Boat {
   speedKn      Int // vitesse en noeuds
   fuel         Int? // carburant (ex: conso ou réservoir)
   enginePower  Int? // moteur (cv)
+  lengthM      Float?        // taille en mètres
   pricePerDay  Int // prix en €
   priceAm      Int? // prix matin (AM)
   pricePm      Int? // prix après-midi (PM)
+  priceSunset  Int? // prix sunset (2h)
+  // Prix agence (différents des prix normaux)
+  priceAgencyPerDay Int? // prix agence/jour
+  priceAgencyAm      Int? // prix agence matin
+  priceAgencyPm     Int? // prix agence après-midi
+  priceAgencySunset Int? // prix agence sunset
   imageUrl     String?
   videoUrls    String?       // JSON stringifié (array)
   photoUrls    String?       // JSON stringifié (array)
   available    Boolean       @default(true)
+  // Nouveaux champs
+  avantagesFr       String?  // Points forts du bateau (FR)
+  avantagesEn       String?  // Points forts du bateau (EN)
+  optionsInclusesFr String?  // Options incluses dans le prix (FR)
+  optionsInclusesEn String?  // Options incluses dans le prix (EN)
+  skipperRequired   Boolean  @default(false) // Skipper obligatoire
+  skipperPrice      Int?     // Prix du skipper (350€/jour par défaut)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -212,6 +257,7 @@ model Reservation {
   commissionAmount     Int?                          // montant commission calculée
   commissionRate       Int?                          // pourcentage (base 100) utilisé
   refundAmount         Int?
+  finalFuelAmount      Int?                          // Montant final du carburant (ajusté manuellement par l'admin)
   currency             String?  @default("eur")
   stripeSessionId      String?
   stripePaymentIntentId String?
@@ -310,6 +356,7 @@ model ContactMessage {
   id          Int       @id @default(autoincrement())
   name        String
   email       String
+  phone       String?
   message     String
   usedBoatId  Int?
   usedBoat    UsedBoat? @relation(fields: [usedBoatId], references: [id], onDelete: SetNull)
@@ -352,6 +399,9 @@ model ExperienceAvailabilitySlot {
   part         String               // 'AM' | 'PM' | 'FULL'
   status       String    @default("available")
   note         String?
+  // Horaires fixes spécifiques à ce slot (override ceux de l'expérience si définis)
+  fixedDepartureTime String?  // Format HH:mm (ex: "20:30")
+  fixedReturnTime    String?  // Format HH:mm (ex: "23:00")
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)

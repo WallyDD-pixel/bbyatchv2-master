@@ -23,13 +23,38 @@ function formatMoney(v: number){
 }
 
 function sanitize(text: string){
-  return text
-    .replace(/→/g,'->')
-    .replace(/–/g,'-')
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u00A0\u202F]/g,' ')
-    .replace(/[\u200B-\u200D\uFEFF]/g,'');
+  if (!text) return '';
+  
+  // Mapping des caractères spéciaux vers WinAnsi
+  const charMap: Record<string, string> = {
+    '→': '->',
+    '–': '-',
+    '—': '-',
+    '…': '...',
+    '⚠': '[!]',
+    '€': 'EUR',
+    '\u2018': "'",
+    '\u2019': "'",
+    '\u201C': '"',
+    '\u201D': '"',
+    '\u00A0': ' ',
+    '\u202F': ' ',
+  };
+  
+  // Remplacer d'abord les caractères spéciaux connus
+  let result = text;
+  for (const [char, replacement] of Object.entries(charMap)) {
+    result = result.replace(new RegExp(char, 'g'), replacement);
+  }
+  
+  // Supprimer les caractères de contrôle invisibles
+  result = result.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  
+  // Convertir les caractères accentués vers WinAnsi (les caractères français courants sont supportés)
+  // WinAnsi supporte: àáâãäåèéêëìíîïòóôõöùúûüýÿçñ
+  // On garde ces caractères tels quels car ils sont supportés par WinAnsi
+  
+  return result;
 }
 
 export async function GET(_req: Request, context: any) {
@@ -47,7 +72,13 @@ export async function GET(_req: Request, context: any) {
     }
     const isAdmin = role === 'admin';
 
-    const reservation = await prisma.reservation.findUnique({ where: { id }, include: { boat: true, user: true } });
+    const reservation = await prisma.reservation.findUnique({ 
+      where: { id }, 
+      include: { 
+        boat: { include: { options: true } }, 
+        user: true 
+      } 
+    });
     if(!reservation) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if(reservation.user?.email !== sessionEmail && !isAdmin) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
@@ -55,9 +86,38 @@ export async function GET(_req: Request, context: any) {
     const deposit = reservation.depositAmount || 0;
     const total = reservation.totalPrice || 0;
     const remaining = reservation.remainingAmount || Math.max(total - deposit, 0);
+    
+    // Parser metadata
+    const meta = (()=>{ try { return reservation.metadata? JSON.parse(reservation.metadata): null; } catch { return null; } })();
+    
+    // Calculer les montants détaillés
+    const part = reservation.part || 'FULL';
+    const partLabel = part==='FULL'? 'Journée entière' : part==='AM'? 'Matin' : part==='PM'? 'Après-midi' : part==='SUNSET'? 'Sunset (2h)' : part;
+    const nbJours = (()=>{ 
+      const s = new Date(reservation.startDate); 
+      const e = new Date(reservation.endDate); 
+      return Math.round((e.getTime()-s.getTime())/86400000)+1; 
+    })();
+    
+    // Récupérer le prix de base du bateau
+    const settings = await prisma.settings.findFirst() as any;
+    const defaultSkipperPrice = settings?.defaultSkipperPrice || 350;
+    const boatData = reservation.boat as any;
+    const effectiveSkipperPrice = boatData?.skipperPrice ?? defaultSkipperPrice;
+    const skipperDays = (part==='FULL' || part==='SUNSET') ? Math.max(nbJours, 1) : 1;
+    const skipperTotal = boatData?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0;
+    
+    // Calculer le prix de base (sans options ni skipper)
+    // On estime en soustrayant le skipper du total (les options sont déjà dans le total)
+    const basePrice = total - skipperTotal;
+    
+    // Récupérer les options sélectionnées (si stockées dans metadata)
+    const selectedOptionIds = meta?.optionIds || [];
+    const selectedOptions = (reservation.boat?.options || []).filter((o:any) => selectedOptionIds.includes(o.id));
+    const optionsTotal = selectedOptions.reduce((sum:number, o:any) => sum + (o.price || 0), 0);
 
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage();
+    let page = pdfDoc.addPage();
     const { width, height } = page.getSize();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -114,6 +174,32 @@ export async function GET(_req: Request, context: any) {
       y -= size + lineGap;
     };
 
+    // Fonction pour dessiner du texte avec retour à la ligne automatique
+    const drawWrapped = (text: string, size=10, color=textDark, x=leftMargin, maxWidth=width-leftMargin-x, bold=false, lineGap=4) => {
+      const safe = sanitize(text);
+      const words = safe.split(' ');
+      let currentLine = '';
+      let lines: string[] = [];
+      
+      for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const testWidth = (bold ? fontBold : font).widthOfTextAtSize(testLine, size);
+        
+        if (testWidth > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      
+      lines.forEach((line) => {
+        page.drawText(line, { x, y, size, font: bold? fontBold: font, color });
+        y -= size + lineGap;
+      });
+    };
+
     // ===== Bloc Client =====
     const clientBoxTop = y;
     const clientBoxWidth = width/2 - leftMargin;
@@ -157,17 +243,16 @@ export async function GET(_req: Request, context: any) {
     resLines.push({ text: 'Détails de la réservation', size:12, color: primary, bold:true, gap:4 });
     const start = reservation.startDate.toISOString().slice(0,10);
     const end = reservation.endDate.toISOString().slice(0,10);
-    const part = reservation.part || 'FULL';
-    const partLabel = part==='FULL'? 'Journée entière' : part==='AM'? 'Matin' : 'Après-midi';
     const dateDisplay = start + (end!==start? ' -> ' + end : '');
-    const meta = (()=>{ try { return reservation.metadata? JSON.parse(reservation.metadata): null; } catch { return null; } })();
     resLines.push({ text: `Bateau : ${reservation.boat?.name||''}`, size:10, color:textDark, gap:3 });
     if(meta?.experienceTitleFr || meta?.expSlug){
       resLines.push({ text: `Expérience : ${meta.experienceTitleFr || meta.expSlug}`, size:10, color:textDark, gap:3 });
     }
     resLines.push({ text: `Dates : ${dateDisplay}`, size:10, color:textDark, gap:3 });
-    resLines.push({ text: `Partie : ${partLabel}`, size:10, color:textDark, gap:3 });
-    if(reservation.passengers) resLines.push({ text: `Passagers : ${reservation.passengers}`, size:10, color:textDark, gap:3 });
+    resLines.push({ text: `Type de prestation : ${partLabel}`, size:10, color:textDark, gap:3 });
+    if(reservation.passengers) resLines.push({ text: `Nombre de passagers : ${reservation.passengers}`, size:10, color:textDark, gap:3 });
+    if(meta?.childrenCount) resLines.push({ text: `Enfants à bord : ${meta.childrenCount}`, size:10, color:textDark, gap:3 });
+    if(meta?.specialNeeds) resLines.push({ text: `Demande spécifique : ${meta.specialNeeds}`, size:9, color:textMuted, gap:2 });
     // Calcul hauteur réservation
     tempY = y;
     resLines.forEach(l=>{ tempY -= l.size + l.gap; });
@@ -190,29 +275,63 @@ export async function GET(_req: Request, context: any) {
 
     y = resBoxBottom - 40;
 
-    // ===== Tableau acompte =====
-    draw('Lignes', 12, primary, leftMargin, true); y -= 5;
+    // ===== Tableau détaillé =====
+    draw('Détail des prestations', 12, primary, leftMargin, true); y -= 5;
     const tableX1 = leftMargin;
     const tableXQty = width - 120;
     const tableXAmt = width - 70;
     page.drawLine({ start:{ x:tableX1, y:y }, end:{ x: width-leftMargin, y:y }, thickness:1, color: primary });
     y -= 14;
-    draw('Description',10,textDark,tableX1,false,0);
-    draw('Qté',10,textDark,tableXQty,false,0);
-    draw('Montant',10,textDark,tableXAmt,false,0);
+    page.drawText('Description', { x: tableX1, y: y, size:10, font: fontBold, color: textDark });
+    page.drawText('Qté', { x: tableXQty, y: y, size:10, font: fontBold, color: textDark });
+    page.drawText('Montant', { x: tableXAmt, y: y, size:10, font: fontBold, color: textDark });
     y -= 10;
     page.drawLine({ start:{ x:tableX1, y:y+4 }, end:{ x: width-leftMargin, y:y+4 }, thickness:0.5, color: lightGray });
-    draw(`Acompte location (${reservation.boat?.name||''}${meta?.experienceTitleFr? ' – '+meta.experienceTitleFr:''})`,10,textMuted,tableX1,false,2);
-    draw('1',10,textMuted,tableXQty,false,2);
-    draw(formatMoney(deposit),10,textMuted,tableXAmt,false,2);
-    y -= 6;
+    
+    // Ligne 1: Prix de base
+    page.drawText(sanitize(`Location bateau (${partLabel})`), { x: tableX1, y: y-2, size:10, font, color: textMuted });
+    page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color: textMuted });
+    page.drawText(formatMoney(basePrice), { x: tableXAmt, y: y-2, size:10, font, color: textMuted });
+    y -= 16;
+    
+    // Lignes options
+    if(selectedOptions.length > 0){
+      selectedOptions.forEach((opt:any) => {
+        page.drawText(sanitize(`Option : ${opt.label}`), { x: tableX1, y: y-2, size:9, font, color: textMuted });
+        page.drawText('1', { x: tableXQty, y: y-2, size:9, font, color: textMuted });
+        page.drawText(formatMoney(opt.price || 0), { x: tableXAmt, y: y-2, size:9, font, color: textMuted });
+        y -= 14;
+      });
+    }
+    
+    // Ligne skipper
+    if(skipperTotal > 0){
+      page.drawText(sanitize(`Skipper obligatoire (${effectiveSkipperPrice}€ × ${skipperDays}j)`), { x: tableX1, y: y-2, size:10, font, color: textMuted });
+      page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color: textMuted });
+      page.drawText(formatMoney(skipperTotal), { x: tableXAmt, y: y-2, size:10, font, color: textMuted });
+      y -= 16;
+    }
+    
+    // Ligne séparatrice
     page.drawLine({ start:{ x:tableX1, y:y+2 }, end:{ x: width-leftMargin, y:y+2 }, thickness:0.5, color: lightGray });
-    y -= 20;
+    y -= 8;
+    
+    // Total hors carburant
+    page.drawText('Total hors carburant', { x: tableX1, y: y-2, size:10, font: fontBold, color: textDark });
+    page.drawText('', { x: tableXQty, y: y-2, size:10, font, color: textDark });
+    page.drawText(formatMoney(total), { x: tableXAmt, y: y-2, size:10, font: fontBold, color: textDark });
+    y -= 25;
 
     // ===== Récapitulatif =====
     const recapX = width - 230;
     const recapWidth = 180;
-    page.drawRectangle({ x: recapX-10, y: y-70, width: recapWidth, height: 70, color: rgb(1,1,1), borderColor: borderGray, borderWidth: 0.6 });
+    const recapHeight = 70;
+    // Vérifier qu'on a assez d'espace pour le récapitulatif
+    if (y - recapHeight < 100) {
+      page = pdfDoc.addPage();
+      y = height - 50;
+    }
+    page.drawRectangle({ x: recapX-10, y: y-recapHeight, width: recapWidth, height: recapHeight, color: rgb(1,1,1), borderColor: borderGray, borderWidth: 0.6 });
     let recapY = y - 20;
     const writeRecap = (label:string, value:string, bold=false) => {
       page.drawText(sanitize(label), { x: recapX, y: recapY, size: 9, font: bold? fontBold: font, color: textDark });
@@ -225,8 +344,15 @@ export async function GET(_req: Request, context: any) {
     y -= 90;
 
     // ===== Mentions =====
-    draw("Cette facture d'acompte confirme la réception de votre paiement. Le solde devra être réglé avant ou le jour de l'embarquement.",8,textMuted,leftMargin,false,4);
-    draw('Document généré automatiquement - valable sans signature.',8,textMuted,leftMargin,false,4);
+    // Vérifier qu'on a assez d'espace avant de dessiner
+    if (y < 100) {
+      // Si on manque d'espace, créer une nouvelle page
+      page = pdfDoc.addPage();
+      y = height - 50;
+    }
+    drawWrapped("Cette facture d'acompte confirme la réception de votre paiement. Le solde devra être réglé avant ou le jour de l'embarquement.",8,textMuted,leftMargin,width-leftMargin*2,false,3);
+    drawWrapped("[!] IMPORTANT : Le prix final sera ajusté en fonction du coût réel du carburant consommé à la fin de la location.",8,textMuted,leftMargin,width-leftMargin*2,false,3);
+    drawWrapped('Document généré automatiquement - valable sans signature.',8,textMuted,leftMargin,width-leftMargin*2,false,3);
 
     const pdfBytes = await pdfDoc.save();
     return new NextResponse(Buffer.from(pdfBytes), { status:200, headers:{ 'Content-Type':'application/pdf', 'Content-Disposition':`inline; filename="${invoiceNumber}.pdf"` }});

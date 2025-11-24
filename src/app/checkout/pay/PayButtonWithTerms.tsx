@@ -11,6 +11,10 @@ interface Props {
   part: string;
   pax?: string;
   opts?: string; // ids d'options sélectionnées
+  waterToys?: string;
+  children?: string;
+  specialNeeds?: string;
+  excursion?: string;
 }
 
 export default function PayButtonWithTerms(props: Props){

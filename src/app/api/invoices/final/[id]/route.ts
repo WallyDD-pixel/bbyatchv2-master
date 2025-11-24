@@ -21,18 +21,43 @@ function formatMoney(v: number){
   return raw.replace(/[\u202F\u00A0]/g,' ');
 }
 function sanitize(text: string){
-  return (text||'')
-    .replace(/→/g,'->')
-    .replace(/–/g,'-')
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u00A0\u202F]/g,' ')
-    .replace(/[\u200B-\u200D\uFEFF]/g,'');
+  if (!text) return '';
+  
+  // Mapping des caractères spéciaux vers WinAnsi
+  const charMap: Record<string, string> = {
+    '→': '->',
+    '–': '-',
+    '—': '-',
+    '…': '...',
+    '⚠': '[!]',
+    '€': 'EUR',
+    '\u2018': "'",
+    '\u2019': "'",
+    '\u201C': '"',
+    '\u201D': '"',
+    '\u00A0': ' ',
+    '\u202F': ' ',
+  };
+  
+  // Remplacer d'abord les caractères spéciaux connus
+  let result = text;
+  for (const [char, replacement] of Object.entries(charMap)) {
+    result = result.replace(new RegExp(char, 'g'), replacement);
+  }
+  
+  // Supprimer les caractères de contrôle invisibles
+  result = result.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  
+  // Convertir les caractères accentués vers WinAnsi (les caractères français courants sont supportés)
+  // WinAnsi supporte: àáâãäåèéêëìíîïòóôõöùúûüýÿçñ
+  // On garde ces caractères tels quels car ils sont supportés par WinAnsi
+  
+  return result;
 }
 
 export async function GET(_req: Request, context: any) {
   try {
-    const { params } = context;
+    const { params } = await context;
     const id = params?.id as string;
     if(!id) return NextResponse.json({ error: 'missing_id' }, { status: 400 });
     const session = await getServerSession(auth as any) as any;
@@ -43,19 +68,56 @@ export async function GET(_req: Request, context: any) {
       try { const u = await prisma.user.findUnique({ where:{ email: sessionEmail }, select:{ role:true } }); role = u?.role; } catch {}
     }
     const isAdmin = role === 'admin';
-    const reservation = await prisma.reservation.findUnique({ where: { id }, include:{ boat:true, user:true } });
+    const reservation = await prisma.reservation.findUnique({ 
+      where: { id }, 
+      include:{ 
+        boat: { include: { options: true } }, 
+        user:true 
+      } 
+    });
     if(!reservation) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if(reservation.user?.email !== sessionEmail && !isAdmin) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     if(reservation.status !== 'completed') return NextResponse.json({ error: 'not_completed' }, { status: 409 });
 
     const invoiceNumber = `FA-${new Date().getFullYear()}-${reservation.id.slice(-6)}`;
-    const total = reservation.totalPrice || 0;
+    const baseTotal = reservation.totalPrice || 0;
+    const reservationData = reservation as any;
+    const finalFuelAmount = reservationData.finalFuelAmount || 0; // Montant final du carburant
+    const total = baseTotal + finalFuelAmount; // Total avec carburant
     const deposit = reservation.depositAmount || 0;
     const balance = Math.max(total - deposit, 0);
     const totalPaid = total; // puisque completed
+    
+    // Parser metadata
+    const meta = (()=>{ try { return reservation.metadata? JSON.parse(reservation.metadata): null; } catch { return null; } })();
+    
+    // Calculer les montants détaillés
+    const part = reservation.part || 'FULL';
+    const partLabel = part==='FULL'? 'Journée entière' : part==='AM'? 'Matin' : part==='PM'? 'Après-midi' : part==='SUNSET'? 'Sunset (2h)' : part;
+    const nbJours = (()=>{ 
+      const s = new Date(reservation.startDate); 
+      const e = new Date(reservation.endDate); 
+      return Math.round((e.getTime()-s.getTime())/86400000)+1; 
+    })();
+    
+    // Récupérer le prix de base du bateau
+    const settings = await prisma.settings.findFirst() as any;
+    const defaultSkipperPrice = settings?.defaultSkipperPrice || 350;
+    const boatData = reservation.boat as any;
+    const effectiveSkipperPrice = boatData?.skipperPrice ?? defaultSkipperPrice;
+    const skipperDays = (part==='FULL' || part==='SUNSET') ? Math.max(nbJours, 1) : 1;
+    const skipperTotal = boatData?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0;
+    
+    // Calculer le prix de base (sans options ni skipper)
+    const basePrice = baseTotal - skipperTotal;
+    
+    // Récupérer les options sélectionnées
+    const selectedOptionIds = meta?.optionIds || [];
+    const selectedOptions = (reservation.boat?.options || []).filter((o:any) => selectedOptionIds.includes(o.id));
+    const optionsTotal = selectedOptions.reduce((sum:number, o:any) => sum + (o.price || 0), 0);
 
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage();
+    let page = pdfDoc.addPage();
     const { width, height } = page.getSize();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -65,6 +127,34 @@ export async function GET(_req: Request, context: any) {
     const borderGray = rgb(0.80,0.82,0.85);
     const textDark = rgb(0.10,0.10,0.12);
     const textMuted = rgb(0.40,0.42,0.46);
+
+    // Fonction pour dessiner du texte avec retour à la ligne automatique
+    const drawWrapped = (text: string, size=10, color=textDark, x=leftMargin, maxWidth=width-leftMargin-x, bold=false, lineGap=4) => {
+      const safe = sanitize(text);
+      const words = safe.split(' ');
+      let currentLine = '';
+      let lines: string[] = [];
+      
+      for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const testWidth = (bold ? fontBold : font).widthOfTextAtSize(testLine, size);
+        
+        if (testWidth > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      
+      let currentY = y;
+      lines.forEach((line) => {
+        page.drawText(line, { x, y: currentY, size, font: bold? fontBold: font, color });
+        currentY -= size + lineGap;
+      });
+      y = currentY;
+    };
 
     // Header + logo
     let headerHeight = 110;
@@ -128,45 +218,91 @@ export async function GET(_req: Request, context: any) {
     linesBox('Client', clientEntries, true);
 
     // Bloc réservation (plein)
-    const meta = (()=>{ try { return reservation.metadata? JSON.parse(reservation.metadata): null; } catch { return null; } })();
     const start = reservation.startDate.toISOString().slice(0,10);
     const end = reservation.endDate.toISOString().slice(0,10);
-    const part = reservation.part || 'FULL';
-    const partLabel = part==='FULL'? 'Journée entière' : part==='AM'? 'Matin' : 'Après-midi';
     const dateDisplay = start + (end!==start? ' -> ' + end : '');
     const resEntries = [
       `Bateau : ${reservation.boat?.name||''}`,
       ...(meta?.experienceTitleFr || meta?.expSlug ? [`Expérience : ${meta.experienceTitleFr || meta.expSlug}`] : []),
       `Dates : ${dateDisplay}`,
-      `Partie : ${partLabel}`,
-      reservation.passengers? `Passagers : ${reservation.passengers}` : ''
+      `Type de prestation : ${partLabel}`,
+      reservation.passengers? `Nombre de passagers : ${reservation.passengers}` : '',
+      meta?.childrenCount ? `Enfants à bord : ${meta.childrenCount}` : '',
+      meta?.specialNeeds ? `Demande spécifique : ${meta.specialNeeds}` : ''
     ].filter(Boolean) as string[];
     linesBox('Détails de la réservation', resEntries);
 
-    // Tableau facture finale
-    page.drawText('Lignes', { x:leftMargin, y: y-12, size:12, font: fontBold, color: primary });
+    // Tableau facture finale détaillé
+    page.drawText('Détail des prestations', { x:leftMargin, y: y-12, size:12, font: fontBold, color: primary });
     y -= 24;
     const tableX1 = leftMargin;
     const tableXQty = width - 140;
     const tableXAmt = width - 80;
     page.drawLine({ start:{ x:tableX1, y:y }, end:{ x: width-leftMargin, y:y }, thickness:1, color: primary });
     y -= 14;
-    page.drawText('Description', { x: tableX1, y: y, size:10, font, color:textDark });
-    page.drawText('Qté', { x: tableXQty, y: y, size:10, font, color:textDark });
-    page.drawText('Montant', { x: tableXAmt, y: y, size:10, font, color:textDark });
+    page.drawText('Description', { x: tableX1, y: y, size:10, font: fontBold, color:textDark });
+    page.drawText('Qté', { x: tableXQty, y: y, size:10, font: fontBold, color:textDark });
+    page.drawText('Montant', { x: tableXAmt, y: y, size:10, font: fontBold, color:textDark });
     y -= 10;
     page.drawLine({ start:{ x:tableX1, y:y+4 }, end:{ x: width-leftMargin, y:y+4 }, thickness:0.5, color: lightGray });
-    // Ligne 1: Location
-    page.drawText(sanitize(`Location ${reservation.boat?.name||''}${meta?.experienceTitleFr? ' – '+meta.experienceTitleFr:''}`), { x: tableX1, y: y-2, size:10, font, color:textMuted });
+    
+    // Ligne 1: Prix de base
+    page.drawText(sanitize(`Location bateau (${partLabel})`), { x: tableX1, y: y-2, size:10, font, color:textMuted });
     page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
-    page.drawText(formatMoney(total), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
+    page.drawText(formatMoney(basePrice), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
     y -= 16;
-    // Ligne 2: Acompte déjà payé (affiché négatif pour lisibilité)
+    
+    // Lignes options
+    if(selectedOptions.length > 0){
+      selectedOptions.forEach((opt:any) => {
+        page.drawText(sanitize(`Option : ${opt.label}`), { x: tableX1, y: y-2, size:9, font, color:textMuted });
+        page.drawText('1', { x: tableXQty, y: y-2, size:9, font, color:textMuted });
+        page.drawText(formatMoney(opt.price || 0), { x: tableXAmt, y: y-2, size:9, font, color:textMuted });
+        y -= 14;
+      });
+    }
+    
+    // Ligne skipper
+    if(skipperTotal > 0){
+      page.drawText(sanitize(`Skipper obligatoire (${effectiveSkipperPrice}€ × ${skipperDays}j)`), { x: tableX1, y: y-2, size:10, font, color:textMuted });
+      page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
+      page.drawText(formatMoney(skipperTotal), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
+      y -= 16;
+    }
+    
+    // Ligne séparatrice
+    page.drawLine({ start:{ x:tableX1, y:y+2 }, end:{ x: width-leftMargin, y:y+2 }, thickness:0.5, color: lightGray });
+    y -= 8;
+    
+    // Total hors carburant
+    page.drawText('Total hors carburant', { x: tableX1, y: y-2, size:10, font: fontBold, color: textDark });
+    page.drawText('', { x: tableXQty, y: y-2, size:10, font, color: textDark });
+    page.drawText(formatMoney(baseTotal), { x: tableXAmt, y: y-2, size:10, font: fontBold, color: textDark });
+    y -= 16;
+    
+    // Ligne carburant (si défini)
+    if(finalFuelAmount > 0){
+      page.drawText('Carburant consommé', { x: tableX1, y: y-2, size:10, font, color:textMuted });
+      page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
+      page.drawText(formatMoney(finalFuelAmount), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
+      y -= 16;
+      page.drawLine({ start:{ x:tableX1, y:y+2 }, end:{ x: width-leftMargin, y:y+2 }, thickness:0.5, color: lightGray });
+      y -= 8;
+    }
+    
+    // Total final
+    page.drawText('Total final', { x: tableX1, y: y-2, size:11, font: fontBold, color: primary });
+    page.drawText('', { x: tableXQty, y: y-2, size:11, font, color: primary });
+    page.drawText(formatMoney(total), { x: tableXAmt, y: y-2, size:11, font: fontBold, color: primary });
+    y -= 20;
+    
+    // Ligne acompte déjà payé
     page.drawText('Acompte déjà payé', { x: tableX1, y: y-2, size:10, font, color:textMuted });
     page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
     page.drawText('-'+formatMoney(deposit), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
     y -= 16;
-    // Ligne 3: Solde payé
+    
+    // Ligne solde payé
     page.drawText('Solde payé', { x: tableX1, y: y-2, size:10, font, color:textMuted });
     page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
     page.drawText(formatMoney(balance), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
@@ -177,21 +313,35 @@ export async function GET(_req: Request, context: any) {
     // Récap
     const recapX = width - 230;
     const recapWidth = 180;
-    page.drawRectangle({ x: recapX-10, y: y-80, width: recapWidth, height: 80, color: rgb(1,1,1), borderColor: borderGray, borderWidth: .6 });
+    const recapHeight = finalFuelAmount > 0 ? 100 : 80;
+    page.drawRectangle({ x: recapX-10, y: y-recapHeight, width: recapWidth, height: recapHeight, color: rgb(1,1,1), borderColor: borderGray, borderWidth: .6 });
     let ry = y - 24;
     const recapLine = (label:string, value:string, bold=false) => {
       page.drawText(sanitize(label), { x:recapX, y: ry, size:9, font: bold? fontBold: font, color:textDark });
       page.drawText(sanitize(value), { x: recapX + recapWidth - 85, y: ry, size:9, font: bold? fontBold: font, color:textDark });
       ry -= 14;
     };
+    recapLine('Total hors carburant', formatMoney(baseTotal));
+    if(finalFuelAmount > 0){
+      recapLine('Carburant consommé', formatMoney(finalFuelAmount));
+    }
     recapLine('Total contrat', formatMoney(total), true);
     recapLine('Total payé', formatMoney(totalPaid));
     recapLine('Solde restant', formatMoney(0), true);
-    y -= 100;
+    y -= recapHeight + 20;
 
-    page.drawText('Facture acquittée - Paiement total reçu.', { x:leftMargin, y: y, size:9, font, color: primary });
-    y -= 14;
-    page.drawText("Document généré automatiquement - valable sans signature.", { x:leftMargin, y: y, size:8, font, color: textMuted });
+    // Vérifier qu'on a assez d'espace avant de dessiner
+    if (y < 100) {
+      page = pdfDoc.addPage();
+      y = height - 50;
+    }
+    drawWrapped('Facture acquittée - Paiement total reçu.', 9, primary, leftMargin, width-leftMargin*2, false, 3);
+    if(finalFuelAmount > 0){
+      drawWrapped("Le montant du carburant a été ajusté selon la consommation réelle.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
+    } else {
+      drawWrapped("[!] Le prix final a été ajusté en fonction du coût réel du carburant consommé.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
+    }
+    drawWrapped("Document généré automatiquement - valable sans signature.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
 
     const pdfBytes = await pdfDoc.save();
     return new NextResponse(Buffer.from(pdfBytes), { status:200, headers:{ 'Content-Type':'application/pdf', 'Content-Disposition':`inline; filename="${invoiceNumber}.pdf"` }});

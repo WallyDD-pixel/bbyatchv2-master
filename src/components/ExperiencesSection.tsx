@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { type Locale } from "@/i18n/messages";
 import { prisma } from "@/lib/prisma";
+import ExperienceLinkButton from "./ExperienceLinkButton";
 
 export default async function ExperiencesSection({ locale, t }: { locale: Locale; t: Record<string, string> }) {
   let items: { slug: string; title: string; desc: string; time?: string | null; imageUrl?: string | null }[] = [];
@@ -63,12 +64,7 @@ export default async function ExperiencesSection({ locale, t }: { locale: Locale
               <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-relaxed text-black/70 line-clamp-4">{c.desc}</p>
               {c.time && <p className="mt-3 sm:mt-4 text-[11px] sm:text-xs text-black/60">{c.time}</p>}
               <div className="mt-4 sm:mt-5">
-                <a
-                  href={`/experiences/${c.slug}`}
-                  className="inline-flex items-center gap-2 px-4 h-9 rounded-full bg-[color:var(--primary)] text-white text-[11px] sm:text-xs font-semibold hover:brightness-110 active:brightness-95 shadow"
-                >
-                  {locale === 'fr' ? 'Voir expérience' : 'View experience'} <span className="translate-y-[1px]">→</span>
-                </a>
+                <ExperienceLinkButton href={`/experiences/${c.slug}`} locale={locale} />
               </div>
             </div>
           </article>

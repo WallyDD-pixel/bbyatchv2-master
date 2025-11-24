@@ -5,6 +5,13 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
   const [form, setForm] = useState({ ...boat, videoUrls: boat.videoUrls ?? [] });
   const initialPhotos: string[] = Array.isArray(boat.photoUrls) ? boat.photoUrls : [];
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
+  const [photoKeys, setPhotoKeys] = useState<Map<string, string>>(() => {
+    const map = new Map<string, string>();
+    initialPhotos.forEach((url, i) => {
+      map.set(url, `photo-${i}-${Date.now()}-${Math.random()}`);
+    });
+    return map;
+  });
   const [videoInput, setVideoInput] = useState(() => {
     if (!boat.videoUrls) return "";
     if (Array.isArray(boat.videoUrls)) return boat.videoUrls.join(", ");
@@ -32,14 +39,17 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       photos: "Photos",
       uploadNew: "Ajouter des images",
       uploading: "Téléversement…",
-      moveUp: "Monter",
-      moveDown: "Descendre",
       remove: "Supprimer",
       setMain: "Définir principale",
       main: "Principale",
       orderSaved: "Ordre enregistré",
       priceAm: "Prix matin (€)",
       pricePm: "Prix après-midi (€)",
+      priceSunset: "Prix Sunset (€)",
+      priceAgencyPerDay: "Prix Agence/jour (€)",
+      priceAgencyAm: "Prix Agence matin (€)",
+      priceAgencyPm: "Prix Agence après-midi (€)",
+      priceAgencySunset: "Prix Agence Sunset (€)",
       partialNote: "Optionnel: si laissés vides on dérive automatiquement à partir du prix/jour.",
     },
     en: {
@@ -54,21 +64,24 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       photos: "Photos",
       uploadNew: "Add images",
       uploading: "Uploading…",
-      moveUp: "Up",
-      moveDown: "Down",
       remove: "Delete",
       setMain: "Set main",
       main: "Main",
       orderSaved: "Order saved",
       priceAm: "Morning price (€)",
       pricePm: "Afternoon price (€)",
+      priceSunset: "Sunset price (€)",
+      priceAgencyPerDay: "Agency price/day (€)",
+      priceAgencyAm: "Agency morning price (€)",
+      priceAgencyPm: "Agency afternoon price (€)",
+      priceAgencySunset: "Agency sunset price (€)",
       partialNote: "Optional: if empty they are derived from day price.",
     },
   }[locale];
 
   const slugify = (str: string) => str.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-');
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type, checked } = e.target as any;
     setForm((f: any) => {
       if (name === 'name') {
@@ -89,18 +102,6 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
 
   const videos = useMemo(() => parseVideos(videoInput), [videoInput]);
 
-  // Réorganisation
-  const movePhoto = (index: number, dir: -1 | 1) => {
-    setPhotos(p => {
-      const np = [...p];
-      const ni = index + dir;
-      if (ni < 0 || ni >= np.length) return p;
-      const tmp = np[index];
-      np[index] = np[ni];
-      np[ni] = tmp;
-      return np;
-    });
-  };
   const removePhoto = (index: number) => {
     if (!confirm('Supprimer cette image ?')) return;
     setPhotos(p => p.filter((_, i) => i !== index));
@@ -144,6 +145,11 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     pricePerDay?: number;
     priceAm?: number;
     pricePm?: number;
+    priceSunset?: number;
+    priceAgencyPerDay?: number;
+    priceAgencyAm?: number;
+    priceAgencyPm?: number;
+    priceAgencySunset?: number;
     capacity?: number;
     speedKn?: number;
     enginePower?: number;
@@ -175,6 +181,11 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
       if (form.priceAm != null) fd.append('priceAm', String(form.priceAm));
       if (form.pricePm != null) fd.append('pricePm', String(form.pricePm));
+      if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
+      if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
+      if (form.priceAgencyAm != null) fd.append('priceAgencyAm', String(form.priceAgencyAm));
+      if (form.priceAgencyPm != null) fd.append('priceAgencyPm', String(form.priceAgencyPm));
+      if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
       if (form.capacity != null) fd.append('capacity', String(form.capacity));
       if (form.speedKn != null) fd.append('speedKn', String(form.speedKn));
       if (form.enginePower != null) fd.append('enginePower', String(form.enginePower));
@@ -243,25 +254,39 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
   };
   const handleDragOver = (index: number) => (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (dragOverIndex !== index) setDragOverIndex(index);
     e.dataTransfer.dropEffect = 'move';
   };
-  const handleDragLeave = (index: number) => () => {
-    if (dragOverIndex === index) setDragOverIndex(null);
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
   };
   const handleDrop = (index: number) => (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (dragIndex.current === null || dragIndex.current === index) {
-      dragIndex.current = null; setDragOverIndex(null); return;
+      dragIndex.current = null; 
+      setDragOverIndex(null); 
+      return;
     }
-    setPhotos(p => {
-      const arr = [...p];
-      const from = dragIndex.current as number;
-      const to = index;
-      const [moved] = arr.splice(from, 1);
-      arr.splice(to, 0, moved);
-      return arr;
+    const from = dragIndex.current as number;
+    const to = index;
+    if (from === to) {
+      dragIndex.current = null;
+      setDragOverIndex(null);
+      return;
+    }
+    
+    // Utiliser une fonction de mise à jour pour garantir que React voit le changement
+    setPhotos(prevPhotos => {
+      const newPhotos = [...prevPhotos];
+      // Échanger les positions
+      const temp = newPhotos[from];
+      newPhotos[from] = newPhotos[to];
+      newPhotos[to] = temp;
+      return newPhotos;
     });
+    
     dragIndex.current = null;
     setDragOverIndex(null);
   };
@@ -283,6 +308,11 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
       if (form.priceAm != null) fd.append('priceAm', String(form.priceAm));
       if (form.pricePm != null) fd.append('pricePm', String(form.pricePm));
+      if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
+      if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
+      if (form.priceAgencyAm != null) fd.append('priceAgencyAm', String(form.priceAgencyAm));
+      if (form.priceAgencyPm != null) fd.append('priceAgencyPm', String(form.priceAgencyPm));
+      if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
       if (videos.length) fd.append('videoUrls', JSON.stringify(videos));
       fd.append('imageFile', file);
       const res = await fetch(`/api/admin/boats/${boat.id}`, { method: 'PUT', body: fd });
@@ -317,6 +347,11 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
       if (form.priceAm != null) fd.append('priceAm', String(form.priceAm));
       if (form.pricePm != null) fd.append('pricePm', String(form.pricePm));
+      if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
+      if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
+      if (form.priceAgencyAm != null) fd.append('priceAgencyAm', String(form.priceAgencyAm));
+      if (form.priceAgencyPm != null) fd.append('priceAgencyPm', String(form.priceAgencyPm));
+      if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
       if (form.fuel != null) fd.append('fuel', String(form.fuel));
       if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
       if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
@@ -375,8 +410,8 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
           <input name="pricePerDay" type="number" value={form.pricePerDay ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
         </label>
       </div>
-      {/* Prix partiels AM / PM */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Prix partiels AM / PM / Sunset */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <label className="grid gap-1 text-sm">
           <span>{t.priceAm}</span>
           <input name="priceAm" type="number" value={form.priceAm ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
@@ -385,29 +420,137 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
           <span>{t.pricePm}</span>
           <input name="pricePm" type="number" value={form.pricePm ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
         </label>
+        <label className="grid gap-1 text-sm">
+          <span>{t.priceSunset}</span>
+          <input name="priceSunset" type="number" value={form.priceSunset ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
+        </label>
       </div>
       <p className="text-xs text-black/50 -mt-2">{t.partialNote}</p>
-      {/* Capacités */}
+      
+      {/* Prix Agence */}
+      <div className="space-y-4 pt-4 border-t border-black/10">
+        <h3 className="text-sm font-semibold">{locale === "fr" ? "Prix Agence (optionnel)" : "Agency Prices (optional)"}</h3>
+        <p className="text-xs text-black/50">
+          {locale === "fr" 
+            ? "Si les prix agence sont différents des prix publics, renseignez-les ici. Sinon, les prix publics seront utilisés."
+            : "If agency prices differ from public prices, fill them here. Otherwise, public prices will be used."}
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <label className="grid gap-1 text-sm">
+            <span>{t.priceAgencyPerDay}</span>
+            <input name="priceAgencyPerDay" type="number" value={form.priceAgencyPerDay ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span>{t.priceAgencyAm}</span>
+            <input name="priceAgencyAm" type="number" value={form.priceAgencyAm ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span>{t.priceAgencyPm}</span>
+            <input name="priceAgencyPm" type="number" value={form.priceAgencyPm ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span>{t.priceAgencySunset}</span>
+            <input name="priceAgencySunset" type="number" value={form.priceAgencySunset ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
+          </label>
+        </div>
+      </div>
+      {/* Caractéristiques techniques */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <label className="grid gap-1 text-sm">
-          <span>{locale === "fr" ? "Capacité" : "Capacity"}</span>
-          <input name="capacity" type="number" value={form.capacity ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span>{locale === "fr" ? "Vitesse (kn)" : "Speed (kn)"}</span>
-          <input name="speedKn" type="number" value={form.speedKn ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
+          <span>{locale === "fr" ? "Taille (m)" : "Length (m)"}</span>
+          <input name="lengthM" type="number" step="0.1" value={form.lengthM ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
         </label>
         <label className="grid gap-1 text-sm">
           <span>{locale === "fr" ? "Puissance (cv)" : "Power (hp)"}</span>
           <input name="enginePower" type="number" value={form.enginePower ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
         </label>
-      </div>
-      {/* Fuel */}
-      <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
         <label className="grid gap-1 text-sm">
-          <span>Fuel</span>
-          <input name="fuel" type="number" value={form.fuel ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
+          <span>{locale === "fr" ? "Capacité (places max)" : "Capacity (max places)"}</span>
+          <input name="capacity" type="number" value={form.capacity ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
         </label>
+      </div>
+
+      {/* Avantages du bateau */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">{locale === "fr" ? "Avantages du bateau" : "Boat Advantages"}</h2>
+        <label className="grid gap-1 text-sm">
+          <span>{locale === "fr" ? "Avantages (FR)" : "Advantages (FR)"}</span>
+          <textarea 
+            name="avantagesFr" 
+            value={form.avantagesFr ?? ""} 
+            onChange={onChange} 
+            className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
+            placeholder={locale === "fr" ? "Équipements, confort, espace disponible, bain de soleil avant/arrière, cabine, douche, coin détente, etc." : "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc."}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span>{locale === "fr" ? "Avantages (EN)" : "Advantages (EN)"}</span>
+          <textarea 
+            name="avantagesEn" 
+            value={form.avantagesEn ?? ""} 
+            onChange={onChange} 
+            className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
+            placeholder={locale === "fr" ? "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc." : "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc."}
+          />
+        </label>
+      </div>
+
+      {/* Options incluses */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">{locale === "fr" ? "Options incluses" : "Included Options"}</h2>
+        <label className="grid gap-1 text-sm">
+          <span>{locale === "fr" ? "Options incluses (FR)" : "Included Options (FR)"}</span>
+          <textarea 
+            name="optionsInclusesFr" 
+            value={form.optionsInclusesFr ?? ""} 
+            onChange={onChange} 
+            className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
+            placeholder={locale === "fr" ? "Prêt de serviettes, boissons non alcoolisées offertes, etc." : "Towel rental, non-alcoholic drinks included, etc."}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span>{locale === "fr" ? "Options incluses (EN)" : "Included Options (EN)"}</span>
+          <textarea 
+            name="optionsInclusesEn" 
+            value={form.optionsInclusesEn ?? ""} 
+            onChange={onChange} 
+            className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
+            placeholder={locale === "fr" ? "Towel rental, non-alcoholic drinks included, etc." : "Towel rental, non-alcoholic drinks included, etc."}
+          />
+        </label>
+      </div>
+
+      {/* Skipper */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">{locale === "fr" ? "Skipper" : "Skipper"}</h2>
+        <label className="inline-flex items-center gap-2 text-sm">
+          <input 
+            type="checkbox" 
+            name="skipperRequired" 
+            checked={!!form.skipperRequired} 
+            onChange={onChange} 
+            className="h-4 w-4" 
+          />
+          <span>{locale === "fr" ? "Skipper obligatoire" : "Skipper required"}</span>
+        </label>
+        {form.skipperRequired && (
+          <label className="grid gap-1 text-sm">
+            <span>{locale === "fr" ? "Prix du skipper (€/jour)" : "Skipper price (€/day)"}</span>
+            <input 
+              name="skipperPrice" 
+              type="number" 
+              value={form.skipperPrice ?? 350} 
+              onChange={onChange} 
+              className="h-11 rounded-lg border border-black/15 px-3" 
+              placeholder="350"
+            />
+            <p className="text-xs text-black/50">
+              {locale === "fr" 
+                ? "Prix par défaut : 350€ HT/jour (sans TVA). Si skipper de l'agence = aucun coût."
+                : "Default price: 350€ HT/day (no VAT). If agency skipper = no cost."}
+            </p>
+          </label>
+        )}
       </div>
       {/* Prévisualisation image principale */}
       {form.imageUrl ? (
@@ -436,64 +579,164 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
         {photos.length === 0 && <p className="text-sm text-black/50">{locale === 'fr' ? 'Aucune image.' : 'No images.'}</p>}
         {photos.length > 0 && (
           <ul className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {photos.filter(p => p !== form.imageUrl).map((url, i) => (
-              <li
-                key={url + i}
-                className={`group relative border border-black/10 rounded-lg overflow-hidden transition outline-none ${dragOverIndex===i ? 'ring-2 ring-[color:var(--primary)] scale-[1.02]' : ''}`}
-                draggable
-                onDragStart={handleDragStart(i)}
-                onDragOver={handleDragOver(i)}
-                onDragLeave={handleDragLeave(i)}
-                onDrop={handleDrop(i)}
-                onDragEnd={handleDragEnd}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={"photo " + (i+1)} className="w-full h-32 object-cover select-none pointer-events-none" />
-                <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-1 p-1 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button type="button" onClick={() => movePhoto(i, -1)} disabled={i===0} className="text-[10px] px-2 py-1 bg-white/80 rounded disabled:opacity-30">{t.moveUp}</button>
-                  <button type="button" onClick={() => movePhoto(i, 1)} disabled={i===photos.length-1} className="text-[10px] px-2 py-1 bg-white/80 rounded disabled:opacity-30">{t.moveDown}</button>
-                  <button type="button" onClick={() => setMain(url)} className={`text-[10px] px-2 py-1 rounded ${form.imageUrl===url ? 'bg-green-500 text-white' : 'bg-white/80'}`}>{form.imageUrl===url ? t.main : t.setMain}</button>
-                  <button type="button" onClick={() => removePhoto(i)} className="text-[10px] px-2 py-1 bg-red-600 text-white rounded">{t.remove}</button>
-                </div>
-              </li>
-            ))}
+            {photos.map((url, i) => {
+              // Obtenir la clé unique pour cette URL
+              const uniqueKey = photoKeys.get(url) || `photo-${i}-${url}`;
+              return (
+                <li
+                  key={uniqueKey}
+                  className={`group relative border border-black/10 rounded-lg overflow-hidden transition outline-none cursor-move ${dragOverIndex===i ? 'ring-2 ring-[color:var(--primary)] scale-[1.02]' : ''} ${dragIndex.current===i ? 'opacity-50' : ''}`}
+                  draggable
+                  onDragStart={handleDragStart(i)}
+                  onDragOver={handleDragOver(i)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop(i)}
+                  onDragEnd={handleDragEnd}
+                >
+                  <div className='absolute top-1 left-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded cursor-grab select-none z-10'>
+                    ≡
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={url} 
+                    alt={"photo " + (i+1)} 
+                    className="w-full h-32 object-cover select-none pointer-events-none" 
+                    draggable={false}
+                    onError={(e) => {
+                      console.error('Image failed to load:', url);
+                      const img = e.target as HTMLImageElement;
+                      img.style.backgroundColor = '#f3f4f6';
+                    }}
+                  />
+                  {form.imageUrl === url && (
+                    <div className='absolute top-1 left-8 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded z-10'>
+                      {t.main}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <button type="button" onClick={() => setMain(url)} className={`text-xs px-2 py-1 rounded ${form.imageUrl===url ? 'bg-green-500 text-white' : 'bg-white/80 text-black'}`}>{form.imageUrl===url ? t.main : t.setMain}</button>
+                    <button type="button" onClick={() => removePhoto(i)} className="text-xs px-2 py-1 bg-red-600 text-white rounded">{t.remove}</button>
+                  </div>
+                  <div className='absolute bottom-1 left-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded'>
+                    {i + 1}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
+        )}
+        {photos.length > 0 && (
+          <p className='text-xs text-black/50 mt-2'>
+            {locale === 'fr'
+              ? 'Glisser-déposer les images pour les réordonner. Survolez une image pour plus d\'options.'
+              : 'Drag and drop images to reorder them. Hover over an image for more options.'}
+          </p>
         )}
       </div>
 
-      {/* Vidéos */}
-      <div className="space-y-2">
-        <label className="grid gap-1 text-sm">
-          <span>{t.videos}</span>
-          <div className="flex gap-2">
-            <input
-              ref={videoInputRef}
-              type="text"
-              value={videoInput}
-              onChange={(e) => setVideoInput(e.target.value)}
-              className="flex-1 h-11 rounded-lg border border-black/15 px-3 text-sm"
-              placeholder="https://...mp4, https://...webm"
-            />
-            <button type="button" onClick={addVideosUrlsFromText} className="h-11 px-4 rounded-lg bg-[color:var(--primary)] text-white text-sm">+ URL</button>
-            <label className="h-11 px-4 rounded-lg bg-[color:var(--primary)] text-white text-sm inline-flex items-center cursor-pointer">
-              {uploading ? t.uploading : '+ File'}
-              <input type="file" multiple accept="video/mp4,video/webm,video/ogg" onChange={onUploadVideos} className="hidden" />
+      {/* Vidéos - Section améliorée */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">{locale === "fr" ? "Vidéos" : "Videos"}</h2>
+        </div>
+        
+        {/* Ajout par URL */}
+        <div className="rounded-lg border border-black/10 bg-white p-4">
+          <label className="grid gap-2 text-sm">
+            <span className="font-medium">{locale === "fr" ? "Ajouter des vidéos par URL" : "Add videos by URL"}</span>
+            <div className="flex gap-2">
+              <input
+                ref={videoInputRef}
+                type="text"
+                value={videoInput}
+                onChange={(e) => setVideoInput(e.target.value)}
+                placeholder={locale === "fr" ? "URL YouTube, Vimeo ou fichier vidéo (séparées par des virgules)" : "YouTube, Vimeo or video file URLs (comma separated)"}
+                className="flex-1 h-10 rounded-lg border border-black/15 px-3 text-sm"
+              />
+              <button
+                type="button"
+                onClick={addVideosUrlsFromText}
+                className="px-4 h-10 rounded-lg bg-[color:var(--primary)] text-white text-sm font-medium hover:opacity-90"
+              >
+                {locale === "fr" ? "Ajouter" : "Add"}
+              </button>
+            </div>
+            <p className="text-xs text-black/50">
+              {locale === "fr" 
+                ? "Exemples: https://youtube.com/watch?v=..., https://vimeo.com/..., https://example.com/video.mp4"
+                : "Examples: https://youtube.com/watch?v=..., https://vimeo.com/..., https://example.com/video.mp4"}
+            </p>
+          </label>
+        </div>
+
+        {/* Upload de fichiers vidéo */}
+        <div className="rounded-lg border border-black/10 bg-white p-4">
+          <label className="grid gap-2 text-sm">
+            <span className="font-medium">{locale === "fr" ? "Uploader des fichiers vidéo" : "Upload video files"}</span>
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <span className="rounded-full bg-[color:var(--primary)] text-white px-4 h-10 inline-flex items-center text-sm">
+                {uploading ? (locale === 'fr' ? 'Téléversement…' : 'Uploading…') : (locale === 'fr' ? 'Choisir des fichiers vidéo' : 'Choose video files')}
+              </span>
+              <input
+                type="file"
+                accept="video/*"
+                multiple
+                disabled={uploading}
+                onChange={onUploadVideos}
+                className="hidden"
+              />
             </label>
-          </div>
-        </label>
+            <p className="text-xs text-black/50">
+              {locale === "fr" 
+                ? "Formats acceptés: MP4, WebM, OGG (max 100MB par fichier)"
+                : "Accepted formats: MP4, WebM, OGG (max 100MB per file)"}
+            </p>
+          </label>
+        </div>
+
+        {/* Liste des vidéos */}
+        {videosList.length === 0 && (
+          <p className="text-sm text-black/50">{locale === 'fr' ? 'Aucune vidéo ajoutée.' : 'No videos added.'}</p>
+        )}
         {videosList.length > 0 && (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {videosList.map(v => (
-              <li key={v} className="relative border border-black/10 rounded overflow-hidden bg-black/5">
-                <video controls className="w-full max-h-48 bg-black">
-                  <source src={v} />
-                </video>
-                <button type="button" onClick={() => removeVideo(v)} className="absolute top-1 right-1 text-[10px] bg-red-600 text-white px-2 py-1 rounded">{t.remove}</button>
-              </li>
-            ))}
-          </ul>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {videosList.map((url, i) => {
+              const isYouTube = /youtube\.com|youtu\.be/.test(url);
+              const isVimeo = /vimeo\.com/.test(url);
+              const isVideoFile = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url);
+              
+              return (
+                <div key={i} className="relative border border-black/10 rounded-lg overflow-hidden bg-black/5">
+                  <div className="aspect-video relative">
+                    {isYouTube || isVimeo ? (
+                      <div className="w-full h-full flex items-center justify-center bg-black/10">
+                        <span className="text-4xl">▶</span>
+                      </div>
+                    ) : isVideoFile ? (
+                      <video src={url} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-black/10">
+                        <span className="text-sm text-black/50">{locale === 'fr' ? 'URL vidéo' : 'Video URL'}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 bg-white">
+                    <p className="text-xs text-black/70 truncate mb-2" title={url}>{url}</p>
+                    <button
+                      type="button"
+                      onClick={() => removeVideo(url)}
+                      className="text-xs px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                      {t.remove}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
+
 
       {/* Disponibilité */}
       <label className="inline-flex items-center gap-2 text-sm">

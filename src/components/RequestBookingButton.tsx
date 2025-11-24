@@ -14,9 +14,10 @@ interface Props {
   endDate?: string;
   part?: 'FULL'|'AM'|'PM';
   optionIds?: number[]; // nouvelles options sélectionnées
+  needsSkipper?: boolean;
 }
 
-export default function RequestBookingButton({ t, locale, slug, hasDates, disabled, disabledMessage, startDate, endDate, part='FULL', optionIds }: Props){
+export default function RequestBookingButton({ t, locale, slug, hasDates, disabled, disabledMessage, startDate, endDate, part='FULL', optionIds, needsSkipper }: Props){
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -31,6 +32,7 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
     if (vals.part) params.set('part', vals.part);
     if (vals.passengers) params.set('pax', String(vals.passengers));
     if (optionIds && optionIds.length) params.set('opts', optionIds.join(','));
+    if (needsSkipper) params.set('skipper', '1');
     router.push(`/checkout?${params.toString()}`);
     setOpen(false);
   };
@@ -43,6 +45,7 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
     if (part) params.set('part', part);
     if (part==='FULL' && endDate) params.set('end', endDate);
     if (optionIds && optionIds.length) params.set('opts', optionIds.join(','));
+    if (needsSkipper) params.set('skipper', '1');
     return `/checkout?${params.toString()}`;
   };
 
@@ -75,13 +78,23 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
         {disabled && disabledMessage ? disabledMessage : (dateDisplay ? dateDisplay + (part? ' • '+partLabel : '') : t.boat_request_note)}
       </p>
       {open && !disabled && (
-        <div className='fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm'>
-          <div className='w-full max-w-xl bg-white rounded-2xl shadow-xl border border-black/10 p-6 relative'>
-            <h3 className='text-lg font-semibold mb-1'>{t.boat_request_modal_title}</h3>
-            <p className='text-xs text-black/50 mb-4'>{t.boat_request_modal_subtitle}</p>
-            <SearchBar labels={t} onSubmit={handleSubmit} className='bg-transparent border-0 shadow-none p-0' />
-            <div className='flex justify-end gap-3 text-sm mt-4'>
-              <button onClick={()=>setOpen(false)} className='px-4 h-10 rounded-full border border-black/15 bg-white hover:bg-black/5'>{t.boat_request_modal_close}</button>
+        <div className='fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4' onClick={(e) => { if(e.target === e.currentTarget) setOpen(false); }}>
+          <div className='w-full max-w-5xl bg-white rounded-2xl shadow-xl border border-black/10 p-6 sm:p-8 relative z-[201] max-h-[90vh] overflow-y-auto' onClick={(e) => e.stopPropagation()}>
+            <div className='flex items-center justify-between mb-4'>
+              <div>
+                <h3 className='text-xl font-semibold mb-1'>{t.boat_request_modal_title}</h3>
+                <p className='text-xs text-black/50'>{t.boat_request_modal_subtitle}</p>
+              </div>
+              <button 
+                onClick={()=>setOpen(false)} 
+                className='h-8 w-8 rounded-full flex items-center justify-center text-black/50 hover:text-black hover:bg-black/5 transition'
+                aria-label={t.boat_request_modal_close}
+              >
+                ✕
+              </button>
+            </div>
+            <div className='relative z-[202]'>
+              <SearchBar labels={t} onSubmit={handleSubmit} className='bg-transparent border-0 shadow-none p-0' locale={locale} />
             </div>
           </div>
         </div>
