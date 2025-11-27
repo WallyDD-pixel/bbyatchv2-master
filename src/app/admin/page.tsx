@@ -150,6 +150,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { lan
             <div className="text-sm text-blue-700/80 mb-2">Gérez tous les contenus affichés sur la page d'accueil : sliders, cartes d'info, galerie, expériences…</div>
             <div className="flex flex-wrap gap-2 mt-2">
               <Link href="/admin/homepage-settings" className="inline-block bg-blue-600 text-white text-xs px-3 py-1 rounded-full">Paramètres accueil</Link>
+              <Link href="/admin/navbar" className="inline-block bg-slate-600 text-white text-xs px-3 py-1 rounded-full">🧭 Navigation</Link>
               <Link href="/admin/info-cards" className="inline-block bg-cyan-600 text-white text-xs px-3 py-1 rounded-full">Cartes d'info</Link>
               <Link href="/admin/gallery" className="inline-block bg-indigo-600 text-white text-xs px-3 py-1 rounded-full">Galerie</Link>
               <Link href="/admin/experiences" className="inline-block bg-emerald-600 text-white text-xs px-3 py-1 rounded-full">Expériences</Link>

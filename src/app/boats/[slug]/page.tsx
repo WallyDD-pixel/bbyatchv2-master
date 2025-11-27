@@ -9,6 +9,7 @@ import RequestBookingButton from '@/components/RequestBookingButton';
 import BoatOptionsAndBooking from '@/components/BoatOptionsAndBooking';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
+import { getLabelsWithSettings } from '@/lib/settings';
 
 interface Props { params: { slug: string }; searchParams?: { lang?: string; start?: string; end?: string; startTime?: string; endTime?: string; part?: string; } }
 

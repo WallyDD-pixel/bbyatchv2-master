@@ -56,10 +56,14 @@ export async function POST(req: Request) {
     const defaultSkipperPriceStr = (data.get('defaultSkipperPrice') || '').toString().trim();
     const defaultSkipperPrice = defaultSkipperPriceStr ? parseInt(defaultSkipperPriceStr, 10) : null;
 
+    // URL des jeux d'eau
+    const waterToysUrl = (data.get('waterToysUrl') || '').toString().trim() || null;
+
     // Mettre à jour les settings
     const updateData: any = {};
     if (logoUrl !== undefined) updateData.logoUrl = logoUrl || null;
     if (defaultSkipperPrice !== null) updateData.defaultSkipperPrice = defaultSkipperPrice;
+    if (waterToysUrl !== null) updateData.waterToysUrl = waterToysUrl;
 
     await prisma.settings.update({
       where: { id: 1 },

@@ -209,6 +209,7 @@ export async function GET(_req: Request, context: any) {
     const clientName = reservation.user?.name || `${reservation.user?.firstName||''} ${reservation.user?.lastName||''}`.trim() || reservation.user?.email || '';
     const clientEntries = [clientName];
     if(reservation.user?.email) clientEntries.push(reservation.user.email);
+    if(reservation.user?.phone) clientEntries.push(`Tél: ${reservation.user.phone}`);
     if(reservation.user?.address){
       clientEntries.push(reservation.user.address);
       const cityLine = [reservation.user.zip, reservation.user.city].filter(Boolean).join(' ');
@@ -222,12 +223,18 @@ export async function GET(_req: Request, context: any) {
     const end = reservation.endDate.toISOString().slice(0,10);
     const dateDisplay = start + (end!==start? ' -> ' + end : '');
     const resEntries = [
+      ...(reservation.reference ? [`Référence : ${reservation.reference}`] : []),
       `Bateau : ${reservation.boat?.name||''}`,
+      ...(reservation.boat?.lengthM ? [`Longueur : ${reservation.boat.lengthM}m`] : []),
+      ...(reservation.boat?.capacity ? [`Capacité max : ${reservation.boat.capacity} personnes`] : []),
+      ...(reservation.boat?.speedKn ? [`Vitesse : ${reservation.boat.speedKn} nœuds`] : []),
       ...(meta?.experienceTitleFr || meta?.expSlug ? [`Expérience : ${meta.experienceTitleFr || meta.expSlug}`] : []),
       `Dates : ${dateDisplay}`,
       `Type de prestation : ${partLabel}`,
+      ...(meta?.departurePort ? [`Port de départ : ${meta.departurePort}`] : []),
       reservation.passengers? `Nombre de passagers : ${reservation.passengers}` : '',
       meta?.childrenCount ? `Enfants à bord : ${meta.childrenCount}` : '',
+      ...(meta?.waterToys ? [`Jeux d'eau demandés : ${meta.waterToys === 'yes' ? 'Oui' : 'Non'}`] : []),
       meta?.specialNeeds ? `Demande spécifique : ${meta.specialNeeds}` : ''
     ].filter(Boolean) as string[];
     linesBox('Détails de la réservation', resEntries);
@@ -330,18 +337,48 @@ export async function GET(_req: Request, context: any) {
     recapLine('Solde restant', formatMoney(0), true);
     y -= recapHeight + 20;
 
-    // Vérifier qu'on a assez d'espace avant de dessiner
-    if (y < 100) {
+    // ===== Informations de paiement =====
+    if (y < 180) {
       page = pdfDoc.addPage();
       y = height - 50;
     }
-    drawWrapped('Facture acquittée - Paiement total reçu.', 9, primary, leftMargin, width-leftMargin*2, false, 3);
-    if(finalFuelAmount > 0){
-      drawWrapped("Le montant du carburant a été ajusté selon la consommation réelle.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
-    } else {
-      drawWrapped("[!] Le prix final a été ajusté en fonction du coût réel du carburant consommé.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
+    
+    const paymentEntries = [
+      `Réservation créée le : ${reservation.createdAt.toLocaleDateString('fr-FR')}`,
+      ...(reservation.depositPaidAt ? [`Acompte payé le : ${reservation.depositPaidAt.toLocaleDateString('fr-FR')}`] : []),
+      ...(reservation.completedAt ? [`Prestation terminée le : ${reservation.completedAt.toLocaleDateString('fr-FR')}`] : []),
+      ...(reservation.stripePaymentIntentId ? [`Paiement par carte bancaire`] : []),
+      `Statut : Facture acquittée`
+    ];
+    linesBox('Informations de paiement', paymentEntries);
+
+    // ===== Mentions légales =====
+    // Vérifier qu'on a assez d'espace avant de dessiner
+    if (y < 120) {
+      page = pdfDoc.addPage();
+      y = height - 50;
     }
-    drawWrapped("Document généré automatiquement - valable sans signature.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
+    
+    page.drawText('Conditions et mentions légales', { x:leftMargin, y: y-12, size:11, font: fontBold, color: primary });
+    y -= 24;
+    
+    drawWrapped('✓ Facture acquittée - Paiement total reçu. Merci pour votre confiance.', 9, rgb(0.0, 0.6, 0.0), leftMargin, width-leftMargin*2, true, 4);
+    
+    if(finalFuelAmount > 0){
+      drawWrapped("• Le montant du carburant a été ajusté selon la consommation réelle de la prestation.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
+    } else {
+      drawWrapped("• Le prix final a été ajusté en fonction du coût réel du carburant consommé pendant la prestation.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
+    }
+    
+    if(boatData?.skipperRequired) {
+      drawWrapped("• Prestation effectuée avec skipper professionnel conformément aux exigences de sécurité maritime.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
+    }
+    
+    drawWrapped("• Cette facture fait foi du paiement intégral de la prestation de location de bateau.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
+    drawWrapped("• Pour toute question ou réclamation, contactez-nous à charter@bb-yachts.com dans les 30 jours.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
+    
+    y -= 10;
+    drawWrapped("Document généré automatiquement - valable sans signature.", 7, textMuted, leftMargin, width-leftMargin*2, false, 2);
 
     const pdfBytes = await pdfDoc.save();
     return new NextResponse(Buffer.from(pdfBytes), { status:200, headers:{ 'Content-Type':'application/pdf', 'Content-Disposition':`inline; filename="${invoiceNumber}.pdf"` }});

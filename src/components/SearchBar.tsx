@@ -13,6 +13,7 @@ export type SearchValues = {
   childrenCount?: string;
   specialNeeds?: string;
   wantsExcursion?: boolean;
+  selectedExperience?: string;
 };
 
 
@@ -38,6 +39,7 @@ export default function SearchBar({
   hidePassengers,
   partFixed,
   locale,
+  boatSlug,
 }: {
   labels: Record<string, string>;
   onSubmit: (values: SearchValues & { part?: string }) => void;
@@ -48,6 +50,7 @@ export default function SearchBar({
   hidePassengers?: boolean;
   partFixed?: 'FULL'|'AM'|'PM';
   locale?: string;
+  boatSlug?: string;
 }) {
     // Liste dynamique des villes depuis l'API
     const [cities, setCities] = useState<string[]>([]);
@@ -108,9 +111,33 @@ export default function SearchBar({
   const [specialNeeds, setSpecialNeeds] = useState('');
   const [wantsExcursion, setWantsExcursion] = useState(false);
   const [showAdditionalFields, setShowAdditionalFields] = useState(false);
+  // États pour les expériences associées au bateau
+  const [boatExperiences, setBoatExperiences] = useState<any[]>([]);
+  const [loadingExperiences, setLoadingExperiences] = useState(false);
+  const [selectedExperience, setSelectedExperience] = useState<number | null>(null);
   // Horaires flexibles
   const [customStartTime, setCustomStartTime] = useState('');
   const [customEndTime, setCustomEndTime] = useState('');
+
+  // Récupérer les expériences associées au bateau quand la checkbox est cochée
+  useEffect(() => {
+    if (wantsExcursion && boatSlug && boatExperiences.length === 0 && !loadingExperiences) {
+      setLoadingExperiences(true);
+      fetch(`/api/boats/${boatSlug}/experiences`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.experiences) {
+            setBoatExperiences(data.experiences);
+          }
+        })
+        .catch(error => {
+          console.error('Erreur lors du chargement des expériences:', error);
+        })
+        .finally(() => {
+          setLoadingExperiences(false);
+        });
+    }
+  }, [wantsExcursion, boatSlug]);
 
   // --- Date picker état ---
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -301,6 +328,7 @@ export default function SearchBar({
             childrenCount: mode === 'boats' ? childrenCount : undefined,
             specialNeeds: mode === 'boats' ? specialNeeds : undefined,
             wantsExcursion: mode === 'boats' ? wantsExcursion : undefined,
+            selectedExperience: mode === 'boats' && selectedExperience ? String(selectedExperience) : undefined,
           }));
         } finally {
           setIsSubmitting(false);
@@ -626,12 +654,17 @@ export default function SearchBar({
 
               {/* Excursion (si journée entière ou demi-journée) */}
               {(part === 'FULL' || part === 'AM' || part === 'PM') && (
-                <div>
+                <div className="space-y-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={wantsExcursion}
-                      onChange={(e) => setWantsExcursion(e.target.checked)}
+                      onChange={(e) => {
+                        setWantsExcursion(e.target.checked);
+                        if (!e.target.checked) {
+                          setSelectedExperience(null);
+                        }
+                      }}
                       className="h-4 w-4 accent-[var(--primary)]"
                     />
                     <span className="text-sm font-medium text-slate-800 dark:text-white/85">
@@ -640,6 +673,86 @@ export default function SearchBar({
                         : 'Would you like to add an excursion?')}
                     </span>
                   </label>
+
+                  {/* Affichage des expériences disponibles */}
+                  {wantsExcursion && (
+                    <div className="ml-6 space-y-3">
+                      {loadingExperiences && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-white/70">
+                          <div className="w-4 h-4 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin"></div>
+                          {currentLocale === 'fr' ? 'Chargement des expériences...' : 'Loading experiences...'}
+                        </div>
+                      )}
+
+                      {!loadingExperiences && boatExperiences.length === 0 && (
+                        <div className="p-4 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-lg">ℹ️</span>
+                            <p className="text-sm font-medium text-slate-700 dark:text-white/80">
+                              {currentLocale === 'fr' 
+                                ? 'Aucune expérience associée'
+                                : 'No associated experiences'}
+                            </p>
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-white/70 leading-relaxed">
+                            {currentLocale === 'fr' 
+                              ? 'Ce bateau n\'a pas d\'expériences spécifiques associées. Vous pouvez néanmoins réserver le bateau seul ou consulter nos expériences générales sur la page principale.'
+                              : 'This boat has no specific associated experiences. You can still book the boat alone or check our general experiences on the main page.'}
+                          </p>
+                        </div>
+                      )}
+
+                      {!loadingExperiences && boatExperiences.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-slate-700 dark:text-white/80 mb-2">
+                            {currentLocale === 'fr' 
+                              ? 'Expériences disponibles :'
+                              : 'Available experiences:'}
+                          </p>
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {boatExperiences.map((exp) => (
+                              <label key={exp.id} className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-white/20 hover:border-[var(--primary)]/50 cursor-pointer transition-colors">
+                                <input
+                                  type="radio"
+                                  name="experience"
+                                  value={exp.id}
+                                  checked={selectedExperience === exp.id}
+                                  onChange={(e) => setSelectedExperience(Number(e.target.value))}
+                                  className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="text-sm font-medium text-slate-800 dark:text-white/90">
+                                      {currentLocale === 'fr' ? exp.titleFr : exp.titleEn}
+                                    </h4>
+                                    {exp.price && (
+                                      <span className="text-xs font-semibold text-[var(--primary)] bg-[var(--primary)]/10 px-2 py-0.5 rounded-full">
+                                        {exp.price}€
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-slate-600 dark:text-white/70 line-clamp-2">
+                                    {currentLocale === 'fr' ? exp.descFr : exp.descEn}
+                                  </p>
+                                  {(exp.timeFr || exp.timeEn) && (
+                                    <p className="text-xs text-slate-500 dark:text-white/60 mt-1">
+                                      ⏱️ {currentLocale === 'fr' ? exp.timeFr : exp.timeEn}
+                                    </p>
+                                  )}
+                                  {exp.hasFixedTimes && exp.fixedDepartureTime && (
+                                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                                      🕐 {currentLocale === 'fr' ? 'Horaires fixes' : 'Fixed schedule'}: {exp.fixedDepartureTime}
+                                      {exp.fixedReturnTime && ` - ${exp.fixedReturnTime}`}
+                                    </p>
+                                  )}
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

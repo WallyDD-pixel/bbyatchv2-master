@@ -65,6 +65,7 @@ model Settings {
   footerLinkedIn        String?
   footerYouTube         String?
   footerTikTok          String?
+  waterToysUrl          String?  // URL pour le lien des jeux d'eau
   // Mapping des pages légales/footers -> slugs LegalPage
   legalBaseSlug         String?
   legalTermsSlug        String?
@@ -74,8 +75,14 @@ model Settings {
   aboutHistoryEn        String?
   aboutMissionFr        String?
   aboutMissionEn        String?
+  aboutValuesFr         String?
+  aboutValuesEn         String?
   aboutTeamFr           String?
   aboutTeamEn           String?
+  aboutGalleryImageUrls String? // JSON array
+  // Logo du site
+  logoUrl               String?
+  // Valeurs supplémentaires pour la page À propos
   aboutValuesSafetyFr   String?
   aboutValuesSafetyEn   String?
   aboutValuesComfortFr  String?
@@ -91,8 +98,20 @@ model Settings {
   usedSaleTextFr        String?
   usedSaleTextEn        String?
   // Paramètres généraux
-  logoUrl               String?  // URL du logo administrable
   defaultSkipperPrice   Int?     @default(350) // Prix par défaut du skipper/jour
+}
+
+model NavbarItem {
+  id        Int      @id @default(autoincrement())
+  labelFr   String   // Label en français
+  labelEn   String   // Label en anglais
+  href      String   // URL du lien
+  icon      String?  // Emoji ou icône
+  order     Int      @default(0) // Ordre d'affichage
+  visible   Boolean  @default(true) // Visibilité
+  target    String?  @default("_self") // _self ou _blank
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model City {

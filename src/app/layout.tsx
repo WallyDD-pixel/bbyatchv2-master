@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Playfair_Display } from "next/font/google";
+import { Manrope, Playfair_Display, Montserrat } from "next/font/google";
 import "./globals.css";
 import { ForceLight } from '@/components/ForceLight';
 import { AppProviders } from '@/components/Providers';
@@ -14,6 +14,20 @@ const playfair = Playfair_Display({
   subsets: ["latin"],
   weight: ["400", "700"],
 });
+
+// Police temporaire pour Aviano (en attendant la vraie police)
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+// Variables pour les polices personnalisées (Nakilla et Aviano)
+// Ces polices seront chargées via CSS @font-face
+const customFonts = {
+  nakilla: "--font-nakilla",
+  aviano: "--font-aviano",
+};
 
 export const metadata: Metadata = {
   title: "Bbyatch",
@@ -31,7 +45,7 @@ export default function RootLayout({
         {/* Script d'init light forcé */}
         <script dangerouslySetInnerHTML={{__html:`(function(){try{document.documentElement.classList.remove('dark');localStorage.setItem('theme','light');}catch(e){}})();`}}/>
       </head>
-      <body className={`${manrope.variable} ${playfair.variable} antialiased`}>
+      <body className={`${manrope.variable} ${playfair.variable} ${montserrat.variable} font-sans antialiased`}>
         <ForceLight />
         <AppProviders>
           {children}

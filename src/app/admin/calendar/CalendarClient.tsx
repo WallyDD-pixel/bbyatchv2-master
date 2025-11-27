@@ -137,6 +137,23 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   const [view, setView] = useState<View>(Views.MONTH);
   const [hoveredEvent, setHoveredEvent] = useState<any>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{x: number, y: number} | null>(null);
+  
+  // États pour la gestion des liens bateau-expérience
+  const [showLinkManager, setShowLinkManager] = useState(false);
+  const [linkBoatId, setLinkBoatId] = useState<number | null>(null);
+  const [linkExperienceId, setLinkExperienceId] = useState<number | null>(null);
+  const [linkPrice, setLinkPrice] = useState<string>('');
+  const [boatExperiences, setBoatExperiences] = useState<any[]>([]);
+  const [loadingLinks, setLoadingLinks] = useState(false);
+  
+  // États pour la création de créneaux
+  const [showAddSlot, setShowAddSlot] = useState(false);
+  const [newSlotDate, setNewSlotDate] = useState('');
+  const [newSlotEndDate, setNewSlotEndDate] = useState('');
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [isMultiDateMode, setIsMultiDateMode] = useState(false);
+  const [newSlotPart, setNewSlotPart] = useState<'FULL'|'AM'|'PM'|'SUNSET'>('FULL');
+  const [newSlotNote, setNewSlotNote] = useState('');
 
   const load = useCallback(async (anchor: Date) => {
     const from = startOfDay(addDays(anchor, -31));
@@ -388,10 +405,217 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     }
   }
 
+  // Fonction pour générer une liste de dates entre deux dates
+  function generateDateRange(startDate: string, endDate: string): string[] {
+    const dates: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const current = new Date(start);
+    while (current <= end) {
+      const dateStr = current.toISOString().split('T')[0];
+      dates.push(dateStr);
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return dates;
+  }
+
+  // Fonction pour ajouter/retirer une date de la sélection
+  function toggleDateSelection(date: string): void {
+    setSelectedDates(prev => {
+      if (prev.includes(date)) {
+        return prev.filter(d => d !== date);
+      } else {
+        return [...prev, date].sort();
+      }
+    });
+  }
+
+  // Fonction pour sélectionner une plage de dates
+  function selectDateRange(): void {
+    if (!newSlotDate || !newSlotEndDate) return;
+    
+    const dates = generateDateRange(newSlotDate, newSlotEndDate);
+    setSelectedDates(dates);
+  }
+
+  // Fonctions pour gérer les liens bateau-expérience
+  async function loadBoatExperiences() {
+    if (!linkBoatId) return;
+    setLoadingLinks(true);
+    try {
+      const res = await fetch(`/api/admin/boat-experiences?boatId=${linkBoatId}`);
+      const data = await res.json();
+      if (data.boatExperiences) {
+        setBoatExperiences(data.boatExperiences);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des liens:', error);
+    } finally {
+      setLoadingLinks(false);
+    }
+  }
+
+  async function createBoatExperienceLink() {
+    if (!linkBoatId || !linkExperienceId) {
+      alert(locale === 'fr' ? 'Sélectionnez un bateau et une expérience' : 'Select a boat and experience');
+      return;
+    }
+
+    setLoadingLinks(true);
+    try {
+      const res = await fetch('/api/admin/boat-experiences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          boatId: linkBoatId,
+          experienceId: linkExperienceId,
+          price: linkPrice ? Number(linkPrice) : null
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert(locale === 'fr' ? 'Lien créé avec succès !' : 'Link created successfully!');
+        setLinkPrice('');
+        loadBoatExperiences(); // Recharger la liste
+      } else {
+        const error = await res.json();
+        alert(locale === 'fr' ? `Erreur: ${error.error}` : `Error: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la création du lien:', error);
+      alert(locale === 'fr' ? 'Erreur lors de la création du lien' : 'Error creating link');
+    } finally {
+      setLoadingLinks(false);
+    }
+  }
+
+  async function deleteBoatExperienceLink(boatId: number, experienceId: number) {
+    if (!confirm(locale === 'fr' ? 'Supprimer ce lien ?' : 'Delete this link?')) return;
+
+    setLoadingLinks(true);
+    try {
+      const res = await fetch(`/api/admin/boat-experiences?boatId=${boatId}&experienceId=${experienceId}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        alert(locale === 'fr' ? 'Lien supprimé avec succès !' : 'Link deleted successfully!');
+        loadBoatExperiences(); // Recharger la liste
+      } else {
+        const error = await res.json();
+        alert(locale === 'fr' ? `Erreur: ${error.error}` : `Error: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression du lien:', error);
+      alert(locale === 'fr' ? 'Erreur lors de la suppression du lien' : 'Error deleting link');
+    } finally {
+      setLoadingLinks(false);
+    }
+  }
+
+  // Charger les liens quand le bateau change
+  useEffect(() => {
+    if (linkBoatId && showLinkManager) {
+      loadBoatExperiences();
+    }
+  }, [linkBoatId, showLinkManager]);
+
+  async function addSlot(): Promise<void> {
+    if (!selectedBoat) {
+      alert(locale === 'fr' ? 'Sélectionnez un bateau' : 'Select a boat');
+      return;
+    }
+
+    let datesToProcess: string[] = [];
+    
+    if (isMultiDateMode) {
+      if (selectedDates.length === 0) {
+        alert(locale === 'fr' ? 'Sélectionnez au moins une date' : 'Select at least one date');
+        return;
+      }
+      datesToProcess = selectedDates;
+    } else {
+      if (!newSlotDate) {
+        alert(locale === 'fr' ? 'Sélectionnez une date' : 'Select a date');
+        return;
+      }
+      datesToProcess = [newSlotDate];
+    }
+
+    setSaving(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      // Créer les créneaux pour chaque date sélectionnée
+      for (const date of datesToProcess) {
+        try {
+          const res = await fetch('/api/admin/availability', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              boatId: selectedBoat,
+              date: date,
+              part: newSlotPart,
+              note: newSlotNote.trim() || null,
+            }),
+          });
+          
+          if (res.ok) {
+            const result = await res.json();
+            if (result.toggled === 'added' && result.slot) {
+              setSlots(slots => [...slots, { ...result.slot, date: localKey(result.slot.date) }]);
+              successCount++;
+            }
+          } else {
+            errorCount++;
+          }
+        } catch {
+          errorCount++;
+        }
+      }
+
+      // Réinitialiser les champs
+      setNewSlotDate('');
+      setNewSlotEndDate('');
+      setSelectedDates([]);
+      setNewSlotNote('');
+      setShowAddSlot(false);
+
+      // Afficher le résultat
+      if (successCount > 0 && errorCount === 0) {
+        alert(locale === 'fr' 
+          ? `${successCount} créneau${successCount > 1 ? 'x' : ''} ajouté${successCount > 1 ? 's' : ''} avec succès`
+          : `${successCount} slot${successCount > 1 ? 's' : ''} added successfully`
+        );
+      } else if (successCount > 0 && errorCount > 0) {
+        alert(locale === 'fr' 
+          ? `${successCount} créneau${successCount > 1 ? 'x' : ''} ajouté${successCount > 1 ? 's' : ''}, ${errorCount} erreur${errorCount > 1 ? 's' : ''}`
+          : `${successCount} slot${successCount > 1 ? 's' : ''} added, ${errorCount} error${errorCount > 1 ? 's' : ''}`
+        );
+      } else {
+        alert(locale === 'fr' 
+          ? 'Aucun créneau n\'a pu être ajouté'
+          : 'No slots could be added'
+        );
+      }
+    } catch (e: any) {
+      alert(locale === 'fr' 
+        ? `Erreur lors de l'ajout: ${e?.message || 'Erreur inconnue'}` 
+        : `Error adding slots: ${e?.message || 'Unknown error'}`
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   // Main render
   return (
-    <div className="flex flex-row gap-6">
-      <div className='h-[75vh] bg-white rounded-xl border border-gray-200 shadow-lg relative overflow-hidden transition-all duration-300' style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+    <div className="flex flex-col lg:flex-row gap-6">
+      <div className='flex-1 min-w-0 h-[75vh] bg-white rounded-xl border border-gray-200 shadow-lg relative overflow-hidden transition-all duration-300' style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
         <Calendar
           localizer={localizer}
           date={date}
@@ -405,6 +629,14 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           events={events}
           startAccessor='start'
           endAccessor='end'
+          onSelectSlot={(slotInfo) => {
+            // Gestion du clic sur une date vide
+            if (selectedBoat && isMultiDateMode && showAddSlot) {
+              const clickedDate = slotInfo.start.toISOString().split('T')[0];
+              toggleDateSelection(clickedDate);
+            }
+          }}
+          selectable={selectedBoat && isMultiDateMode && showAddSlot}
           components={{ 
             month: { dateHeader: DateHeader },
             event: (props: any) => {
@@ -451,7 +683,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           }}
           onSelectEvent={onSelectEvent}
           eventPropGetter={eventPropGetter}
-          style={{ height: '90vh' }}
+          style={{ height: '70vh' }}
           onShowMore={(evts, date) => setShowMoreDay({ date, events: evts })}
         />
         {/* Modal "X autres" événements - Amélioré */}
@@ -825,6 +1057,375 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           )}
           <p className='text-[10px] text-black/40'>{locale==='fr'?"Clique une carte (bateau ou expérience) pour gérer les créneaux":"Click a boat or experience to manage slots"}</p>
         </div>
+        
+        {/* Section pour ajouter des créneaux */}
+        {selectedBoat && !showAll && (
+          <div className='p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 shadow-sm'>
+            <div className='flex items-center justify-between mb-3'>
+              <h3 className='font-bold text-sm text-green-800 flex items-center gap-2'>
+                <span className="text-lg">➕</span>
+                {locale==='fr' ? 'Ajouter un créneau' : 'Add availability slot'}
+              </h3>
+            </div>
+            
+            {!showAddSlot ? (
+              <button 
+                onClick={() => setShowAddSlot(true)}
+                className='w-full h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2'
+              >
+                <span>➕</span>
+                {locale==='fr' ? 'Nouveau créneau' : 'New slot'}
+              </button>
+            ) : (
+              <div className='space-y-3'>
+                {/* Mode de sélection */}
+                <div className='flex items-center gap-3 mb-3'>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setIsMultiDateMode(false);
+                      setSelectedDates([]);
+                      setNewSlotEndDate('');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      !isMultiDateMode 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    }`}
+                  >
+                    {locale==='fr' ? 'Date unique' : 'Single date'}
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setIsMultiDateMode(true);
+                      setNewSlotDate('');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      isMultiDateMode 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    }`}
+                  >
+                    {locale==='fr' ? 'Plusieurs dates' : 'Multiple dates'}
+                  </button>
+                </div>
+
+                {!isMultiDateMode ? (
+                  <div>
+                    <label className='block text-xs font-medium mb-1 text-green-800'>
+                      {locale==='fr' ? 'Date' : 'Date'}
+                    </label>
+                    <input
+                      type='date'
+                      value={newSlotDate}
+                      onChange={(e) => setNewSlotDate(e.target.value)}
+                      className='w-full h-9 px-3 rounded-lg border border-green-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30'
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                ) : (
+                  <div className='space-y-3'>
+                    <div className='grid grid-cols-2 gap-2'>
+                      <div>
+                        <label className='block text-xs font-medium mb-1 text-green-800'>
+                          {locale==='fr' ? 'Date début' : 'Start date'}
+                        </label>
+                        <input
+                          type='date'
+                          value={newSlotDate}
+                          onChange={(e) => setNewSlotDate(e.target.value)}
+                          className='w-full h-9 px-3 rounded-lg border border-green-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30'
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                      <div>
+                        <label className='block text-xs font-medium mb-1 text-green-800'>
+                          {locale==='fr' ? 'Date fin' : 'End date'}
+                        </label>
+                        <input
+                          type='date'
+                          value={newSlotEndDate}
+                          onChange={(e) => setNewSlotEndDate(e.target.value)}
+                          className='w-full h-9 px-3 rounded-lg border border-green-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30'
+                          min={newSlotDate || new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                    </div>
+                    
+                    {newSlotDate && newSlotEndDate && (
+                      <button
+                        type='button'
+                        onClick={selectDateRange}
+                        className='w-full h-8 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium transition-colors'
+                      >
+                        {locale==='fr' ? 'Sélectionner cette plage' : 'Select this range'}
+                      </button>
+                    )}
+
+                    {selectedDates.length > 0 && (
+                      <div className='p-3 rounded-lg bg-green-50 border border-green-200'>
+                        <div className='flex items-center justify-between mb-2'>
+                          <span className='text-xs font-medium text-green-800'>
+                            {locale==='fr' ? 'Dates sélectionnées' : 'Selected dates'} ({selectedDates.length})
+                          </span>
+                          <button
+                            type='button'
+                            onClick={() => setSelectedDates([])}
+                            className='text-xs text-green-600 hover:text-green-800'
+                          >
+                            {locale==='fr' ? 'Effacer' : 'Clear'}
+                          </button>
+                        </div>
+                        <div className='flex flex-wrap gap-1 max-h-20 overflow-y-auto'>
+                          {selectedDates.map(date => (
+                            <span
+                              key={date}
+                              className='inline-flex items-center gap-1 px-2 py-1 rounded bg-green-600 text-white text-[10px] font-medium'
+                            >
+                              {new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+                              <button
+                                type='button'
+                                onClick={() => toggleDateSelection(date)}
+                                className='hover:bg-green-700 rounded-full w-3 h-3 flex items-center justify-center'
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className='text-xs text-green-700 bg-green-50 p-2 rounded'>
+                      💡 {locale==='fr' 
+                        ? 'Astuce: Définissez une plage de dates ou cliquez sur les dates individuelles dans le calendrier'
+                        : 'Tip: Set a date range or click individual dates in the calendar'
+                      }
+                    </div>
+                  </div>
+                )}
+                
+                <div>
+                  <label className='block text-xs font-medium mb-1 text-green-800'>
+                    {locale==='fr' ? 'Type de créneau' : 'Slot type'}
+                  </label>
+                  <select
+                    value={newSlotPart}
+                    onChange={(e) => setNewSlotPart(e.target.value as 'FULL'|'AM'|'PM'|'SUNSET')}
+                    className='w-full h-9 px-3 rounded-lg border border-green-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30'
+                  >
+                    <option value='FULL'>{locale==='fr' ? 'Journée complète (8h)' : 'Full day (8h)'}</option>
+                    <option value='AM'>{locale==='fr' ? 'Matin (4h)' : 'Morning (4h)'}</option>
+                    <option value='PM'>{locale==='fr' ? 'Après-midi (4h)' : 'Afternoon (4h)'}</option>
+                    <option value='SUNSET'>Sunset (2h)</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className='block text-xs font-medium mb-1 text-green-800'>
+                    {locale==='fr' ? 'Note (optionnelle)' : 'Note (optional)'}
+                  </label>
+                  <textarea
+                    value={newSlotNote}
+                    onChange={(e) => setNewSlotNote(e.target.value)}
+                    className='w-full h-16 px-3 py-2 rounded-lg border border-green-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none'
+                    placeholder={locale==='fr' ? 'Note ou commentaire...' : 'Note or comment...'}
+                  />
+                </div>
+                
+                <div className='flex gap-2'>
+                  <button
+                    onClick={addSlot}
+                    disabled={saving || (!isMultiDateMode && !newSlotDate) || (isMultiDateMode && selectedDates.length === 0)}
+                    className='flex-1 h-9 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors'
+                  >
+                    {saving ? (
+                      locale==='fr' ? 'Ajout...' : 'Adding...'
+                    ) : (
+                      isMultiDateMode && selectedDates.length > 0 ? (
+                        locale==='fr' 
+                          ? `Ajouter ${selectedDates.length} créneaux`
+                          : `Add ${selectedDates.length} slots`
+                      ) : (
+                        locale==='fr' ? 'Ajouter' : 'Add'
+                      )
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddSlot(false);
+                      setNewSlotDate('');
+                      setNewSlotEndDate('');
+                      setSelectedDates([]);
+                      setNewSlotNote('');
+                      setIsMultiDateMode(false);
+                    }}
+                    className='h-9 px-4 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm transition-colors'
+                  >
+                    {locale==='fr' ? 'Annuler' : 'Cancel'}
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <p className='text-[10px] text-green-700 mt-2'>
+              {locale==='fr' 
+                ? `Bateau sélectionné: ${boats.find(b => b.id === selectedBoat)?.name || 'N/A'}`
+                : `Selected boat: ${boats.find(b => b.id === selectedBoat)?.name || 'N/A'}`
+              }
+            </p>
+          </div>
+        )}
+        
+        {!selectedBoat && !selectedExperience && showAll && (
+          <div className='p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 shadow-sm'>
+            <div className='text-center'>
+              <span className="text-2xl mb-2 block">🎯</span>
+              <h3 className='font-semibold text-sm text-blue-800 mb-2'>
+                {locale==='fr' ? 'Gérer les disponibilités' : 'Manage availability'}
+              </h3>
+              <p className='text-xs text-blue-700 leading-relaxed'>
+                {locale==='fr' 
+                  ? 'Sélectionnez un bateau pour ajouter des créneaux de disponibilité ou une expérience pour gérer ses horaires.'
+                  : 'Select a boat to add availability slots or an experience to manage its schedules.'
+                }
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Section pour lier bateaux et expériences */}
+        <div className='p-4 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 shadow-sm'>
+          <div className='flex items-center justify-between mb-3'>
+            <h3 className='font-bold text-sm text-purple-800 flex items-center gap-2'>
+              <span className="text-lg">🔗</span>
+              {locale==='fr' ? 'Lier Bateau ↔ Expérience' : 'Link Boat ↔ Experience'}
+            </h3>
+            <button 
+              onClick={() => setShowLinkManager(!showLinkManager)}
+              className='text-xs px-2 py-1 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 transition-colors'
+            >
+              {showLinkManager ? '−' : '+'}
+            </button>
+          </div>
+          
+          {!showLinkManager ? (
+            <p className='text-xs text-purple-700 leading-relaxed'>
+              {locale==='fr' 
+                ? 'Associez des expériences spécifiques à vos bateaux pour enrichir l\'offre de réservation.'
+                : 'Associate specific experiences with your boats to enrich the booking offer.'
+              }
+            </p>
+          ) : (
+            <div className='space-y-3'>
+              {/* Sélection du bateau */}
+              <div>
+                <label className='block text-xs font-medium mb-1 text-purple-800'>
+                  {locale==='fr' ? 'Bateau' : 'Boat'}
+                </label>
+                <select 
+                  value={linkBoatId || ''} 
+                  onChange={(e) => setLinkBoatId(e.target.value ? Number(e.target.value) : null)}
+                  className='w-full h-9 px-3 rounded-lg border border-purple-300 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/30'
+                >
+                  <option value="">{locale==='fr' ? 'Sélectionner un bateau' : 'Select a boat'}</option>
+                  {boats.map(boat => (
+                    <option key={boat.id} value={boat.id}>{boat.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sélection de l'expérience */}
+              <div>
+                <label className='block text-xs font-medium mb-1 text-purple-800'>
+                  {locale==='fr' ? 'Expérience' : 'Experience'}
+                </label>
+                <select 
+                  value={linkExperienceId || ''} 
+                  onChange={(e) => setLinkExperienceId(e.target.value ? Number(e.target.value) : null)}
+                  className='w-full h-9 px-3 rounded-lg border border-purple-300 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/30'
+                >
+                  <option value="">{locale==='fr' ? 'Sélectionner une expérience' : 'Select an experience'}</option>
+                  {experiences.map(exp => (
+                    <option key={exp.id} value={exp.id}>
+                      {locale==='fr' ? exp.titleFr : exp.titleEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Prix optionnel */}
+              <div>
+                <label className='block text-xs font-medium mb-1 text-purple-800'>
+                  {locale==='fr' ? 'Prix spécifique (€, optionnel)' : 'Specific price (€, optional)'}
+                </label>
+                <input 
+                  type='number' 
+                  value={linkPrice} 
+                  onChange={(e) => setLinkPrice(e.target.value)}
+                  className='w-full h-9 px-3 rounded-lg border border-purple-300 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/30'
+                  placeholder={locale==='fr' ? 'Prix pour cette combinaison' : 'Price for this combination'}
+                />
+              </div>
+
+              {/* Bouton de création */}
+              <button 
+                onClick={createBoatExperienceLink}
+                disabled={loadingLinks || !linkBoatId || !linkExperienceId}
+                className='w-full h-9 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors'
+              >
+                {loadingLinks ? (
+                  locale==='fr' ? 'Création...' : 'Creating...'
+                ) : (
+                  locale==='fr' ? 'Créer le lien' : 'Create link'
+                )}
+              </button>
+
+              {/* Liste des liens existants pour le bateau sélectionné */}
+              {linkBoatId && (
+                <div className='mt-4 pt-3 border-t border-purple-200'>
+                  <h4 className='text-xs font-medium text-purple-800 mb-2'>
+                    {locale==='fr' ? 'Expériences liées à ce bateau :' : 'Experiences linked to this boat:'}
+                  </h4>
+                  {loadingLinks ? (
+                    <div className='flex items-center gap-2 text-xs text-purple-600'>
+                      <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                      {locale==='fr' ? 'Chargement...' : 'Loading...'}
+                    </div>
+                  ) : boatExperiences.length === 0 ? (
+                    <p className='text-xs text-purple-600'>
+                      {locale==='fr' ? 'Aucune expérience liée' : 'No linked experiences'}
+                    </p>
+                  ) : (
+                    <div className='space-y-2 max-h-32 overflow-y-auto'>
+                      {boatExperiences.map(link => (
+                        <div key={link.experienceId} className='flex items-center justify-between p-2 rounded bg-white border border-purple-200'>
+                          <div className='flex-1 min-w-0'>
+                            <p className='text-xs font-medium text-purple-800 truncate'>
+                              {locale==='fr' ? link.experience.titleFr : link.experience.titleEn}
+                            </p>
+                            {link.price && (
+                              <p className='text-xs text-purple-600'>{link.price}€</p>
+                            )}
+                          </div>
+                          <button 
+                            onClick={() => deleteBoatExperienceLink(link.boatId, link.experienceId)}
+                            className='text-xs text-red-600 hover:text-red-800 ml-2'
+                            title={locale==='fr' ? 'Supprimer le lien' : 'Delete link'}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {editingSlot && (
           <div className='fixed inset-0 bg-black/40 flex items-center justify-center z-50'>
             <div className='bg-white rounded-lg p-5 w-full max-w-sm space-y-4'>

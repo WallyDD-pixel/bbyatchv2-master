@@ -5,6 +5,15 @@ import { messages, type Locale } from "@/i18n/messages";
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 
+interface NavbarItem {
+  id: number;
+  labelFr: string;
+  labelEn: string;
+  href: string;
+  icon?: string;
+  target: string;
+}
+
 export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -16,6 +25,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
   const userRole = (session?.user as any)?.role || 'user';
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string>("/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png");
+  const [navbarItems, setNavbarItems] = useState<NavbarItem[]>([]);
 
   useEffect(() => {
     async function fetchLogo() {
@@ -29,8 +39,28 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
         // Fallback to default logo
       }
     }
+
+    async function fetchNavbarItems() {
+      try {
+        const res = await fetch("/api/navbar");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.navbarItems) setNavbarItems(data.navbarItems);
+        }
+      } catch (e) {
+        // Fallback to default items
+        setNavbarItems([
+          { id: 1, labelFr: 'Bateaux disponibles', labelEn: 'Available boats', href: `/?lang=${locale}#fleet`, icon: '⛵', target: '_self' },
+          { id: 2, labelFr: 'Nos expériences', labelEn: 'Our experiences', href: `/?lang=${locale}#experiences`, icon: '🌊', target: '_self' },
+          { id: 3, labelFr: 'Vente d\'occasion', labelEn: 'Used sale', href: `/used-sale?lang=${locale}`, icon: '💼', target: '_self' },
+          { id: 4, labelFr: 'À propos', labelEn: 'About', href: `/about${locale === 'en' ? '?lang=en' : ''}`, icon: 'ℹ️', target: '_self' }
+        ]);
+      }
+    }
+
     fetchLogo();
-  }, []);
+    fetchNavbarItems();
+  }, [locale]);
 
   const setLocale = (l: Locale) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -45,12 +75,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const isHome = pathname === "/";
   const homeBase = `/?lang=${locale}`;
-  const experiencesHref = isHome ? "#experiences" : `${homeBase}#experiences`;
-  const fleetHref = isHome ? "#fleet" : `${homeBase}#fleet`;
-  const usedHref = `/used-sale?lang=${locale}`;
-  const aboutHref = `/about${locale === 'en' ? '?lang=en' : ''}`;
 
   return (
     <header className="px-2 sm:px-4 py-4 flex items-center justify-center sticky top-0 z-[120] transition-all duration-300">
@@ -68,16 +93,17 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
 
           {/* Navigation desktop améliorée */}
           <nav className="hidden lg:flex flex-1 items-center justify-center gap-2 text-sm">
-            {[
-              {href:fleetHref,label:t.nav_available,icon:'⛵'},
-              {href:experiencesHref,label:t.nav_experiences,icon:'🌊'},
-              {href:usedHref,label:t.nav_used_sale,icon:'💼'},
-              {href:aboutHref,label:t.nav_about,icon:'ℹ️'}
-            ].map((link, i) => (
-              <a key={link.href} href={link.href} className="group relative px-5 py-3 rounded-2xl font-semibold text-slate-700 dark:text-slate-200/95 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/50 transition-all duration-300 overflow-hidden no-underline visited:text-slate-700 visited:dark:text-slate-200/95 hover:visited:text-white active:text-white" style={{ textDecoration: 'none' }}>
+            {navbarItems.map((link, i) => (
+              <a 
+                key={link.href} 
+                href={link.href} 
+                target={link.target}
+                className="group relative px-5 py-3 rounded-2xl font-semibold text-slate-700 dark:text-slate-200/95 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/50 transition-all duration-300 overflow-hidden no-underline visited:text-slate-700 visited:dark:text-slate-200/95 hover:visited:text-white active:text-white" 
+                style={{ textDecoration: 'none' }}
+              >
                 <span className="relative z-10 flex items-center gap-2">
                   <span className="text-base opacity-80 group-hover:opacity-100 transition-opacity duration-300">{link.icon}</span>
-                  <span className="font-medium">{link.label}</span>
+                  <span className="font-medium">{locale === 'fr' ? link.labelFr : link.labelEn}</span>
                 </span>
                 {/* Effet de survol dégradé */}
                 <span className="absolute inset-0 bg-gradient-to-r from-[color:var(--primary)]/80 via-[color:var(--primary)] to-[color:var(--primary)]/80 opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-2xl scale-0 group-hover:scale-100" />
@@ -209,17 +235,18 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
               className="md:hidden fixed left-1/2 -translate-x-1/2 top-[76px] w-[94%] max-w-6xl rounded-3xl bg-gradient-to-b from-white/98 via-white/95 to-white/92 dark:from-[#1f2c38]/96 dark:via-[#203241]/96 dark:to-[#1f2c38]/96 border border-white/70 dark:border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)] p-5 z-[110] backdrop-blur-xl"
             >
               <nav className="flex flex-col gap-1 text-sm">
-                {[{href:fleetHref,label:t.nav_available,icon:'⛵'},{href:experiencesHref,label:t.nav_experiences,icon:'🌊'},{href:usedHref,label:t.nav_used_sale,icon:'💼'},{href:aboutHref,label:t.nav_about,icon:'ℹ️'}].map(l => (
+                {navbarItems.map(l => (
                   <a
                     key={l.href}
                     href={l.href}
+                    target={l.target}
                     onClick={()=>setOpen(false)}
                     className="group px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition relative bg-transparent"
                   >
                     {/* icons: force light color for dark overlay */}
                     <span className="text-lg opacity-90 group-hover:opacity-100 text-white drop-shadow-sm">{l.icon}</span>
                     {/* labels: strong white for maximum contrast on dark blurred background */}
-                    <span className="text-white font-semibold drop-shadow-sm">{l.label}</span>
+                    <span className="text-white font-semibold drop-shadow-sm">{locale === 'fr' ? l.labelFr : l.labelEn}</span>
                     <span className="absolute inset-0 rounded-xl bg-[color:var(--primary)]/7 opacity-0 group-hover:opacity-100 group-active:bg-[color:var(--primary)]/12 transition pointer-events-none"/>
                   </a>
                 ))}

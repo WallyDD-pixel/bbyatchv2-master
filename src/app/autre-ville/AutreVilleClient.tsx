@@ -1,9 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import HeaderBar from '@/components/HeaderBar';
-import { messages } from '@/i18n/messages';
 import { useRouter } from 'next/navigation';
+import { type Locale } from '@/i18n/messages';
 
 // Créneaux
 const PARTS: { key: 'FULL'|'AM'|'PM'; label: string; start: string; end: string }[] = [
@@ -12,7 +11,7 @@ const PARTS: { key: 'FULL'|'AM'|'PM'; label: string; start: string; end: string 
   { key:'PM', label:'Après-midi', start:'13:00', end:'18:00' },
 ];
 
-export default function AutreVilleClient() {
+export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Record<string, string> }) {
   // Form state
   const [ville, setVille] = useState('');
   const [passagers, setPassagers] = useState('');
@@ -106,6 +105,8 @@ export default function AutreVilleClient() {
   const partDef = part? PARTS.find(p=>p.key===part)! : null;
   const totalDays = part==='FULL' ? selectedDates.length || 1 : 1;
 
+  const router = useRouter();
+
   const onSubmit = (e:React.FormEvent) => {
     e.preventDefault(); if(!part) setPartHint(true); if(!ville || !experience || !message || !email || !part || !rgpd || !startDate) return;
     const payload = { ville, passagers: passagers? parseInt(passagers,10): undefined, experience, part, startDate, endDate: part==='FULL'? endDate: startDate, message, email, tel, boatId: selectedBoat?.id };
@@ -125,10 +126,7 @@ export default function AutreVilleClient() {
   const [partHint, setPartHint] = useState(false);
   const [rangeError, setRangeError] = useState<string|null>(null);
   const [villeHint, setVilleHint] = useState(false); // nouvel état pour ville non sélectionnée
-  const locale = 'fr';
   const hasVille = ville.trim().length>0; // ville réellement saisie
-  const t = messages[locale];
-  const router = useRouter();
 
   useEffect(()=>{
     const loadBoats = async () => {
@@ -150,7 +148,6 @@ export default function AutreVilleClient() {
 
   return (
     <>
-      <HeaderBar initialLocale={locale as any} />
       <div className="max-w-3xl mx-auto py-12 px-4">
         <h1 className="text-2xl font-semibold mb-1">Demande pour une autre ville</h1>
         <p className="text-sm text-black/60 mb-6">Précise le port / la zone, les dates souhaitées et ton besoin. Nous revenons vers toi rapidement.</p>
@@ -371,4 +368,3 @@ export default function AutreVilleClient() {
     </>
   );
 }
-

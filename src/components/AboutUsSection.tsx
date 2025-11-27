@@ -13,7 +13,7 @@ export default function AboutUsSection({ settings, locale }: { settings: any, lo
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0f1f29] via-[#143345] to-[#1d4d65] text-white p-8 sm:p-12 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.45)]">
         <div className="absolute inset-0 pointer-events-none opacity-20" style={{background:'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.15), transparent 60%)'}} />
         <div className="relative max-w-3xl">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-display tracking-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-nakilla font-bold tracking-tight">
             {aboutUsTitle}
           </h2>
           <p className="mt-4 text-sm sm:text-base md:text-lg text-white/80 leading-relaxed">

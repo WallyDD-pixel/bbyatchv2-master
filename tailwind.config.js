@@ -5,7 +5,14 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        'nakilla': ['var(--font-nakilla)', 'Playfair Display', 'serif'],
+        'aviano': ['var(--font-aviano)', 'Manrope', 'sans-serif'],
+        'sans': ['Manrope', 'system-ui', 'sans-serif'],
+        'display': ['var(--font-nakilla)', 'Playfair Display', 'serif'],
+      },
+    },
   },
   plugins: [],
 };

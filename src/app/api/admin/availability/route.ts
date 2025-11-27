@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch {}
   const { boatId, date, part, note } = body || {};
   if (!boatId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
-  if (!['AM','PM','FULL'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
+  if (!['AM','PM','FULL','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
   const day = new Date(date + 'T00:00:00');
   if (isNaN(day.getTime())) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
 
@@ -79,11 +79,11 @@ export async function POST(req: Request) {
       await (prisma as any).availabilitySlot.delete({ where: { id: existing.id } });
       return NextResponse.json({ toggled: 'removed', id: existing.id });
     }
-    // If creating FULL remove AM/PM for that day for this boat
+    // If creating FULL remove AM/PM/SUNSET for that day for this boat
     if (part === 'FULL') {
-      await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: { in: ['AM','PM'] } } });
+      await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: { in: ['AM','PM','SUNSET'] } } });
     } else {
-      // If creating AM or PM and FULL exists, delete FULL
+      // If creating AM, PM, or SUNSET and FULL exists, delete FULL
       await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: 'FULL' } });
     }
     const created = await (prisma as any).availabilitySlot.create({ data: { boatId: Number(boatId), date: day, part, status: 'available', note: note || null } });

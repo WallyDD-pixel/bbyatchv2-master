@@ -1,0 +1,27 @@
+/* 
+FICHIER TEMPORAIRE - À REMPLACER PAR LES VRAIES POLICES
+
+Ce fichier contient des polices de fallback temporaires 
+en attendant l'ajout des vraies polices Nakilla et Aviano.
+
+Pour ajouter les vraies polices :
+1. Obtenez les fichiers Nakilla et Aviano (.woff2 et .woff)
+2. Placez-les dans ce dossier
+3. Supprimez ce fichier temporaire
+*/
+
+/* Fallback temporaire pour Nakilla - utilise Playfair Display */
+@font-face {
+  font-family: 'Nakilla-Temp';
+  src: local('Playfair Display'), local('serif');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Fallback temporaire pour Aviano - utilise Manrope */
+@font-face {
+  font-family: 'Aviano-Temp';
+  src: local('Manrope'), local('sans-serif');
+  font-weight: normal;
+  font-style: normal;
+}

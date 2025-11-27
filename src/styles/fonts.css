@@ -1,0 +1,149 @@
+/* Polices personnalisées pour BB Yachts */
+
+/* 
+  IMPORTANT: Ajoutez les vraies polices Nakilla et Aviano dans /public/fonts/
+  En attendant, nous utilisons des polices de fallback similaires
+*/
+
+/* Police Nakilla pour les titres - Fallback temporaire avec Playfair Display */
+@font-face {
+  font-family: 'Nakilla';
+  src: local('Playfair Display Bold'), local('PlayfairDisplay-Bold');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nakilla';
+  src: local('Playfair Display'), local('PlayfairDisplay-Regular');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Police Aviano pour les sous-titres - Fallback temporaire avec Montserrat */
+@font-face {
+  font-family: 'Aviano';
+  src: local('Montserrat Bold'), local('Montserrat-Bold');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aviano';
+  src: local('Montserrat SemiBold'), local('Montserrat-SemiBold');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aviano';
+  src: local('Montserrat Medium'), local('Montserrat-Medium');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aviano';
+  src: local('Montserrat'), local('Montserrat-Regular');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 
+  Quand vous ajouterez les vraies polices, remplacez les @font-face ci-dessus par :
+
+@font-face {
+  font-family: 'Nakilla';
+  src: url('/fonts/nakilla.woff2') format('woff2'),
+       url('/fonts/nakilla.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nakilla';
+  src: url('/fonts/nakilla-bold.woff2') format('woff2'),
+       url('/fonts/nakilla-bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aviano';
+  src: url('/fonts/aviano.woff2') format('woff2'),
+       url('/fonts/aviano.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aviano';
+  src: url('/fonts/aviano-bold.woff2') format('woff2'),
+       url('/fonts/aviano-bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+*/
+
+/* Variables CSS pour les polices */
+:root {
+  --font-nakilla: 'Nakilla', var(--font-display), 'Playfair Display', serif;
+  --font-aviano: 'Aviano', var(--font-montserrat), 'Montserrat', sans-serif;
+  --font-body: var(--font-sans), 'Manrope', system-ui, sans-serif;
+}
+
+/* Classes utilitaires pour Tailwind */
+.font-nakilla {
+  font-family: var(--font-nakilla);
+}
+
+.font-aviano {
+  font-family: var(--font-aviano);
+}
+
+/* Application automatique aux éléments HTML */
+h1 {
+  font-family: var(--font-nakilla);
+  font-weight: bold;
+}
+
+h2, h3 {
+  font-family: var(--font-aviano);
+  font-weight: 600;
+}
+
+h4, h5, h6 {
+  font-family: var(--font-aviano);
+  font-weight: 500;
+}
+
+/* Classes spécifiques pour le design */
+.title-main {
+  font-family: var(--font-nakilla);
+  font-weight: bold;
+}
+
+.title-section {
+  font-family: var(--font-nakilla);
+  font-weight: 700;
+}
+
+.subtitle {
+  font-family: var(--font-aviano);
+  font-weight: 600;
+}
+
+.subtitle-light {
+  font-family: var(--font-aviano);
+  font-weight: 400;
+}

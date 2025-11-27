@@ -28,7 +28,7 @@ export async function POST(req: Request){
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
 
-    const boat = await (prisma as any).boat.findUnique({ where: { slug: boatSlug }, select: { id: true, name: true, slug: true, skipperRequired: true, skipperPrice: true } });
+    const boat = await (prisma as any).boat.findUnique({ where: { slug: boatSlug }, select: { id: true, name: true, slug: true, skipperRequired: true, skipperPrice: true, capacity: true, lengthM: true, speedKn: true } });
     if(!boat) return NextResponse.json({ error: 'boat_not_found' }, { status: 404 });
     // Dates validation
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -111,6 +111,12 @@ export async function POST(req: Request){
     const remaining = grandTotal - deposit;
     const currency = (settings?.currency || 'eur').toLowerCase();
 
+    // Générer une référence unique
+    const year = new Date().getFullYear();
+    const month = String(new Date().getMonth() + 1).padStart(2, '0');
+    const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const reference = userRole === 'agency' ? `AGE-${year}${month}-${randomSuffix}` : `RES-${year}${month}-${randomSuffix}`;
+
     // NOUVEAU: si rôle agence => création d'une AgencyRequest (pas de Stripe)
     if(userRole === 'agency'){
       const agencyReq = await prisma.agencyRequest.create({
@@ -129,6 +135,16 @@ export async function POST(req: Request){
               childrenCount,
               specialNeeds: specialNeedsStr,
               wantsExcursion: wantsExcursionBool,
+              optionIds: selectedOptionIds,
+              // Informations supplémentaires pour la facturation
+              boatCapacity: boat.capacity,
+              boatLength: boat.lengthM,
+              boatSpeed: boat.speedKn,
+              departurePort: body.departurePort || 'Port à définir',
+              bookingDate: new Date().toISOString(),
+              userRole: userRole,
+              skipperRequired: boat.skipperRequired,
+              effectiveSkipperPrice: boat.skipperRequired ? effectiveSkipperPrice : null,
             }),
         }
       });
@@ -140,6 +156,7 @@ export async function POST(req: Request){
       data: {
         userId,
         boatId: boat.id,
+        reference,
         startDate: s,
         endDate: e,
         part,
@@ -157,6 +174,15 @@ export async function POST(req: Request){
           specialNeeds: specialNeedsStr,
           wantsExcursion: wantsExcursionBool,
           optionIds: selectedOptionIds, // Stocker les IDs des options sélectionnées
+          // Informations supplémentaires pour la facturation
+          boatCapacity: boat.capacity,
+          boatLength: boat.lengthM,
+          boatSpeed: boat.speedKn,
+          departurePort: body.departurePort || 'Port à définir',
+          bookingDate: new Date().toISOString(),
+          userRole: userRole,
+          skipperRequired: boat.skipperRequired,
+          effectiveSkipperPrice: boat.skipperRequired ? effectiveSkipperPrice : null,
         }),
       }
     });

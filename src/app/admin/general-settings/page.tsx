@@ -135,6 +135,47 @@ export default function AdminGeneralSettingsPage() {
             </div>
           </div>
 
+          {/* Lien des jeux d'eau */}
+          <div className="bg-white rounded-xl border border-black/10 p-6 shadow-sm">
+            <h2 className="text-lg font-semibold mb-4">🏄‍♂️ Jeux d'eau</h2>
+            <div className="space-y-4">
+              <label className="block">
+                <span className="font-medium text-sm mb-1 block">URL du catalogue des jeux d'eau</span>
+                <input
+                  type="url"
+                  name="waterToysUrl"
+                  defaultValue={settings?.waterToysUrl ?? 'https://example.com/water-toys'}
+                  placeholder="https://example.com/water-toys"
+                  className="w-full mt-1 border border-black/15 rounded-lg px-3 py-2 text-sm"
+                />
+                <p className="text-xs text-black/50 mt-1">
+                  Cette URL sera utilisée dans le formulaire de réservation quand les clients sélectionnent "Oui" pour les jeux d'eau. 
+                  Elle doit pointer vers votre catalogue ou partenaire de jeux d'eau.
+                </p>
+              </label>
+              {settings?.waterToysUrl && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-700 mb-2">
+                    <strong>Aperçu :</strong> Voici comment le lien apparaît dans le formulaire de réservation :
+                  </p>
+                  <div className="text-xs text-gray-600 italic">
+                    "Nous pouvons nous occuper de la réservation des jeux d'eau mais le prix ne sera pas calculé avec. 
+                    Merci de nous indiquer dans le champ commentaire le/les jeux souhaités{' '}
+                    <a 
+                      href={settings.waterToysUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline font-medium"
+                    >
+                      (Lien)
+                    </a>
+                    "
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="flex gap-3">
             <button
               type="submit"

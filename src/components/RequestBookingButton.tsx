@@ -21,7 +21,7 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = (vals: SearchValues & { part?: string }) => {
+  const handleSubmit = (vals: SearchValues & { part?: string; selectedExperience?: string }) => {
     if (disabled) return; // sécurité
     if (!vals.startDate) return;
     const params = new URLSearchParams();
@@ -33,6 +33,11 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
     if (vals.passengers) params.set('pax', String(vals.passengers));
     if (optionIds && optionIds.length) params.set('opts', optionIds.join(','));
     if (needsSkipper) params.set('skipper', '1');
+    if (vals.wantsExcursion) params.set('excursion', '1');
+    if (vals.selectedExperience) params.set('experience', vals.selectedExperience);
+    if (vals.waterToys === 'yes') params.set('waterToys', '1');
+    if (vals.childrenCount) params.set('children', vals.childrenCount);
+    if (vals.specialNeeds) params.set('specialNeeds', encodeURIComponent(vals.specialNeeds));
     router.push(`/checkout?${params.toString()}`);
     setOpen(false);
   };
@@ -94,7 +99,7 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
               </button>
             </div>
             <div className='relative z-[202]'>
-              <SearchBar labels={t} onSubmit={handleSubmit} className='bg-transparent border-0 shadow-none p-0' locale={locale} />
+              <SearchBar labels={t} onSubmit={handleSubmit} className='bg-transparent border-0 shadow-none p-0' locale={locale} boatSlug={slug} />
             </div>
           </div>
         </div>

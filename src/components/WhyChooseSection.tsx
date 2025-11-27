@@ -30,8 +30,8 @@ export default function WhyChooseSection({ settings }: { settings?: WhyChooseSet
   return (
     <section className="w-full py-12 md:py-16 lg:py-20">
       <div className="max-w-6xl mx-auto px-4 md:px-6">
-        {title && <h2 className="text-2xl md:text-3xl font-bold mb-3 text-slate-800 dark:text-slate-100">{title}</h2>}
-        {subtitle && <p className="text-sm md:text-base text-slate-600 dark:text-slate-300 mb-6 max-w-3xl">{subtitle}</p>}
+        {title && <h2 className="text-2xl md:text-3xl font-nakilla font-bold mb-3 text-slate-800 dark:text-slate-100">{title}</h2>}
+        {subtitle && <p className="text-sm md:text-base font-aviano text-slate-600 dark:text-slate-300 mb-6 max-w-3xl">{subtitle}</p>}
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((it, i) => (
             <li key={i} className="p-4 rounded-xl bg-white/70 dark:bg-slate-800/70 backdrop-blur border border-slate-200 dark:border-slate-700 shadow-sm text-sm md:text-base text-slate-700 dark:text-slate-200">

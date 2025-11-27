@@ -11,6 +11,7 @@ import Footer from "@/components/Footer";
 import AboutUsSection from "@/components/AboutUsSection";
 import WhyChooseSection from "@/components/WhyChooseSection";
 import { prisma } from '@/lib/prisma';
+import { getLabelsWithSettings } from '@/lib/settings';
 
 export default async function Home({
   searchParams,

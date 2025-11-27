@@ -209,6 +209,7 @@ export async function GET(_req: Request, context: any) {
     clientLines.push({ text: 'Client', size:12, color: primary, bold:true, gap:4 });
     clientLines.push({ text: clientName, size:10, color: textDark, bold:true, gap:2 });
     if(reservation.user?.email) clientLines.push({ text: reservation.user.email, size:9, color: textMuted, gap:2 });
+    if(reservation.user?.phone) clientLines.push({ text: `Tél: ${reservation.user.phone}`, size:9, color: textMuted, gap:2 });
     if(reservation.user?.address){
       clientLines.push({ text: reservation.user.address, size:9, color: textMuted, gap:2 });
       const cityLine = [reservation.user.zip, reservation.user.city].filter(Boolean).join(' ');
@@ -241,17 +242,36 @@ export async function GET(_req: Request, context: any) {
     const resBoxTop = y;
     const resLines: { text:string; size:number; color:any; bold?:boolean; gap:number }[] = [];
     resLines.push({ text: 'Détails de la réservation', size:12, color: primary, bold:true, gap:4 });
+    
+    // Référence de réservation
+    if(reservation.reference) resLines.push({ text: `Référence : ${reservation.reference}`, size:10, color:textDark, bold:true, gap:3 });
+    
     const start = reservation.startDate.toISOString().slice(0,10);
     const end = reservation.endDate.toISOString().slice(0,10);
     const dateDisplay = start + (end!==start? ' -> ' + end : '');
+    
+    // Informations du bateau avec caractéristiques
     resLines.push({ text: `Bateau : ${reservation.boat?.name||''}`, size:10, color:textDark, gap:3 });
+    if(reservation.boat?.lengthM) resLines.push({ text: `Longueur : ${reservation.boat.lengthM}m`, size:9, color:textMuted, gap:2 });
+    if(reservation.boat?.capacity) resLines.push({ text: `Capacité max : ${reservation.boat.capacity} personnes`, size:9, color:textMuted, gap:2 });
+    if(reservation.boat?.speedKn) resLines.push({ text: `Vitesse : ${reservation.boat.speedKn} nœuds`, size:9, color:textMuted, gap:2 });
+    
     if(meta?.experienceTitleFr || meta?.expSlug){
       resLines.push({ text: `Expérience : ${meta.experienceTitleFr || meta.expSlug}`, size:10, color:textDark, gap:3 });
     }
+    
     resLines.push({ text: `Dates : ${dateDisplay}`, size:10, color:textDark, gap:3 });
     resLines.push({ text: `Type de prestation : ${partLabel}`, size:10, color:textDark, gap:3 });
+    
+    // Port de départ si disponible
+    if(meta?.departurePort) resLines.push({ text: `Port de départ : ${meta.departurePort}`, size:10, color:textDark, gap:3 });
+    
     if(reservation.passengers) resLines.push({ text: `Nombre de passagers : ${reservation.passengers}`, size:10, color:textDark, gap:3 });
     if(meta?.childrenCount) resLines.push({ text: `Enfants à bord : ${meta.childrenCount}`, size:10, color:textDark, gap:3 });
+    
+    // Jeux d'eau
+    if(meta?.waterToys) resLines.push({ text: `Jeux d'eau demandés : ${meta.waterToys === 'yes' ? 'Oui' : 'Non'}`, size:9, color:textMuted, gap:2 });
+    
     if(meta?.specialNeeds) resLines.push({ text: `Demande spécifique : ${meta.specialNeeds}`, size:9, color:textMuted, gap:2 });
     // Calcul hauteur réservation
     tempY = y;
@@ -274,6 +294,56 @@ export async function GET(_req: Request, context: any) {
     });
 
     y = resBoxBottom - 40;
+
+    // ===== Informations de paiement =====
+    const paymentBoxTop = y;
+    const paymentLines: { text:string; size:number; color:any; bold?:boolean; gap:number }[] = [];
+    paymentLines.push({ text: 'Informations de paiement', size:12, color: primary, bold:true, gap:4 });
+    
+    // Date de création de la réservation
+    paymentLines.push({ text: `Réservation créée le : ${reservation.createdAt.toLocaleDateString('fr-FR')}`, size:9, color:textMuted, gap:2 });
+    
+    // Date de paiement de l'acompte
+    if(reservation.depositPaidAt) {
+      paymentLines.push({ text: `Acompte payé le : ${reservation.depositPaidAt.toLocaleDateString('fr-FR')}`, size:9, color:textMuted, gap:2 });
+    }
+    
+    // Méthode de paiement
+    if(reservation.stripePaymentIntentId) {
+      paymentLines.push({ text: `Paiement par carte bancaire`, size:9, color:textMuted, gap:2 });
+      paymentLines.push({ text: `ID transaction : ${reservation.stripePaymentIntentId.slice(-8)}`, size:8, color:textMuted, gap:2 });
+    }
+    
+    // Statut de la réservation
+    const statusText = reservation.status === 'deposit_paid' ? 'Acompte payé' : 
+                      reservation.status === 'completed' ? 'Terminée' :
+                      reservation.status === 'cancelled' ? 'Annulée' : 'En attente';
+    paymentLines.push({ text: `Statut : ${statusText}`, size:9, color: reservation.status === 'deposit_paid' ? rgb(0.0, 0.6, 0.0) : textMuted, bold: true, gap:2 });
+    
+    // Calcul hauteur paiement
+    let tempPaymentY = y;
+    paymentLines.forEach(l=>{ tempPaymentY -= l.size + l.gap; });
+    const paymentBoxBottom = tempPaymentY;
+    
+    // Rectangle pour les informations de paiement
+    page.drawRectangle({
+      x: leftMargin-10,
+      y: paymentBoxBottom - 10,
+      width: width - (leftMargin*2) + 20,
+      height: (paymentBoxTop - paymentBoxBottom) + 20,
+      color: rgb(0.98, 0.99, 1.0),
+      borderColor: borderGray,
+      borderWidth: 0.6
+    });
+    
+    // Écriture des lignes paiement
+    let paymentLineY = paymentBoxTop;
+    paymentLines.forEach(l=>{
+      page.drawText(sanitize(l.text), { x: leftMargin, y: paymentLineY - l.size - 4, size: l.size, font: l.bold? fontBold: font, color: l.color });
+      paymentLineY -= l.size + l.gap;
+    });
+
+    y = paymentBoxBottom - 40;
 
     // ===== Tableau détaillé =====
     draw('Détail des prestations', 12, primary, leftMargin, true); y -= 5;
@@ -343,16 +413,30 @@ export async function GET(_req: Request, context: any) {
     writeRecap('Reste à payer', formatMoney(remaining), true);
     y -= 90;
 
-    // ===== Mentions =====
+    // ===== Mentions légales et conditions =====
     // Vérifier qu'on a assez d'espace avant de dessiner
-    if (y < 100) {
+    if (y < 150) {
       // Si on manque d'espace, créer une nouvelle page
       page = pdfDoc.addPage();
       y = height - 50;
     }
-    drawWrapped("Cette facture d'acompte confirme la réception de votre paiement. Le solde devra être réglé avant ou le jour de l'embarquement.",8,textMuted,leftMargin,width-leftMargin*2,false,3);
-    drawWrapped("[!] IMPORTANT : Le prix final sera ajusté en fonction du coût réel du carburant consommé à la fin de la location.",8,textMuted,leftMargin,width-leftMargin*2,false,3);
-    drawWrapped('Document généré automatiquement - valable sans signature.',8,textMuted,leftMargin,width-leftMargin*2,false,3);
+    
+    draw('Conditions importantes', 11, primary, leftMargin, true, 6);
+    y -= 5;
+    
+    drawWrapped("• Cette facture d'acompte confirme la réception de votre paiement et la réservation de votre prestation.",8,textMuted,leftMargin,width-leftMargin*2,false,3);
+    drawWrapped("• Le solde devra être réglé avant ou le jour de l'embarquement selon les modalités convenues.",8,textMuted,leftMargin,width-leftMargin*2,false,3);
+    drawWrapped("• IMPORTANT : Le prix final sera ajusté en fonction du coût réel du carburant consommé à la fin de la location.",8,textMuted,leftMargin,width-leftMargin*2,false,3);
+    
+    if(boatData?.skipperRequired) {
+      drawWrapped("• Skipper obligatoire : Un skipper professionnel sera présent à bord pour assurer la navigation en toute sécurité.",8,textMuted,leftMargin,width-leftMargin*2,false,3);
+    }
+    
+    drawWrapped("• Rendez-vous : Les détails du point de rendez-vous et les instructions d'embarquement vous seront communiqués 24h avant la prestation.",8,textMuted,leftMargin,width-leftMargin*2,false,3);
+    drawWrapped("• Annulation : Consultez nos conditions d'annulation sur notre site web ou contactez-nous directement.",8,textMuted,leftMargin,width-leftMargin*2,false,3);
+    
+    y -= 10;
+    drawWrapped('Document généré automatiquement - valable sans signature. Pour toute question, contactez-nous à charter@bb-yachts.com',7,textMuted,leftMargin,width-leftMargin*2,false,2);
 
     const pdfBytes = await pdfDoc.save();
     return new NextResponse(Buffer.from(pdfBytes), { status:200, headers:{ 'Content-Type':'application/pdf', 'Content-Disposition':`inline; filename="${invoiceNumber}.pdf"` }});

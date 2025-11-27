@@ -93,7 +93,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       <main className="flex-1 max-w-6xl mx-auto px-4 py-10 text-left w-full">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">{locale === "fr" ? "Tableau de bord" : "Dashboard"}</h1>
+            <h1 className="text-2xl font-nakilla font-bold">{locale === "fr" ? "Tableau de bord" : "Dashboard"}</h1>
             <p className="mt-1 text-black/70">{locale === "fr" ? "Bienvenue," : "Welcome,"} {session.user?.name ?? session.user?.email}</p>
           </div>
           <div className="flex items-center gap-2">
