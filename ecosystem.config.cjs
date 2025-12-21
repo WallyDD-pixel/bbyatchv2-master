@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: 'bbyatchv2-preprod',
-      script: 'npm',
-      args: 'run start -- -p 3010',
+      script: 'node_modules/.bin/next',
+      args: 'start -p 3010',
       cwd: __dirname,
       env: {
         NODE_ENV: 'production',

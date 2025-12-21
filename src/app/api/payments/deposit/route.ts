@@ -71,7 +71,18 @@ export async function POST(req: Request){
     }
 
     // Slot dispo jour départ (logique existante conservée)
-    const startSlots = await prisma.availabilitySlot.findMany({ where: { boat: { slug: boatSlug }, date: { gte: s, lte: s }, status: 'available' }, select: { part: true } });
+    // Utiliser boatId directement pour éviter les problèmes de relation imbriquée avec PostgreSQL
+    // s est déjà à minuit (00:00:00), donc on utilise une plage qui couvre toute la journée
+    const endOfDay = new Date(s);
+    endOfDay.setHours(23, 59, 59, 999);
+    const startSlots = await prisma.availabilitySlot.findMany({ 
+      where: { 
+        boatId: boat.id, 
+        date: { gte: s, lte: endOfDay }, 
+        status: 'available' 
+      }, 
+      select: { part: true } 
+    });
     const partsSet = new Set(startSlots.map(s=>s.part));
     const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
     if((part==='FULL' || part==='SUNSET') && !hasFullEquivalent) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
