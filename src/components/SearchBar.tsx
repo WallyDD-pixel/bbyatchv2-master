@@ -154,6 +154,23 @@ export default function SearchBar({
   const monthKey = (y:number,m:number)=>`${y}-${String(m+1).padStart(2,'0')}`;
   const fmtDate = (d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
+  // État pour stocker le boatId quand boatSlug est fourni
+  const [boatId, setBoatId] = useState<number | null>(null);
+  
+  // Récupérer le boatId à partir du boatSlug
+  useEffect(() => {
+    if (boatSlug && !boatId) {
+      fetch(`/api/boats/${boatSlug}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.id) {
+            setBoatId(data.id);
+          }
+        })
+        .catch(() => { /* ignore */ });
+    }
+  }, [boatSlug, boatId]);
+
   const ensureMonth = useCallback(async (y:number,m:number)=>{
     const key = monthKey(y,m);
     if (monthCache.has(key)) return;
@@ -176,12 +193,16 @@ export default function SearchBar({
         const days = Object.values(map);
         setMonthCache(prev=>{ const n = new Map(prev); n.set(key, days); return n; });
       } else {
-        const res = await fetch(`/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}`);
+        // Ajouter boatId à la requête si disponible
+        const url = boatId 
+          ? `/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}&boatId=${boatId}`
+          : `/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}`;
+        const res = await fetch(url);
         const data = await res.json();
         setMonthCache(prev=>{ const n = new Map(prev); n.set(key, data.days||[]); return n; });
       }
     } catch { /* ignore */ } finally { setLoadingMonth(false); }
-  },[monthCache, mode, experienceSlug]);
+  },[monthCache, mode, experienceSlug, boatId]);
 
   useEffect(()=>{ ensureMonth(calMonth.y, calMonth.m); },[calMonth, ensureMonth]);
 
@@ -835,8 +856,9 @@ export default function SearchBar({
                 const isEnd = !!c.date && values.endDate && c.date===values.endDate;
                 const stats:any = c.stats;
                 const past = !!c.date && c.date < todayStr; // passé
+                const isReserved = !!(stats && stats.reserved); // jour réservé pour ce bateau
                 let clickable = false;
-                if (c.date && !past) {
+                if (c.date && !past && !isReserved) {
                   // Si on sélectionne la date de fin, vérifier que la date est après la date de début
                   if (pickingEndDate && values.startDate && c.date < values.startDate) {
                     clickable = false;
@@ -863,11 +885,14 @@ export default function SearchBar({
                     clickable = !!(stats && (stats.full > 0 || stats.pmOnly > 0));
                   }
                 }
-                // Indisponible si jour futur mais pas clickable
+                // Indisponible si jour futur mais pas clickable OU réservé
                 let unavailable = false;
                 if (c.date && !past) {
-                  // Si on sélectionne la date de fin, les jours avant la date de début sont indisponibles
-                  if (pickingEndDate && values.startDate && c.date < values.startDate) {
+                  // Jour réservé = toujours indisponible
+                  if (isReserved) {
+                    unavailable = true;
+                  } else if (pickingEndDate && values.startDate && c.date < values.startDate) {
+                    // Si on sélectionne la date de fin, les jours avant la date de début sont indisponibles
                     unavailable = true;
                   } else if (part === 'FULL') {
                     unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
@@ -880,6 +905,9 @@ export default function SearchBar({
                 let bgClass = 'text-white/30';
                 if (past) {
                   bgClass = ' bg-white/5 text-white/30 line-through';
+                } else if (isReserved) {
+                  // Jour réservé = rouge vif pour bien le distinguer
+                  bgClass = ' bg-red-500/30 border-2 border-red-500/60 text-red-100 font-bold';
                 } else if (unavailable) {
                   bgClass = ' bg-red-400/15 border border-red-400/40 text-red-200';
                 } else if (stats) {

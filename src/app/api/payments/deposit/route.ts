@@ -255,12 +255,22 @@ export async function POST(req: Request){
       }
     });
     console.log('[Deposit] Reservation created:', reservation.id);
-    const mode = settings?.stripeMode === 'live' ? 'live' : 'test';
+    
+    // Pour la préproduction, forcer le mode test
+    // En production, utiliser le mode des settings
+    const isPreprod = process.env.NODE_ENV === 'production' && (process.env.NEXTAUTH_URL?.includes('preprod') || process.env.NEXTAUTH_URL?.includes('localhost'));
+    const mode = isPreprod ? 'test' : (settings?.stripeMode === 'live' ? 'live' : 'test');
+    
+    console.log('[Deposit] Stripe mode:', mode, 'Settings mode:', settings?.stripeMode, 'isPreprod:', isPreprod);
+    
     const secretKey = mode==='live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
     if(!secretKey) {
       console.error('[Deposit] Stripe key missing for mode:', mode);
+      console.error('[Deposit] Available keys - Test:', !!settings?.stripeTestSk, 'Live:', !!settings?.stripeLiveSk);
       return NextResponse.json({ error: 'stripe_key_missing' }, { status: 500 });
     }
+    
+    console.log('[Deposit] Using Stripe key (first 20 chars):', secretKey.substring(0, 20) + '...');
     console.log('[Deposit] Creating Stripe checkout session...');
     const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
     const lineName = locale==='fr' ? `Acompte ${boat.name}` : `Deposit ${boat.name}`;
