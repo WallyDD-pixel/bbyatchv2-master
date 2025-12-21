@@ -95,16 +95,22 @@ export async function POST(req: Request){
     });
     
     console.log('[Deposit] Found', allSlots.length, 'slots in date range');
+    console.log('[Deposit] Slots details:', JSON.stringify(allSlots.map(s => ({ 
+      part: s.part, 
+      date: new Date(s.date).toISOString().split('T')[0],
+      dateRaw: s.date.toString()
+    }))));
+    console.log('[Deposit] Boat ID:', boat.id, 'Boat slug:', boatSlug);
     
     // Vérifier chaque jour de la plage
     for (const day of allDays) {
       const dayStr = day.toISOString().split('T')[0];
-      const dayStart = new Date(dayStr + 'T00:00:00');
-      const dayEnd = new Date(dayStr + 'T23:59:59.999');
       
       const daySlots = allSlots.filter(slot => {
         const slotDate = new Date(slot.date);
-        return slotDate >= dayStart && slotDate <= dayEnd;
+        // Comparer les dates en format YYYY-MM-DD pour éviter les problèmes de timezone
+        const slotDateStr = slotDate.toISOString().split('T')[0];
+        return slotDateStr === dayStr;
       });
       
       const dayPartsSet = new Set(daySlots.map(s => s.part));
