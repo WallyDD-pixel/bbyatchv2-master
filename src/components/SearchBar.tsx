@@ -141,6 +141,7 @@ export default function SearchBar({
 
   // --- Date picker état ---
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickingEndDate, setPickingEndDate] = useState(false); // true si on sélectionne la date de fin
   const [calMonth, setCalMonth] = useState(()=>{ const d=new Date(); return { y:d.getFullYear(), m:d.getMonth() }; });
   const [monthCache, setMonthCache] = useState<Map<string,({date:string; boats:number} | {date:string; full:number; amOnly:number; pmOnly:number})[]>>(new Map());
   const [loadingMonth, setLoadingMonth] = useState(false);
@@ -526,8 +527,8 @@ export default function SearchBar({
         <input
           type="text"
           readOnly
-          onClick={openPicker}
-          onFocus={openPicker}
+          onClick={() => openPicker(false)}
+          onFocus={() => openPicker(false)}
           placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part? 'Choisir un créneau d\'abord' : 'Sélectionner...')) : (!part? 'Choisir un créneau' : 'Sélectionner...')}
           className={baseInput + ' ' + ((!part || (needsCity && !values.city.trim()))? 'opacity-50 cursor-not-allowed':'cursor-pointer')}
           value={values.startDate}
@@ -546,8 +547,8 @@ export default function SearchBar({
         <input
           type="text"
           readOnly
-          onClick={()=> (part==='FULL' || part==='SUNSET') && openPicker()}
-          onFocus={()=> (part==='FULL' || part==='SUNSET') && openPicker()}
+          onClick={()=> (part==='FULL' || part==='SUNSET') && openPicker(true)}
+          onFocus={()=> (part==='FULL' || part==='SUNSET') && openPicker(true)}
           placeholder={(part==='FULL' || part==='SUNSET')? (needsCity ? (!values.city.trim()? 'Choisir la ville' : 'Sélectionner...') : 'Sélectionner...') : (!part? '' : values.startDate? values.startDate : '')}
           className={baseInput + ' ' + ((!part || (needsCity && !values.city.trim()))? 'opacity-50 cursor-not-allowed': ((part !== "FULL" && part !== "SUNSET") ? "opacity-60" : "cursor-pointer"))}
           value={values.endDate}
@@ -836,12 +837,20 @@ export default function SearchBar({
                 const past = !!c.date && c.date < todayStr; // passé
                 let clickable = false;
                 if (c.date && !past) {
-                  if (!stats && !tempStart) {
+                  // Si on sélectionne la date de fin, vérifier que la date est après la date de début
+                  if (pickingEndDate && values.startDate && c.date < values.startDate) {
+                    clickable = false;
+                  } else if (!stats && !tempStart) {
                     clickable = false;
                   } else if (part === 'FULL' || part === 'SUNSET') {
                     const anyAvail = !!(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
                     if (!tempStart) {
-                      clickable = anyAvail;
+                      // Si on sélectionne la date de fin, la date doit être >= date de début ET avoir des disponibilités
+                      if (pickingEndDate) {
+                        clickable = anyAvail && (!values.startDate || c.date >= values.startDate);
+                      } else {
+                        clickable = anyAvail;
+                      }
                     } else {
                       const aDate = new Date(tempStart+'T00:00:00');
                       const bDate = new Date(c.date+'T00:00:00');
@@ -857,9 +866,16 @@ export default function SearchBar({
                 // Indisponible si jour futur mais pas clickable
                 let unavailable = false;
                 if (c.date && !past) {
-                  if (part === 'FULL') unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
-                  else if (part === 'AM') unavailable = !(stats && (stats.full>0 || stats.amOnly>0));
-                  else if (part === 'PM') unavailable = !(stats && (stats.full>0 || stats.pmOnly>0));
+                  // Si on sélectionne la date de fin, les jours avant la date de début sont indisponibles
+                  if (pickingEndDate && values.startDate && c.date < values.startDate) {
+                    unavailable = true;
+                  } else if (part === 'FULL') {
+                    unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
+                  } else if (part === 'AM') {
+                    unavailable = !(stats && (stats.full>0 || stats.amOnly>0));
+                  } else if (part === 'PM') {
+                    unavailable = !(stats && (stats.full>0 || stats.pmOnly>0));
+                  }
                 }
                 let bgClass = 'text-white/30';
                 if (past) {

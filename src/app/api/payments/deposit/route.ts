@@ -70,43 +70,68 @@ export async function POST(req: Request){
       return NextResponse.json({ error: 'slot_unavailable' }, { status: 409 });
     }
 
-    // Slot dispo jour départ (logique existante conservée)
-    // Utiliser boatId directement pour éviter les problèmes de relation imbriquée avec PostgreSQL
-    // Pour PostgreSQL/Supabase, comparer les dates en utilisant une plage qui couvre toute la journée
-    // Format: YYYY-MM-DD - créer une date à minuit local puis utiliser une plage
-    const startDateOnly = new Date(start + 'T00:00:00');
-    const endDateOnly = new Date(start + 'T23:59:59.999');
+    // Vérification de disponibilité pour TOUS les jours de la plage (pas seulement le jour de départ)
+    // Pour une réservation FULL/SUNSET sur plusieurs jours, il faut vérifier chaque jour
+    const allDays: Date[] = [];
+    let currentDate = new Date(s);
+    while (currentDate <= e) {
+      allDays.push(new Date(currentDate));
+      currentDate = new Date(currentDate.getTime() + 86400000); // +1 jour
+    }
     
-    // Log pour debug avant la requête
-    console.log('[Deposit] Checking slots for boatId:', boat.id, 'boatSlug:', boatSlug, 'date:', start, 'startDateOnly:', startDateOnly.toISOString(), 'endDateOnly:', endDateOnly.toISOString());
+    console.log('[Deposit] Checking availability for', allDays.length, 'days:', allDays.map(d => d.toISOString().split('T')[0]));
     
-    const startSlots = await prisma.availabilitySlot.findMany({ 
+    // Récupérer tous les slots disponibles pour la plage de dates complète
+    const startDateRange = new Date(s.getFullYear(), s.getMonth(), s.getDate(), 0, 0, 0, 0);
+    const endDateRange = new Date(e.getFullYear(), e.getMonth(), e.getDate(), 23, 59, 59, 999);
+    
+    const allSlots = await prisma.availabilitySlot.findMany({ 
       where: { 
         boatId: boat.id, 
-        date: { gte: startDateOnly, lte: endDateOnly }, 
+        date: { gte: startDateRange, lte: endDateRange }, 
         status: 'available' 
       }, 
       select: { part: true, date: true, boatId: true } 
     });
     
-    // Log pour debug après la requête
-    console.log('[Deposit] Found slots:', startSlots.length, 'slots:', JSON.stringify(startSlots));
+    console.log('[Deposit] Found', allSlots.length, 'slots in date range');
     
-    // Si aucun slot trouvé, essayer une requête plus large pour debug
-    if (startSlots.length === 0) {
-      const allSlotsForBoat = await prisma.availabilitySlot.findMany({
-        where: { boatId: boat.id, status: 'available' },
-        select: { part: true, date: true },
-        take: 10,
-        orderBy: { date: 'desc' }
+    // Vérifier chaque jour de la plage
+    for (const day of allDays) {
+      const dayStr = day.toISOString().split('T')[0];
+      const dayStart = new Date(dayStr + 'T00:00:00');
+      const dayEnd = new Date(dayStr + 'T23:59:59.999');
+      
+      const daySlots = allSlots.filter(slot => {
+        const slotDate = new Date(slot.date);
+        return slotDate >= dayStart && slotDate <= dayEnd;
       });
-      console.log('[Deposit] DEBUG: All available slots for this boat (last 10):', JSON.stringify(allSlotsForBoat));
+      
+      const dayPartsSet = new Set(daySlots.map(s => s.part));
+      const dayHasFullEquivalent = dayPartsSet.has('FULL') || (dayPartsSet.has('AM') && dayPartsSet.has('PM'));
+      
+      console.log('[Deposit] Day', dayStr, '- slots:', daySlots.length, 'parts:', Array.from(dayPartsSet));
+      
+      // Vérifier que ce jour a la disponibilité requise
+      if (part === 'FULL' || part === 'SUNSET') {
+        if (!dayHasFullEquivalent) {
+          console.log('[Deposit] Day', dayStr, 'does not have FULL equivalent');
+          return NextResponse.json({ error: 'slot_unavailable', day: dayStr }, { status: 400 });
+        }
+      } else if (part === 'AM') {
+        if (!(dayPartsSet.has('AM') || dayPartsSet.has('FULL'))) {
+          console.log('[Deposit] Day', dayStr, 'does not have AM or FULL');
+          return NextResponse.json({ error: 'slot_unavailable', day: dayStr }, { status: 400 });
+        }
+      } else if (part === 'PM') {
+        if (!(dayPartsSet.has('PM') || dayPartsSet.has('FULL'))) {
+          console.log('[Deposit] Day', dayStr, 'does not have PM or FULL');
+          return NextResponse.json({ error: 'slot_unavailable', day: dayStr }, { status: 400 });
+        }
+      }
     }
-    const partsSet = new Set(startSlots.map(s=>s.part));
-    const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
-    if((part==='FULL' || part==='SUNSET') && !hasFullEquivalent) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
-    if(part==='AM' && !(partsSet.has('AM') || partsSet.has('FULL'))) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
-    if(part==='PM' && !(partsSet.has('PM') || partsSet.has('FULL'))) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+    
+    console.log('[Deposit] All days are available ✓');
     // Prix selon rôle (agence ou normal)
     const boatWithPrices = await (prisma as any).boat.findUnique({ where: { slug: boatSlug }, select: { pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true, priceAgencyPerDay:true, priceAgencyAm:true, priceAgencyPm:true, priceAgencySunset:true, options: { select:{ id:true, label:true, price:true } } } });
     let total: number|null = null;
