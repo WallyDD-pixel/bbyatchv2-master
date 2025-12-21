@@ -2,12 +2,11 @@ module.exports = {
   apps: [
     {
       name: 'bbyatchv2-preprod',
-      script: 'node_modules/.bin/next',
-      args: 'start -p 3010',
+      script: 'start-server.js', // Utilise le script wrapper qui gère le port dynamiquement
       cwd: __dirname,
       env: {
         NODE_ENV: 'production',
-        PORT: 3010,
+        PORT: process.env.PORT || 3010, // Utilise PORT de l'environnement ou 3010 par défaut
         // Charger .env via dotenv ou export avant pm2 start
       },
       autorestart: false, // Désactive le redémarrage automatique
