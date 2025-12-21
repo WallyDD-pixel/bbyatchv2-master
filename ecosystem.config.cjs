@@ -7,7 +7,8 @@ module.exports = {
       cwd: __dirname,
       env: {
         NODE_ENV: 'production',
-        // Charger .env via systemd ou shell export avant pm2 start
+        PORT: 3010,
+        // Charger .env via dotenv ou export avant pm2 start
       },
       max_restarts: 10,
       min_uptime: '5s',

@@ -47,6 +47,7 @@ export async function POST(req: Request){
     // Calcul du skipper (minimum 1 jour)
     const skipperDays = (part==='FULL' || part==='SUNSET') ? Math.max(days, 1) : 1;
     const skipperTotal = (boat?.skipperRequired && boat?.skipperPrice) ? boat.skipperPrice * skipperDays : 0;
+    const effectiveSkipperPrice = boat?.skipperRequired && boat?.skipperPrice ? boat.skipperPrice * skipperDays : 0;
 
     // Vérification dynamique de chevauchement (Option 1)
     // Conflit si plage de dates recouvre et si parties incompatibles (FULL avec tout, AM avec FULL ou AM, etc.)

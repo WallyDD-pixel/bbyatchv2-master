@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import Link from 'next/link';
 
 interface Props {
   locale: string;
@@ -63,7 +64,22 @@ export default function ClientPayButton({ locale, label, boatSlug, start, end, p
         {loading && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full" />}
         <span>{label}</span>
       </button>
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && (
+        <div className="mt-2 text-xs text-red-600">
+          {error === 'unauthenticated' ? (
+            <p>
+              {locale === 'fr' 
+                ? 'Veuillez vous connecter ou créer un compte avant de pouvoir réserver. ' 
+                : 'Please sign in or create an account before booking. '}
+              <Link href="/signin" className="text-[var(--primary)] underline font-semibold">
+                {locale === 'fr' ? "S'authentifier" : "Sign in"}
+              </Link>
+            </p>
+          ) : (
+            <p>{error}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -4,18 +4,26 @@ import { getServerSession } from "next-auth";
 import { auth } from "@/lib/auth";
 
 export async function GET() {
-  const session = (await getServerSession(auth as any)) as any;
-  if (!session?.user?.email) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const email = session.user.email as string;
   try {
-    const u = await (prisma as any).user.findUnique({ where: { email } }).catch(() => null);
-    if (u) {
-      const { id, name, role } = u as any;
-      return NextResponse.json({ user: { id, name, email, role: role || "user" } });
+    const session = (await getServerSession(auth as any)) as any;
+    if (!session?.user?.email) {
+      // Retourner null au lieu de 401 pour éviter les erreurs répétées côté client
+      return NextResponse.json({ user: null }, { status: 200 });
     }
-  } catch {}
-  // Fallback avec les infos de session uniquement
-  return NextResponse.json({ user: { email, role: (session.user as any)?.role || "user" } });
+    const email = session.user.email as string;
+    try {
+      const u = await (prisma as any).user.findUnique({ where: { email } }).catch(() => null);
+      if (u) {
+        const { id, name, role } = u as any;
+        return NextResponse.json({ user: { id, name, email, role: role || "user" } });
+      }
+    } catch {}
+    // Fallback avec les infos de session uniquement
+    return NextResponse.json({ user: { email, role: (session.user as any)?.role || "user" } });
+  } catch (error) {
+    // En cas d'erreur, retourner null plutôt qu'une erreur
+    return NextResponse.json({ user: null }, { status: 200 });
+  }
 }
 
 export async function POST(req: Request) {

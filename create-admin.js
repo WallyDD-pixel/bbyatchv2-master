@@ -5,24 +5,27 @@ const prisma = new PrismaClient();
 
 async function createAdmin() {
   try {
-    // Vérifier si un admin existe déjà
-    const existingAdmin = await prisma.user.findFirst({
-      where: { role: 'admin' }
-    });
+    // Email et mot de passe (peuvent être modifiés via variables d'environnement)
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@bbyachts.local';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!';
 
-    if (existingAdmin) {
-      console.log('Un administrateur existe déjà:', existingAdmin.email);
-      return;
-    }
+    console.log('🔐 Réinitialisation du compte admin...');
+    console.log(`📧 Email: ${adminEmail}`);
 
     // Créer un mot de passe hashé
-    const hashedPassword = await bcrypt.hash('admin123', 12);
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-    // Créer l'utilisateur admin
-    const admin = await prisma.user.create({
-      data: {
-        email: 'admin@example.com',
-        name: 'Administrateur',
+    // Créer ou mettre à jour l'admin (réinitialise le mot de passe même si existe déjà)
+    const admin = await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {
+        password: hashedPassword,
+        role: 'admin',
+        emailVerified: new Date(),
+      },
+      create: {
+        email: adminEmail,
+        name: 'Admin',
         firstName: 'Admin',
         lastName: 'User',
         password: hashedPassword,
@@ -31,9 +34,16 @@ async function createAdmin() {
       }
     });
 
-    console.log('Administrateur créé avec succès:', admin.email);
+    console.log('✅ Compte admin créé/mis à jour avec succès !');
+    console.log(`   ID: ${admin.id}`);
+    console.log(`   Email: ${admin.email}`);
+    console.log(`   Rôle: ${admin.role}`);
+    console.log(`   Mot de passe: ${adminPassword}`);
+    console.log('');
+    console.log('🔑 Vous pouvez maintenant vous connecter avec ces identifiants.');
   } catch (error) {
-    console.error('Erreur lors de la création de l\'admin:', error);
+    console.error('❌ Erreur lors de la création de l\'admin:', error);
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }

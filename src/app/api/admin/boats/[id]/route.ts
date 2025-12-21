@@ -128,13 +128,34 @@ export async function PUT(req: Request, ctx: { params: { id: string } }) {
     mergedPhotos = uploaded;
   }
 
+  // Gestion de la relation City (comme dans POST, mais en mode update)
+  let cityId: number | undefined;
+  if (city !== undefined && city !== null) {
+    const trimmed = String(city).trim();
+    if (!trimmed) {
+      // Si la valeur envoyée est vide, on "détache" la ville
+      cityId = null as any;
+    } else {
+      try {
+        let existingCity = await (prisma as any).city.findUnique({ where: { name: trimmed } });
+        if (!existingCity) {
+          existingCity = await (prisma as any).city.create({ data: { name: trimmed } });
+        }
+        cityId = existingCity.id;
+      } catch (e) {
+        console.error('Error handling city on update:', e);
+        // on laisse cityId = undefined pour ne pas casser l'update
+      }
+    }
+  }
+
   try {
     await (prisma as any).boat.update({
       where: { id },
       data: {
         slug,
         name,
-        city,
+        ...(cityId !== undefined ? { cityId } : {}),
         capacity: capacity != null && capacity !== '' ? Number(capacity) : undefined,
         speedKn: speedKn != null && speedKn !== '' ? Number(speedKn) : undefined,
         fuel: fuel != null && fuel !== '' ? Number(fuel) : undefined,

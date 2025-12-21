@@ -180,9 +180,37 @@ export async function POST(req: Request) {
     });
     const isForm = ct.includes("multipart/form-data") || ct.includes("application/x-www-form-urlencoded");
     if (isForm) {
-      return NextResponse.redirect(new URL(`/admin/boats?created=${created.slug}`, req.url), 303);
+      // Redirection après création :
+      // - Si APP_BASE_URL est défini (ex: https://preprod.bbservicescharter.com),
+      //   on l'utilise pour éviter les redirections vers localhost:xxxx.
+      // - Sinon on retombe sur l'origin de la requête.
+      // Origine utilisée pour la redirection
+      // 1) APP_BASE_URL si définie
+      // 2) sinon domaine préprod en dur (évite les retours vers localhost)
+      // 3) en dernier recours, on retombe sur l'origin de la requête
+      const origin =
+        (process.env as any).APP_BASE_URL ||
+        "https://preprod.bbservicescharter.com" ||
+        (() => {
+          try {
+            return new URL(req.url).origin;
+          } catch {
+            return "";
+          }
+        })();
+      const redirectUrl = origin
+        ? `${origin}/admin/boats?created=${created.slug}`
+        : `/admin/boats?created=${created.slug}`;
+      return NextResponse.redirect(redirectUrl, 303);
     }
-    return NextResponse.json({ ok: true, id: created.id, slug: created.slug, imageUrl: finalImageUrl, photoUrls: photoArray, videoUrls: videoArray });
+    return NextResponse.json({
+      ok: true,
+      id: created.id,
+      slug: created.slug,
+      imageUrl: finalImageUrl,
+      photoUrls: photoArray,
+      videoUrls: videoArray,
+    });
   } catch (e: any) {
     if (e?.code === "P2002") return NextResponse.json({ error: "slug_unique" }, { status: 409 });
     return NextResponse.json({ error: "server_error" }, { status: 500 });

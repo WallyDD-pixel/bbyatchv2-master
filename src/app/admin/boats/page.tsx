@@ -6,6 +6,7 @@ import HeaderBar from "@/components/HeaderBar";
 import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from "next/link";
+import { BoatsTableClient } from "./BoatsTableClient";
 
 export default async function AdminBoatsPage({ searchParams }: { searchParams?: { lang?: string } }) {
   const session = (await getServerSession(auth as any)) as any;
@@ -33,42 +34,7 @@ export default async function AdminBoatsPage({ searchParams }: { searchParams?: 
             <Link href="/admin/boats/new" className="text-sm rounded-full bg-[color:var(--primary)] text-white px-3 h-9 inline-flex items-center hover:opacity-90">{locale === "fr" ? "Nouveau" : "New"}</Link>
           </div>
         </div>
-        <div className="mt-6 rounded-2xl border border-black/10 bg-white p-5 shadow-sm overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left text-black/70 bg-black/[0.035]">
-                <th className="py-2.5 px-3">Slug</th>
-                <th className="py-2.5 px-3">{locale === "fr" ? "Nom" : "Name"}</th>
-                <th className="py-2.5 px-3">{locale === "fr" ? "Ville" : "City"}</th>
-                <th className="py-2.5 px-3">{locale === "fr" ? "Prix/jour" : "Price/day"}</th>
-                <th className="py-2.5 px-3">{locale === "fr" ? "Matin" : "AM"}</th>
-                <th className="py-2.5 px-3">{locale === "fr" ? "Après‑midi" : "PM"}</th>
-                <th className="py-2.5 px-3">{locale === "fr" ? "Dispo" : "Avail."}</th>
-                <th className="py-2.5 px-3 text-right">{locale === "fr" ? "Actions" : "Actions"}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {boats.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-black/60">{locale === "fr" ? "Aucun bateau." : "No boats."}</td></tr>
-              ) : boats.map((b) => (
-                <tr key={b.id} className="border-t border-black/10">
-                  <td className="py-2.5 px-3 text-[11px] text-black/60">{b.slug}</td>
-                  <td className="py-2.5 px-3">{b.name}</td>
-                  <td className="py-2.5 px-3">{b.city || "-"}</td>
-                  <td className="py-2.5 px-3">{b.pricePerDay ? `${b.pricePerDay}€` : "-"}</td>
-                  <td className="py-2.5 px-3">{b.priceAm != null ? `${b.priceAm}€` : "-"}</td>
-                  <td className="py-2.5 px-3">{b.pricePm != null ? `${b.pricePm}€` : "-"}</td>
-                  <td className="py-2.5 px-3">{b.available ? "✔" : "✖"}</td>
-                  <td className="py-2.5 px-3">
-                    <div className="flex justify-end gap-2">
-                      <Link href={`/admin/boats/${b.id}`} className="inline-flex items-center rounded-full border border-black/15 bg-white text-xs h-8 px-3 hover:bg-black/5">{locale === "fr" ? "Voir / Éditer" : "View / Edit"}</Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <BoatsTableClient boats={boats} locale={locale} />
       </main>
       <Footer locale={locale} t={t} />
     </div>
