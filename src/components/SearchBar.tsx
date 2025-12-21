@@ -238,6 +238,15 @@ export default function SearchBar({
       if (key === "startDate" && part && part !== "FULL" && part !== "SUNSET") {
         next.endDate = val; // impose même jour pour AM/PM
       }
+      // Ne jamais modifier startDate quand on change endDate
+      // (sauf si endDate devient antérieure à startDate, alors on ajuste startDate)
+      if (key === "endDate" && part === "FULL" && typeof val === "string" && v.startDate) {
+        if (val < v.startDate) {
+          // Si la date de fin est antérieure à la date de début, on ajuste la date de début
+          next.startDate = val;
+        }
+        // Sinon, on garde startDate tel quel
+      }
       return next;
     });
 
@@ -272,8 +281,22 @@ export default function SearchBar({
     if (part === 'FULL' || part === 'SUNSET') {
       if (!tempStart) {
         // Premier clic: on initialise la plage
-        setTempStart(d);
-        setValues(v => ({ ...v, startDate: d, endDate: d }));
+        // Si on a déjà une date de début, on l'utilise comme tempStart
+        if (values.startDate && values.startDate !== d) {
+          setTempStart(values.startDate);
+          // Si la date cliquée est après la date de début, c'est la date de fin
+          if (d > values.startDate) {
+            setValues(v => ({ ...v, endDate: d }));
+          } else {
+            // Si la date cliquée est avant ou égale, on remplace les deux
+            setValues(v => ({ ...v, startDate: d, endDate: d }));
+            setTempStart(d);
+          }
+        } else {
+          // Pas de date de début définie, on initialise avec cette date
+          setTempStart(d);
+          setValues(v => ({ ...v, startDate: d, endDate: d }));
+        }
       } else {
         // Second clic: on fixe la plage complète
         if (tempStart === d) {
@@ -284,7 +307,13 @@ export default function SearchBar({
         }
         const start = tempStart < d ? tempStart : d;
         const end = tempStart < d ? d : tempStart;
-        setValues(v => ({ ...v, startDate: start, endDate: end }));
+        // Ne jamais modifier startDate si elle est déjà définie et que la nouvelle date est après
+        // Sauf si la nouvelle date est avant, alors on ajuste
+        setValues(v => {
+          const newStart = start < v.startDate ? start : v.startDate;
+          const newEnd = end > (v.endDate || v.startDate) ? end : (v.endDate || v.startDate);
+          return { ...v, startDate: newStart, endDate: newEnd };
+        });
         setTempStart(null);
       }
     } else {

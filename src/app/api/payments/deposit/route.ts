@@ -72,10 +72,13 @@ export async function POST(req: Request){
 
     // Slot dispo jour départ (logique existante conservée)
     // Utiliser boatId directement pour éviter les problèmes de relation imbriquée avec PostgreSQL
-    // Pour PostgreSQL/Supabase, utiliser une comparaison de date exacte en créant une date à minuit UTC
-    // Format: YYYY-MM-DD devient Date à minuit UTC
-    const startDateOnly = new Date(Date.UTC(s.getFullYear(), s.getMonth(), s.getDate(), 0, 0, 0, 0));
-    const endDateOnly = new Date(Date.UTC(s.getFullYear(), s.getMonth(), s.getDate(), 23, 59, 59, 999));
+    // Pour PostgreSQL/Supabase, comparer les dates en utilisant une plage qui couvre toute la journée
+    // Format: YYYY-MM-DD - créer une date à minuit local puis utiliser une plage
+    const startDateOnly = new Date(start + 'T00:00:00');
+    const endDateOnly = new Date(start + 'T23:59:59.999');
+    
+    // Log pour debug avant la requête
+    console.log('[Deposit] Checking slots for boatId:', boat.id, 'boatSlug:', boatSlug, 'date:', start, 'startDateOnly:', startDateOnly.toISOString(), 'endDateOnly:', endDateOnly.toISOString());
     
     const startSlots = await prisma.availabilitySlot.findMany({ 
       where: { 
@@ -83,11 +86,22 @@ export async function POST(req: Request){
         date: { gte: startDateOnly, lte: endDateOnly }, 
         status: 'available' 
       }, 
-      select: { part: true, date: true } 
+      select: { part: true, date: true, boatId: true } 
     });
     
-    // Log pour debug (à retirer en production)
-    console.log('[Deposit] Checking slots for boatId:', boat.id, 'date:', start, 'found:', startSlots.length, 'slots:', startSlots);
+    // Log pour debug après la requête
+    console.log('[Deposit] Found slots:', startSlots.length, 'slots:', JSON.stringify(startSlots));
+    
+    // Si aucun slot trouvé, essayer une requête plus large pour debug
+    if (startSlots.length === 0) {
+      const allSlotsForBoat = await prisma.availabilitySlot.findMany({
+        where: { boatId: boat.id, status: 'available' },
+        select: { part: true, date: true },
+        take: 10,
+        orderBy: { date: 'desc' }
+      });
+      console.log('[Deposit] DEBUG: All available slots for this boat (last 10):', JSON.stringify(allSlotsForBoat));
+    }
     const partsSet = new Set(startSlots.map(s=>s.part));
     const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
     if((part==='FULL' || part==='SUNSET') && !hasFullEquivalent) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
