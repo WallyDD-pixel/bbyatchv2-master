@@ -72,17 +72,22 @@ export async function POST(req: Request){
 
     // Slot dispo jour départ (logique existante conservée)
     // Utiliser boatId directement pour éviter les problèmes de relation imbriquée avec PostgreSQL
-    // s est déjà à minuit (00:00:00), donc on utilise une plage qui couvre toute la journée
-    const endOfDay = new Date(s);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Pour PostgreSQL/Supabase, utiliser une comparaison de date exacte en créant une date à minuit UTC
+    // Format: YYYY-MM-DD devient Date à minuit UTC
+    const startDateOnly = new Date(Date.UTC(s.getFullYear(), s.getMonth(), s.getDate(), 0, 0, 0, 0));
+    const endDateOnly = new Date(Date.UTC(s.getFullYear(), s.getMonth(), s.getDate(), 23, 59, 59, 999));
+    
     const startSlots = await prisma.availabilitySlot.findMany({ 
       where: { 
         boatId: boat.id, 
-        date: { gte: s, lte: endOfDay }, 
+        date: { gte: startDateOnly, lte: endDateOnly }, 
         status: 'available' 
       }, 
-      select: { part: true } 
+      select: { part: true, date: true } 
     });
+    
+    // Log pour debug (à retirer en production)
+    console.log('[Deposit] Checking slots for boatId:', boat.id, 'date:', start, 'found:', startSlots.length, 'slots:', startSlots);
     const partsSet = new Set(startSlots.map(s=>s.part));
     const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
     if((part==='FULL' || part==='SUNSET') && !hasFullEquivalent) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
