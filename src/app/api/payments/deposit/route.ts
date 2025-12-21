@@ -51,6 +51,7 @@ export async function POST(req: Request){
 
     // Vérification dynamique de chevauchement (Option 1)
     // Conflit si plage de dates recouvre et si parties incompatibles (FULL avec tout, AM avec FULL ou AM, etc.)
+    console.log('[Deposit] Checking for overlapping reservations...', { boatId: boat.id, startDate: s.toISOString(), endDate: e.toISOString(), part });
     const overlap = await prisma.reservation.findFirst({
       where: {
         boatId: boat.id,
@@ -64,11 +65,13 @@ export async function POST(req: Request){
           { part: null }
         ]
       },
-      select: { id: true }
+      select: { id: true, startDate: true, endDate: true, part: true, status: true, reference: true }
     });
     if(overlap){
-      return NextResponse.json({ error: 'slot_unavailable' }, { status: 409 });
+      console.log('[Deposit] OVERLAP FOUND:', JSON.stringify(overlap));
+      return NextResponse.json({ error: 'slot_unavailable', overlap: overlap }, { status: 409 });
     }
+    console.log('[Deposit] No overlapping reservations found ✓');
 
     // Vérification de disponibilité pour TOUS les jours de la plage (pas seulement le jour de départ)
     // Pour une réservation FULL/SUNSET sur plusieurs jours, il faut vérifier chaque jour
