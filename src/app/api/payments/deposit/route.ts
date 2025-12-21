@@ -173,6 +173,8 @@ export async function POST(req: Request){
     const remaining = grandTotal - deposit;
     const currency = (settings?.currency || 'eur').toLowerCase();
 
+    console.log('[Deposit] Price calculation - total:', total, 'optionsTotal:', optionsTotal, 'skipperTotal:', skipperTotal, 'grandTotal:', grandTotal);
+    
     // Générer une référence unique
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, '0');
@@ -214,6 +216,7 @@ export async function POST(req: Request){
     }
 
     // Flux normal (utilisateur ou admin) => réservation + Stripe
+    console.log('[Deposit] Creating reservation...', { userId, boatId: boat.id, startDate: s, endDate: e, part, grandTotal, deposit });
     const reservation = await prisma.reservation.create({
       data: {
         userId,
@@ -248,10 +251,15 @@ export async function POST(req: Request){
         }),
       }
     });
+    console.log('[Deposit] Reservation created:', reservation.id);
     const mode = settings?.stripeMode === 'live' ? 'live' : 'test';
     const secretKey = mode==='live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
-    if(!secretKey) return NextResponse.json({ error: 'stripe_key_missing' }, { status: 500 });
-  const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
+    if(!secretKey) {
+      console.error('[Deposit] Stripe key missing for mode:', mode);
+      return NextResponse.json({ error: 'stripe_key_missing' }, { status: 500 });
+    }
+    console.log('[Deposit] Creating Stripe checkout session...');
+    const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
     const lineName = locale==='fr' ? `Acompte ${boat.name}` : `Deposit ${boat.name}`;
     const successUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout/success?res=${reservation.id}`;
     const cancelUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout?boat=${boat.slug}&start=${start}${(part==='FULL' || part==='SUNSET') && end? '&end='+end:''}&part=${part}`;
@@ -267,7 +275,12 @@ export async function POST(req: Request){
       cancel_url: cancelUrl,
     });
 
+    console.log('[Deposit] Stripe checkout session created:', checkoutSession.id);
+    
     await prisma.reservation.update({ where:{ id: reservation.id }, data:{ stripeSessionId: checkoutSession.id } });
+    
+    console.log('[Deposit] Reservation updated with Stripe session ID');
+    console.log('[Deposit] Returning checkout URL:', checkoutSession.url);
 
     return NextResponse.json({ url: checkoutSession.url, reservationId: reservation.id });
   } catch (e:any) {
