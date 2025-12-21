@@ -10,9 +10,8 @@ module.exports = {
         PORT: 3010,
         // Charger .env via dotenv ou export avant pm2 start
       },
-      max_restarts: 10,
-      min_uptime: '5s',
-      restart_delay: 4000,
+      autorestart: false, // Désactive le redémarrage automatique
+      max_restarts: 0, // Pas de redémarrages
       watch: false,
       time: true,
     }
