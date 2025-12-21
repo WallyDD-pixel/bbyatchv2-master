@@ -45,7 +45,17 @@ export async function POST(req: Request) {
   try {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
-      const reservationId = session.metadata?.reservationId;
+      
+      // Vérifier que le paiement est bien réussi
+      if (session.payment_status !== 'paid') {
+        console.log('[Webhook] Payment not completed, status:', session.payment_status);
+        return new NextResponse('ok', { status: 200 });
+      }
+      
+      const metadata = session.metadata || {};
+      
+      // Si reservationId existe, c'est l'ancien système (mise à jour)
+      const reservationId = metadata.reservationId;
       if (reservationId) {
         const existing = await prisma.reservation.findUnique({ where: { id: reservationId }, select: { depositPaidAt: true, totalPrice: true } });
         if (existing && !existing.depositPaidAt) {
@@ -63,7 +73,87 @@ export async function POST(req: Request) {
               commissionAmount,
             }
           });
+          console.log('[Webhook] Updated existing reservation:', reservationId);
         }
+      } else {
+        // Nouveau système : créer la réservation à partir des métadonnées Stripe
+        const userId = metadata.userId;
+        const boatId = metadata.boatId ? parseInt(metadata.boatId, 10) : null;
+        const reference = metadata.reference;
+        
+        if (!userId || !boatId || !reference) {
+          console.error('[Webhook] Missing required metadata:', { userId, boatId, reference });
+          return new NextResponse('ok', { status: 200 });
+        }
+        
+        // Vérifier qu'une réservation avec cette référence n'existe pas déjà (idempotence)
+        const existing = await prisma.reservation.findFirst({
+          where: { reference },
+          select: { id: true }
+        });
+        
+        if (existing) {
+          console.log('[Webhook] Reservation already exists with reference:', reference);
+          return new NextResponse('ok', { status: 200 });
+        }
+        
+        // Créer la réservation avec toutes les données des métadonnées
+        const startDate = new Date(metadata.startDate);
+        const endDate = new Date(metadata.endDate);
+        const totalPrice = parseFloat(metadata.totalPrice || '0');
+        const depositAmount = parseFloat(metadata.depositAmount || '0');
+        const remainingAmount = parseFloat(metadata.remainingAmount || '0');
+        const depositPercent = parseInt(metadata.depositPercent || '20', 10);
+        const passengers = metadata.passengers ? parseInt(metadata.passengers, 10) : undefined;
+        
+        // Reconstruire le metadata JSON
+        const reservationMetadata = {
+          waterToys: metadata.waterToys === 'true',
+          childrenCount: metadata.childrenCount || undefined,
+          specialNeeds: metadata.specialNeeds || undefined,
+          wantsExcursion: metadata.wantsExcursion === 'true',
+          optionIds: metadata.optionIds ? metadata.optionIds.split(',').map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id)) : [],
+          boatCapacity: parseInt(metadata.boatCapacity || '0', 10),
+          boatLength: metadata.boatLength ? parseFloat(metadata.boatLength) : null,
+          boatSpeed: parseFloat(metadata.boatSpeed || '0'),
+          departurePort: metadata.departurePort || 'Port à définir',
+          bookingDate: metadata.bookingDate || new Date().toISOString(),
+          userRole: metadata.userRole || null,
+          skipperRequired: metadata.skipperRequired === 'true',
+          effectiveSkipperPrice: metadata.effectiveSkipperPrice ? parseFloat(metadata.effectiveSkipperPrice) : null,
+        };
+        
+        let commissionAmount: number | undefined;
+        if (settings?.platformCommissionPct && totalPrice) {
+          commissionAmount = Math.round(totalPrice * (settings.platformCommissionPct / 100));
+        }
+        
+        const reservation = await prisma.reservation.create({
+          data: {
+            userId,
+            boatId,
+            reference,
+            startDate,
+            endDate,
+            part: metadata.part as 'FULL' | 'AM' | 'PM' | 'SUNSET' | null,
+            passengers,
+            totalPrice,
+            depositAmount,
+            remainingAmount,
+            depositPercent,
+            status: 'deposit_paid',
+            depositPaidAt: new Date(),
+            locale: metadata.locale || 'fr',
+            currency: metadata.currency || 'eur',
+            stripeSessionId: session.id,
+            stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent as any)?.id,
+            stripeCustomerId: typeof session.customer === 'string' ? session.customer : (session.customer as any)?.id,
+            commissionAmount,
+            metadata: JSON.stringify(reservationMetadata),
+          }
+        });
+        
+        console.log('[Webhook] Created new reservation:', reservation.id, 'reference:', reference);
       }
     }
   } catch (err) {

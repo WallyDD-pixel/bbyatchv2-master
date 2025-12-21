@@ -55,7 +55,7 @@ export async function POST(req: Request){
     const overlap = await prisma.reservation.findFirst({
       where: {
         boatId: boat.id,
-        status: { not: 'cancelled' },
+        status: { in: ['deposit_paid', 'paid', 'completed'] }, // Uniquement les réservations payées
         startDate: { lte: e },
         endDate: { gte: s },
         OR: [
@@ -218,44 +218,7 @@ export async function POST(req: Request){
       return NextResponse.json({ status: 'agency_request_created', requestId: agencyReq.id });
     }
 
-    // Flux normal (utilisateur ou admin) => réservation + Stripe
-    console.log('[Deposit] Creating reservation...', { userId, boatId: boat.id, startDate: s, endDate: e, part, grandTotal, deposit });
-    const reservation = await prisma.reservation.create({
-      data: {
-        userId,
-        boatId: boat.id,
-        reference,
-        startDate: s,
-        endDate: e,
-        part,
-        passengers: pax? Number(pax): undefined,
-        totalPrice: grandTotal,
-        depositAmount: deposit,
-        remainingAmount: remaining,
-        depositPercent: Math.round(depositPct*100),
-        status: 'pending_deposit',
-        locale,
-        currency,
-        metadata: JSON.stringify({
-          waterToys: waterToysBool,
-          childrenCount,
-          specialNeeds: specialNeedsStr,
-          wantsExcursion: wantsExcursionBool,
-          optionIds: selectedOptionIds, // Stocker les IDs des options sélectionnées
-          // Informations supplémentaires pour la facturation
-          boatCapacity: boat.capacity,
-          boatLength: boat.lengthM,
-          boatSpeed: boat.speedKn,
-          departurePort: body.departurePort || 'Port à définir',
-          bookingDate: new Date().toISOString(),
-          userRole: userRole,
-          skipperRequired: boat.skipperRequired,
-          effectiveSkipperPrice: boat.skipperRequired ? effectiveSkipperPrice : null,
-        }),
-      }
-    });
-    console.log('[Deposit] Reservation created:', reservation.id);
-    
+    // Flux normal (utilisateur ou admin) => Stripe d'abord, réservation créée uniquement après paiement réussi
     // Pour la préproduction, forcer le mode test
     // En production, utiliser le mode des settings
     const isPreprod = process.env.NODE_ENV === 'production' && (process.env.NEXTAUTH_URL?.includes('preprod') || process.env.NEXTAUTH_URL?.includes('localhost'));
@@ -274,7 +237,39 @@ export async function POST(req: Request){
     console.log('[Deposit] Creating Stripe checkout session...');
     const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
     const lineName = locale==='fr' ? `Acompte ${boat.name}` : `Deposit ${boat.name}`;
-    const successUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout/success?res=${reservation.id}`;
+    
+    // Stocker toutes les informations nécessaires dans les métadonnées Stripe pour créer la réservation dans le webhook
+    const metadata = {
+      userId,
+      boatId: String(boat.id),
+      boatSlug: boat.slug,
+      reference,
+      startDate: s.toISOString(),
+      endDate: e.toISOString(),
+      part,
+      passengers: pax ? String(pax) : '',
+      totalPrice: String(grandTotal),
+      depositAmount: String(deposit),
+      remainingAmount: String(remaining),
+      depositPercent: String(Math.round(depositPct*100)),
+      locale,
+      currency,
+      waterToys: String(waterToysBool),
+      childrenCount: childrenCount || '',
+      specialNeeds: specialNeedsStr || '',
+      wantsExcursion: String(wantsExcursionBool),
+      optionIds: selectedOptionIds.join(','),
+      boatCapacity: String(boat.capacity),
+      boatLength: boat.lengthM ? String(boat.lengthM) : '',
+      boatSpeed: String(boat.speedKn),
+      departurePort: body.departurePort || 'Port à définir',
+      bookingDate: new Date().toISOString(),
+      userRole: userRole || '',
+      skipperRequired: String(boat.skipperRequired),
+      effectiveSkipperPrice: boat.skipperRequired ? String(effectiveSkipperPrice) : '',
+    };
+    
+    const successUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout?boat=${boat.slug}&start=${start}${(part==='FULL' || part==='SUNSET') && end? '&end='+end:''}&part=${part}`;
 
     const checkoutSession = await stripe.checkout.sessions.create({
@@ -283,19 +278,16 @@ export async function POST(req: Request){
       line_items: [
         { price_data: { currency, unit_amount: deposit * 100, product_data: { name: lineName } }, quantity: 1 }
       ],
-      metadata: { reservationId: reservation.id, boatId: String(boat.id), part, start, end: end || start },
+      metadata: metadata,
       success_url: successUrl,
       cancel_url: cancelUrl,
     });
 
     console.log('[Deposit] Stripe checkout session created:', checkoutSession.id);
-    
-    await prisma.reservation.update({ where:{ id: reservation.id }, data:{ stripeSessionId: checkoutSession.id } });
-    
-    console.log('[Deposit] Reservation updated with Stripe session ID');
+    console.log('[Deposit] Reservation will be created only after successful payment in webhook');
     console.log('[Deposit] Returning checkout URL:', checkoutSession.url);
 
-    return NextResponse.json({ url: checkoutSession.url, reservationId: reservation.id });
+    return NextResponse.json({ url: checkoutSession.url, sessionId: checkoutSession.id });
   } catch (e:any) {
     console.error('[Deposit API Error]', e);
     console.error('[Deposit API Error Stack]', e?.stack);

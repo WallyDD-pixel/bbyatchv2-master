@@ -25,11 +25,12 @@ export async function GET(req: Request) {
       select: { date: true, boatId: true, part: true }
     });
     
-    // Récupérer les réservations actives pour soustraire les jours réservés
+    // Récupérer les réservations actives (uniquement payées) pour soustraire les jours réservés
+    // Ne pas compter les réservations pending_deposit car elles ne sont créées qu'après paiement maintenant
     const reservations = boatId ? await (prisma as any).reservation.findMany({
       where: {
         boatId: boatId,
-        status: { not: 'cancelled' },
+        status: { in: ['deposit_paid', 'paid', 'completed'] }, // Uniquement les réservations payées
         startDate: { lte: end },
         endDate: { gte: start }
       },
