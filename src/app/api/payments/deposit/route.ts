@@ -240,7 +240,13 @@ export async function POST(req: Request){
 
     return NextResponse.json({ url: checkoutSession.url, reservationId: reservation.id });
   } catch (e:any) {
-    console.error(e);
-    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+    console.error('[Deposit API Error]', e);
+    console.error('[Deposit API Error Stack]', e?.stack);
+    console.error('[Deposit API Error Message]', e?.message);
+    return NextResponse.json({ 
+      error: 'server_error', 
+      message: process.env.NODE_ENV === 'development' ? e?.message : undefined,
+      details: process.env.NODE_ENV === 'development' ? e?.stack : undefined
+    }, { status: 500 });
   }
 }
