@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'bbyatchv2-preprod',
       script: 'npm',
-      args: 'run start',
+      args: 'run start -- -p 3010',
       cwd: __dirname,
       env: {
         NODE_ENV: 'production',
