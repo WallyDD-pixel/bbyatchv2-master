@@ -172,15 +172,58 @@ echo -e "${GREEN}✓ Nginx configuré et rechargé${NC}"
 # 10. Démarrer l'application avec PM2
 echo -e "${YELLOW}[10/10] Démarrage de l'application avec PM2...${NC}"
 
+# Créer le dossier logs si nécessaire
+mkdir -p logs
+
 # Arrêter l'application si elle tourne déjà
 pm2 stop "$APP_NAME" 2>/dev/null || true
 pm2 delete "$APP_NAME" 2>/dev/null || true
 
+# Charger les variables d'environnement depuis .env
+if [ -f .env ]; then
+    echo -e "${YELLOW}⚠ Chargement des variables d'environnement depuis .env...${NC}"
+    # Charger les variables d'environnement en évitant les commentaires et lignes vides
+    set -a
+    source .env
+    set +a
+fi
+
+# S'assurer que PORT est défini
+export PORT=${PORT:-3010}
+echo -e "${GREEN}✓ PORT configuré: $PORT${NC}"
+
 # Démarrer avec PM2
-PORT=$PORT pm2 start ecosystem.config.cjs
+pm2 start ecosystem.config.cjs
 pm2 save
 
+# Configurer PM2 pour démarrer au boot (si pas déjà fait)
+if ! pm2 startup | grep -q "already setup"; then
+    echo -e "${YELLOW}⚠ Configuration de PM2 pour démarrer au boot...${NC}"
+    pm2 startup | grep "sudo" | bash || true
+fi
+
 echo -e "${GREEN}✓ Application démarrée avec PM2${NC}"
+
+# Attendre que l'application démarre
+echo "Attente du démarrage de l'application..."
+sleep 5
+
+# Vérifier que l'application fonctionne
+MAX_RETRIES=10
+RETRY=0
+while [ $RETRY -lt $MAX_RETRIES ]; do
+    if curl -f -s http://localhost:$PORT > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Application répond sur le port $PORT${NC}"
+        break
+    fi
+    RETRY=$((RETRY + 1))
+    if [ $RETRY -ge $MAX_RETRIES ]; then
+        echo -e "${RED}⚠ L'application ne répond pas après $MAX_RETRIES tentatives${NC}"
+        echo "Vérifiez les logs avec: pm2 logs $APP_NAME"
+    else
+        sleep 2
+    fi
+done
 
 # Résumé
 echo ""
@@ -204,4 +247,10 @@ echo "⚠ N'oubliez pas de:"
 echo "  1. Vérifier/configurer le fichier .env avec vos vraies valeurs"
 echo "  2. Configurer le certificat SSL si nécessaire: sudo certbot --nginx -d preprod.bbservicescharter.com"
 echo "  3. Vérifier que l'application fonctionne: https://preprod.bbservicescharter.com"
+echo ""
+echo "🔍 Vérification du statut:"
+pm2 status "$APP_NAME"
+echo ""
+echo "📋 Pour voir les logs en temps réel:"
+echo "   pm2 logs $APP_NAME --lines 50"
 

@@ -5,138 +5,41 @@ import { messages, type Locale } from '@/i18n/messages';
 import { notFound } from 'next/navigation';
 import Stripe from 'stripe';
 
-interface Props { searchParams?: { lang?: string; res?: string; session_id?: string } }
+interface Props { searchParams?: { lang?: string; res?: string } }
 
 export default async function CheckoutSuccessPage({ searchParams }: Props){
   const sp = searchParams || {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
-  
-  let reservation = null;
-  
-  // Nouveau système : récupérer via session_id
-  if (sp?.session_id) {
-    const sessionId = sp.session_id;
-    // Trouver la réservation créée par le webhook avec ce session_id
-    reservation = await prisma.reservation.findFirst({ 
-      where: { stripeSessionId: sessionId }, 
-      include: { boat: true, user: true } 
-    });
-    
-    // Si pas encore créée par le webhook, vérifier Stripe et créer si nécessaire
-    if (!reservation) {
-      const settings = await prisma.settings.findFirst({ where: { id: 1 }, select: { stripeMode: true, stripeTestSk: true, stripeLiveSk: true } });
-      const mode = settings?.stripeMode === 'live' ? 'live' : 'test';
-      const secretKey = mode === 'live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
-      if (secretKey) {
-        try {
-          const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
-          const session = await stripe.checkout.sessions.retrieve(sessionId);
-          
-          if (session.payment_status === 'paid' && session.metadata) {
-            const metadata = session.metadata;
-            const userId = metadata.userId;
-            const boatId = metadata.boatId ? parseInt(metadata.boatId, 10) : null;
-            const reference = metadata.reference;
-            
-            if (userId && boatId && reference) {
-              // Vérifier qu'elle n'existe pas déjà
-              const existing = await prisma.reservation.findFirst({
-                where: { reference },
-                select: { id: true }
-              });
-              
-              if (!existing) {
-                // Créer la réservation (fallback si webhook n'a pas encore fonctionné)
-                const startDate = new Date(metadata.startDate);
-                const endDate = new Date(metadata.endDate);
-                const totalPrice = parseFloat(metadata.totalPrice || '0');
-                const depositAmount = parseFloat(metadata.depositAmount || '0');
-                const remainingAmount = parseFloat(metadata.remainingAmount || '0');
-                const depositPercent = parseInt(metadata.depositPercent || '20', 10);
-                const passengers = metadata.passengers ? parseInt(metadata.passengers, 10) : undefined;
-                
-                const reservationMetadata = {
-                  waterToys: metadata.waterToys === 'true',
-                  childrenCount: metadata.childrenCount || undefined,
-                  specialNeeds: metadata.specialNeeds || undefined,
-                  wantsExcursion: metadata.wantsExcursion === 'true',
-                  optionIds: metadata.optionIds ? metadata.optionIds.split(',').map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id)) : [],
-                  boatCapacity: parseInt(metadata.boatCapacity || '0', 10),
-                  boatLength: metadata.boatLength ? parseFloat(metadata.boatLength) : null,
-                  boatSpeed: parseFloat(metadata.boatSpeed || '0'),
-                  departurePort: metadata.departurePort || 'Port à définir',
-                  bookingDate: metadata.bookingDate || new Date().toISOString(),
-                  userRole: metadata.userRole || null,
-                  skipperRequired: metadata.skipperRequired === 'true',
-                  effectiveSkipperPrice: metadata.effectiveSkipperPrice ? parseFloat(metadata.effectiveSkipperPrice) : null,
-                };
-                
-                reservation = await prisma.reservation.create({
-                  data: {
-                    userId,
-                    boatId,
-                    reference,
-                    startDate,
-                    endDate,
-                    part: metadata.part as 'FULL' | 'AM' | 'PM' | 'SUNSET' | null,
-                    passengers,
-                    totalPrice,
-                    depositAmount,
-                    remainingAmount,
-                    depositPercent,
-                    status: 'deposit_paid',
-                    depositPaidAt: new Date(),
-                    locale: metadata.locale || 'fr',
-                    currency: metadata.currency || 'eur',
-                    stripeSessionId: sessionId,
-                    stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent as any)?.id,
-                    stripeCustomerId: typeof session.customer === 'string' ? session.customer : (session.customer as any)?.id,
-                    metadata: JSON.stringify(reservationMetadata),
-                  },
-                  include: { boat: true, user: true }
-                });
-              }
-            }
-          }
-        } catch (e) {
-          console.error('Error retrieving Stripe session:', e);
+  const resId = sp?.res;
+  if(!resId) notFound();
+  let reservation = await prisma.reservation.findUnique({ where:{ id: resId }, include:{ boat:true, user:true } });
+  if(!reservation) notFound();
+
+  // Vérification manuelle Stripe si pas encore marqué payé
+  if(!reservation.depositPaidAt && reservation.stripeSessionId){
+    const settings = await prisma.settings.findFirst({ where:{ id:1 }, select:{ stripeMode:true, stripeTestSk:true, stripeLiveSk:true } });
+    const mode = settings?.stripeMode === 'live' ? 'live' : 'test';
+    const secretKey = mode==='live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
+    if(secretKey){
+      try {
+        const stripe = new Stripe(secretKey, { apiVersion: '2025-07-30.basil' });
+        const session = await stripe.checkout.sessions.retrieve(reservation.stripeSessionId);
+        if(session.payment_status === 'paid'){
+          reservation = await prisma.reservation.update({
+            where:{ id: reservation.id },
+            data:{
+              depositPaidAt: new Date(),
+              status: 'deposit_paid',
+              stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent as any)?.id,
+              stripeCustomerId: typeof session.customer === 'string' ? session.customer : (session.customer as any)?.id,
+            },
+            include:{ boat:true, user:true }
+          });
         }
-      }
-    }
-  } 
-  // Ancien système : récupérer via res (pour compatibilité)
-  else if (sp?.res) {
-    const resId = sp.res;
-    reservation = await prisma.reservation.findUnique({ where: { id: resId }, include: { boat: true, user: true } });
-    
-    // Vérification manuelle Stripe si pas encore marqué payé
-    if (reservation && !reservation.depositPaidAt && reservation.stripeSessionId) {
-      const settings = await prisma.settings.findFirst({ where: { id: 1 }, select: { stripeMode: true, stripeTestSk: true, stripeLiveSk: true } });
-      const mode = settings?.stripeMode === 'live' ? 'live' : 'test';
-      const secretKey = mode === 'live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
-      if (secretKey) {
-        try {
-          const stripe = new Stripe(secretKey, { apiVersion: '2025-07-30.basil' });
-          const session = await stripe.checkout.sessions.retrieve(reservation.stripeSessionId);
-          if (session.payment_status === 'paid') {
-            reservation = await prisma.reservation.update({
-              where: { id: reservation.id },
-              data: {
-                depositPaidAt: new Date(),
-                status: 'deposit_paid',
-                stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent as any)?.id,
-                stripeCustomerId: typeof session.customer === 'string' ? session.customer : (session.customer as any)?.id,
-              },
-              include: { boat: true, user: true }
-            });
-          }
-        } catch (e) { /* silencieux */ }
-      }
+      } catch(e){ /* silencieux */ }
     }
   }
-  
-  if (!reservation) notFound();
 
   const paid = !!reservation.depositPaidAt;
   const start = reservation.startDate.toISOString().slice(0,10);

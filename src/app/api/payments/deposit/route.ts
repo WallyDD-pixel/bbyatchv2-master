@@ -51,11 +51,10 @@ export async function POST(req: Request){
 
     // Vérification dynamique de chevauchement (Option 1)
     // Conflit si plage de dates recouvre et si parties incompatibles (FULL avec tout, AM avec FULL ou AM, etc.)
-    console.log('[Deposit] Checking for overlapping reservations...', { boatId: boat.id, startDate: s.toISOString(), endDate: e.toISOString(), part });
     const overlap = await prisma.reservation.findFirst({
       where: {
         boatId: boat.id,
-        status: { in: ['deposit_paid', 'paid', 'completed'] }, // Uniquement les réservations payées
+        status: { not: 'cancelled' },
         startDate: { lte: e },
         endDate: { gte: s },
         OR: [
@@ -65,82 +64,19 @@ export async function POST(req: Request){
           { part: null }
         ]
       },
-      select: { id: true, startDate: true, endDate: true, part: true, status: true, reference: true }
+      select: { id: true }
     });
     if(overlap){
-      console.log('[Deposit] OVERLAP FOUND:', JSON.stringify(overlap));
-      return NextResponse.json({ error: 'slot_unavailable', overlap: overlap }, { status: 409 });
+      return NextResponse.json({ error: 'slot_unavailable' }, { status: 409 });
     }
-    console.log('[Deposit] No overlapping reservations found ✓');
 
-    // Vérification de disponibilité pour TOUS les jours de la plage (pas seulement le jour de départ)
-    // Pour une réservation FULL/SUNSET sur plusieurs jours, il faut vérifier chaque jour
-    const allDays: Date[] = [];
-    let currentDate = new Date(s);
-    while (currentDate <= e) {
-      allDays.push(new Date(currentDate));
-      currentDate = new Date(currentDate.getTime() + 86400000); // +1 jour
-    }
-    
-    console.log('[Deposit] Checking availability for', allDays.length, 'days:', allDays.map(d => d.toISOString().split('T')[0]));
-    
-    // Récupérer tous les slots disponibles pour la plage de dates complète
-    const startDateRange = new Date(s.getFullYear(), s.getMonth(), s.getDate(), 0, 0, 0, 0);
-    const endDateRange = new Date(e.getFullYear(), e.getMonth(), e.getDate(), 23, 59, 59, 999);
-    
-    const allSlots = await prisma.availabilitySlot.findMany({ 
-      where: { 
-        boatId: boat.id, 
-        date: { gte: startDateRange, lte: endDateRange }, 
-        status: 'available' 
-      }, 
-      select: { part: true, date: true, boatId: true } 
-    });
-    
-    console.log('[Deposit] Found', allSlots.length, 'slots in date range');
-    console.log('[Deposit] Slots details:', JSON.stringify(allSlots.map(s => ({ 
-      part: s.part, 
-      date: new Date(s.date).toISOString().split('T')[0],
-      dateRaw: s.date.toString()
-    }))));
-    console.log('[Deposit] Boat ID:', boat.id, 'Boat slug:', boatSlug);
-    
-    // Vérifier chaque jour de la plage
-    for (const day of allDays) {
-      const dayStr = day.toISOString().split('T')[0];
-      
-      const daySlots = allSlots.filter(slot => {
-        const slotDate = new Date(slot.date);
-        // Comparer les dates en format YYYY-MM-DD pour éviter les problèmes de timezone
-        const slotDateStr = slotDate.toISOString().split('T')[0];
-        return slotDateStr === dayStr;
-      });
-      
-      const dayPartsSet = new Set(daySlots.map(s => s.part));
-      const dayHasFullEquivalent = dayPartsSet.has('FULL') || (dayPartsSet.has('AM') && dayPartsSet.has('PM'));
-      
-      console.log('[Deposit] Day', dayStr, '- slots:', daySlots.length, 'parts:', Array.from(dayPartsSet));
-      
-      // Vérifier que ce jour a la disponibilité requise
-      if (part === 'FULL' || part === 'SUNSET') {
-        if (!dayHasFullEquivalent) {
-          console.log('[Deposit] Day', dayStr, 'does not have FULL equivalent');
-          return NextResponse.json({ error: 'slot_unavailable', day: dayStr }, { status: 400 });
-        }
-      } else if (part === 'AM') {
-        if (!(dayPartsSet.has('AM') || dayPartsSet.has('FULL'))) {
-          console.log('[Deposit] Day', dayStr, 'does not have AM or FULL');
-          return NextResponse.json({ error: 'slot_unavailable', day: dayStr }, { status: 400 });
-        }
-      } else if (part === 'PM') {
-        if (!(dayPartsSet.has('PM') || dayPartsSet.has('FULL'))) {
-          console.log('[Deposit] Day', dayStr, 'does not have PM or FULL');
-          return NextResponse.json({ error: 'slot_unavailable', day: dayStr }, { status: 400 });
-        }
-      }
-    }
-    
-    console.log('[Deposit] All days are available ✓');
+    // Slot dispo jour départ (logique existante conservée)
+    const startSlots = await prisma.availabilitySlot.findMany({ where: { boat: { slug: boatSlug }, date: { gte: s, lte: s }, status: 'available' }, select: { part: true } });
+    const partsSet = new Set(startSlots.map(s=>s.part));
+    const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
+    if((part==='FULL' || part==='SUNSET') && !hasFullEquivalent) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+    if(part==='AM' && !(partsSet.has('AM') || partsSet.has('FULL'))) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+    if(part==='PM' && !(partsSet.has('PM') || partsSet.has('FULL'))) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
     // Prix selon rôle (agence ou normal)
     const boatWithPrices = await (prisma as any).boat.findUnique({ where: { slug: boatSlug }, select: { pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true, priceAgencyPerDay:true, priceAgencyAm:true, priceAgencyPm:true, priceAgencySunset:true, options: { select:{ id:true, label:true, price:true } } } });
     let total: number|null = null;
@@ -176,8 +112,6 @@ export async function POST(req: Request){
     const remaining = grandTotal - deposit;
     const currency = (settings?.currency || 'eur').toLowerCase();
 
-    console.log('[Deposit] Price calculation - total:', total, 'optionsTotal:', optionsTotal, 'skipperTotal:', skipperTotal, 'grandTotal:', grandTotal);
-    
     // Générer une référence unique
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, '0');
@@ -218,58 +152,47 @@ export async function POST(req: Request){
       return NextResponse.json({ status: 'agency_request_created', requestId: agencyReq.id });
     }
 
-    // Flux normal (utilisateur ou admin) => Stripe d'abord, réservation créée uniquement après paiement réussi
-    // Pour la préproduction, forcer le mode test
-    // En production, utiliser le mode des settings
-    const isPreprod = process.env.NODE_ENV === 'production' && (process.env.NEXTAUTH_URL?.includes('preprod') || process.env.NEXTAUTH_URL?.includes('localhost'));
-    const mode = isPreprod ? 'test' : (settings?.stripeMode === 'live' ? 'live' : 'test');
-    
-    console.log('[Deposit] Stripe mode:', mode, 'Settings mode:', settings?.stripeMode, 'isPreprod:', isPreprod);
-    
+    // Flux normal (utilisateur ou admin) => réservation + Stripe
+    const reservation = await prisma.reservation.create({
+      data: {
+        userId,
+        boatId: boat.id,
+        reference,
+        startDate: s,
+        endDate: e,
+        part,
+        passengers: pax? Number(pax): undefined,
+        totalPrice: grandTotal,
+        depositAmount: deposit,
+        remainingAmount: remaining,
+        depositPercent: Math.round(depositPct*100),
+        status: 'pending_deposit',
+        locale,
+        currency,
+        metadata: JSON.stringify({
+          waterToys: waterToysBool,
+          childrenCount,
+          specialNeeds: specialNeedsStr,
+          wantsExcursion: wantsExcursionBool,
+          optionIds: selectedOptionIds, // Stocker les IDs des options sélectionnées
+          // Informations supplémentaires pour la facturation
+          boatCapacity: boat.capacity,
+          boatLength: boat.lengthM,
+          boatSpeed: boat.speedKn,
+          departurePort: body.departurePort || 'Port à définir',
+          bookingDate: new Date().toISOString(),
+          userRole: userRole,
+          skipperRequired: boat.skipperRequired,
+          effectiveSkipperPrice: boat.skipperRequired ? effectiveSkipperPrice : null,
+        }),
+      }
+    });
+    const mode = settings?.stripeMode === 'live' ? 'live' : 'test';
     const secretKey = mode==='live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
-    if(!secretKey) {
-      console.error('[Deposit] Stripe key missing for mode:', mode);
-      console.error('[Deposit] Available keys - Test:', !!settings?.stripeTestSk, 'Live:', !!settings?.stripeLiveSk);
-      return NextResponse.json({ error: 'stripe_key_missing' }, { status: 500 });
-    }
-    
-    console.log('[Deposit] Using Stripe key (first 20 chars):', secretKey.substring(0, 20) + '...');
-    console.log('[Deposit] Creating Stripe checkout session...');
-    const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
+    if(!secretKey) return NextResponse.json({ error: 'stripe_key_missing' }, { status: 500 });
+  const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
     const lineName = locale==='fr' ? `Acompte ${boat.name}` : `Deposit ${boat.name}`;
-    
-    // Stocker toutes les informations nécessaires dans les métadonnées Stripe pour créer la réservation dans le webhook
-    const metadata = {
-      userId,
-      boatId: String(boat.id),
-      boatSlug: boat.slug,
-      reference,
-      startDate: s.toISOString(),
-      endDate: e.toISOString(),
-      part,
-      passengers: pax ? String(pax) : '',
-      totalPrice: String(grandTotal),
-      depositAmount: String(deposit),
-      remainingAmount: String(remaining),
-      depositPercent: String(Math.round(depositPct*100)),
-      locale,
-      currency,
-      waterToys: String(waterToysBool),
-      childrenCount: childrenCount || '',
-      specialNeeds: specialNeedsStr || '',
-      wantsExcursion: String(wantsExcursionBool),
-      optionIds: selectedOptionIds.join(','),
-      boatCapacity: String(boat.capacity),
-      boatLength: boat.lengthM ? String(boat.lengthM) : '',
-      boatSpeed: String(boat.speedKn),
-      departurePort: body.departurePort || 'Port à définir',
-      bookingDate: new Date().toISOString(),
-      userRole: userRole || '',
-      skipperRequired: String(boat.skipperRequired),
-      effectiveSkipperPrice: boat.skipperRequired ? String(effectiveSkipperPrice) : '',
-    };
-    
-    const successUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
+    const successUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout/success?res=${reservation.id}`;
     const cancelUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout?boat=${boat.slug}&start=${start}${(part==='FULL' || part==='SUNSET') && end? '&end='+end:''}&part=${part}`;
 
     const checkoutSession = await stripe.checkout.sessions.create({
@@ -278,24 +201,16 @@ export async function POST(req: Request){
       line_items: [
         { price_data: { currency, unit_amount: deposit * 100, product_data: { name: lineName } }, quantity: 1 }
       ],
-      metadata: metadata,
+      metadata: { reservationId: reservation.id, boatId: String(boat.id), part, start, end: end || start },
       success_url: successUrl,
       cancel_url: cancelUrl,
     });
 
-    console.log('[Deposit] Stripe checkout session created:', checkoutSession.id);
-    console.log('[Deposit] Reservation will be created only after successful payment in webhook');
-    console.log('[Deposit] Returning checkout URL:', checkoutSession.url);
+    await prisma.reservation.update({ where:{ id: reservation.id }, data:{ stripeSessionId: checkoutSession.id } });
 
-    return NextResponse.json({ url: checkoutSession.url, sessionId: checkoutSession.id });
+    return NextResponse.json({ url: checkoutSession.url, reservationId: reservation.id });
   } catch (e:any) {
-    console.error('[Deposit API Error]', e);
-    console.error('[Deposit API Error Stack]', e?.stack);
-    console.error('[Deposit API Error Message]', e?.message);
-    return NextResponse.json({ 
-      error: 'server_error', 
-      message: process.env.NODE_ENV === 'development' ? e?.message : undefined,
-      details: process.env.NODE_ENV === 'development' ? e?.stack : undefined
-    }, { status: 500 });
+    console.error(e);
+    return NextResponse.json({ error: 'server_error' }, { status: 500 });
   }
 }

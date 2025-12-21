@@ -141,7 +141,6 @@ export default function SearchBar({
 
   // --- Date picker état ---
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickingEndDate, setPickingEndDate] = useState(false); // true si on sélectionne la date de fin
   const [calMonth, setCalMonth] = useState(()=>{ const d=new Date(); return { y:d.getFullYear(), m:d.getMonth() }; });
   const [monthCache, setMonthCache] = useState<Map<string,({date:string; boats:number} | {date:string; full:number; amOnly:number; pmOnly:number})[]>>(new Map());
   const [loadingMonth, setLoadingMonth] = useState(false);
@@ -153,23 +152,6 @@ export default function SearchBar({
 
   const monthKey = (y:number,m:number)=>`${y}-${String(m+1).padStart(2,'0')}`;
   const fmtDate = (d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-
-  // État pour stocker le boatId quand boatSlug est fourni
-  const [boatId, setBoatId] = useState<number | null>(null);
-  
-  // Récupérer le boatId à partir du boatSlug
-  useEffect(() => {
-    if (boatSlug && !boatId) {
-      fetch(`/api/boats/${boatSlug}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.id) {
-            setBoatId(data.id);
-          }
-        })
-        .catch(() => { /* ignore */ });
-    }
-  }, [boatSlug, boatId]);
 
   const ensureMonth = useCallback(async (y:number,m:number)=>{
     const key = monthKey(y,m);
@@ -193,16 +175,12 @@ export default function SearchBar({
         const days = Object.values(map);
         setMonthCache(prev=>{ const n = new Map(prev); n.set(key, days); return n; });
       } else {
-        // Ajouter boatId à la requête si disponible
-        const url = boatId 
-          ? `/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}&boatId=${boatId}`
-          : `/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}`;
-        const res = await fetch(url);
+        const res = await fetch(`/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}`);
         const data = await res.json();
         setMonthCache(prev=>{ const n = new Map(prev); n.set(key, data.days||[]); return n; });
       }
     } catch { /* ignore */ } finally { setLoadingMonth(false); }
-  },[monthCache, mode, experienceSlug, boatId]);
+  },[monthCache, mode, experienceSlug]);
 
   useEffect(()=>{ ensureMonth(calMonth.y, calMonth.m); },[calMonth, ensureMonth]);
 
@@ -260,15 +238,6 @@ export default function SearchBar({
       if (key === "startDate" && part && part !== "FULL" && part !== "SUNSET") {
         next.endDate = val; // impose même jour pour AM/PM
       }
-      // Ne jamais modifier startDate quand on change endDate
-      // (sauf si endDate devient antérieure à startDate, alors on ajuste startDate)
-      if (key === "endDate" && part === "FULL" && typeof val === "string" && v.startDate) {
-        if (val < v.startDate) {
-          // Si la date de fin est antérieure à la date de début, on ajuste la date de début
-          next.startDate = val;
-        }
-        // Sinon, on garde startDate tel quel
-      }
       return next;
     });
 
@@ -303,22 +272,8 @@ export default function SearchBar({
     if (part === 'FULL' || part === 'SUNSET') {
       if (!tempStart) {
         // Premier clic: on initialise la plage
-        // Si on a déjà une date de début, on l'utilise comme tempStart
-        if (values.startDate && values.startDate !== d) {
-          setTempStart(values.startDate);
-          // Si la date cliquée est après la date de début, c'est la date de fin
-          if (d > values.startDate) {
-            setValues(v => ({ ...v, endDate: d }));
-          } else {
-            // Si la date cliquée est avant ou égale, on remplace les deux
-            setValues(v => ({ ...v, startDate: d, endDate: d }));
-            setTempStart(d);
-          }
-        } else {
-          // Pas de date de début définie, on initialise avec cette date
-          setTempStart(d);
-          setValues(v => ({ ...v, startDate: d, endDate: d }));
-        }
+        setTempStart(d);
+        setValues(v => ({ ...v, startDate: d, endDate: d }));
       } else {
         // Second clic: on fixe la plage complète
         if (tempStart === d) {
@@ -329,13 +284,7 @@ export default function SearchBar({
         }
         const start = tempStart < d ? tempStart : d;
         const end = tempStart < d ? d : tempStart;
-        // Ne jamais modifier startDate si elle est déjà définie et que la nouvelle date est après
-        // Sauf si la nouvelle date est avant, alors on ajuste
-        setValues(v => {
-          const newStart = start < v.startDate ? start : v.startDate;
-          const newEnd = end > (v.endDate || v.startDate) ? end : (v.endDate || v.startDate);
-          return { ...v, startDate: newStart, endDate: newEnd };
-        });
+        setValues(v => ({ ...v, startDate: start, endDate: end }));
         setTempStart(null);
       }
     } else {
@@ -548,8 +497,8 @@ export default function SearchBar({
         <input
           type="text"
           readOnly
-          onClick={() => openPicker(false)}
-          onFocus={() => openPicker(false)}
+          onClick={openPicker}
+          onFocus={openPicker}
           placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part? 'Choisir un créneau d\'abord' : 'Sélectionner...')) : (!part? 'Choisir un créneau' : 'Sélectionner...')}
           className={baseInput + ' ' + ((!part || (needsCity && !values.city.trim()))? 'opacity-50 cursor-not-allowed':'cursor-pointer')}
           value={values.startDate}
@@ -568,8 +517,8 @@ export default function SearchBar({
         <input
           type="text"
           readOnly
-          onClick={()=> (part==='FULL' || part==='SUNSET') && openPicker(true)}
-          onFocus={()=> (part==='FULL' || part==='SUNSET') && openPicker(true)}
+          onClick={()=> (part==='FULL' || part==='SUNSET') && openPicker()}
+          onFocus={()=> (part==='FULL' || part==='SUNSET') && openPicker()}
           placeholder={(part==='FULL' || part==='SUNSET')? (needsCity ? (!values.city.trim()? 'Choisir la ville' : 'Sélectionner...') : 'Sélectionner...') : (!part? '' : values.startDate? values.startDate : '')}
           className={baseInput + ' ' + ((!part || (needsCity && !values.city.trim()))? 'opacity-50 cursor-not-allowed': ((part !== "FULL" && part !== "SUNSET") ? "opacity-60" : "cursor-pointer"))}
           value={values.endDate}
@@ -856,23 +805,14 @@ export default function SearchBar({
                 const isEnd = !!c.date && values.endDate && c.date===values.endDate;
                 const stats:any = c.stats;
                 const past = !!c.date && c.date < todayStr; // passé
-                const isReserved = !!(stats && stats.reserved); // jour réservé pour ce bateau
                 let clickable = false;
-                if (c.date && !past && !isReserved) {
-                  // Si on sélectionne la date de fin, vérifier que la date est après la date de début
-                  if (pickingEndDate && values.startDate && c.date < values.startDate) {
-                    clickable = false;
-                  } else if (!stats && !tempStart) {
+                if (c.date && !past) {
+                  if (!stats && !tempStart) {
                     clickable = false;
                   } else if (part === 'FULL' || part === 'SUNSET') {
                     const anyAvail = !!(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
                     if (!tempStart) {
-                      // Si on sélectionne la date de fin, la date doit être >= date de début ET avoir des disponibilités
-                      if (pickingEndDate) {
-                        clickable = anyAvail && (!values.startDate || c.date >= values.startDate);
-                      } else {
-                        clickable = anyAvail;
-                      }
+                      clickable = anyAvail;
                     } else {
                       const aDate = new Date(tempStart+'T00:00:00');
                       const bDate = new Date(c.date+'T00:00:00');
@@ -885,29 +825,16 @@ export default function SearchBar({
                     clickable = !!(stats && (stats.full > 0 || stats.pmOnly > 0));
                   }
                 }
-                // Indisponible si jour futur mais pas clickable OU réservé
+                // Indisponible si jour futur mais pas clickable
                 let unavailable = false;
                 if (c.date && !past) {
-                  // Jour réservé = toujours indisponible
-                  if (isReserved) {
-                    unavailable = true;
-                  } else if (pickingEndDate && values.startDate && c.date < values.startDate) {
-                    // Si on sélectionne la date de fin, les jours avant la date de début sont indisponibles
-                    unavailable = true;
-                  } else if (part === 'FULL') {
-                    unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
-                  } else if (part === 'AM') {
-                    unavailable = !(stats && (stats.full>0 || stats.amOnly>0));
-                  } else if (part === 'PM') {
-                    unavailable = !(stats && (stats.full>0 || stats.pmOnly>0));
-                  }
+                  if (part === 'FULL') unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
+                  else if (part === 'AM') unavailable = !(stats && (stats.full>0 || stats.amOnly>0));
+                  else if (part === 'PM') unavailable = !(stats && (stats.full>0 || stats.pmOnly>0));
                 }
                 let bgClass = 'text-white/30';
                 if (past) {
                   bgClass = ' bg-white/5 text-white/30 line-through';
-                } else if (isReserved) {
-                  // Jour réservé = rouge vif pour bien le distinguer
-                  bgClass = ' bg-red-500/30 border-2 border-red-500/60 text-red-100 font-bold';
                 } else if (unavailable) {
                   bgClass = ' bg-red-400/15 border border-red-400/40 text-red-200';
                 } else if (stats) {

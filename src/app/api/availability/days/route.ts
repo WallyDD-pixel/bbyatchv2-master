@@ -1,54 +1,25 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// GET /api/availability/days?from=YYYY-MM-DD&to=YYYY-MM-DD&boatId=123 (optionnel)
+// GET /api/availability/days?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Retourne pour chaque jour :
 //  - any: nb de bateaux ayant au moins un slot (AM/PM/FULL)
 //  - full: nb de bateaux réservable journée (slot FULL ou AM+PM)
 //  - amOnly: nb de bateaux uniquement matin (AM sans PM ni FULL)
 //  - pmOnly: nb de bateaux uniquement après-midi (PM sans AM ni FULL)
-//  - reserved: true si le bateau spécifié (boatId) est réservé ce jour
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get('from');
   const to = searchParams.get('to');
-  const boatIdParam = searchParams.get('boatId');
-  const boatId = boatIdParam ? parseInt(boatIdParam, 10) : null;
   if (!from || !to) return NextResponse.json({ error: 'missing_range' }, { status: 400 });
   const start = new Date(from + 'T00:00:00');
   const end = new Date(to + 'T23:59:59');
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return NextResponse.json({ error: 'bad_range' }, { status: 400 });
   try {
-    // Récupérer les slots disponibles
     const slots: { date: Date; boatId: number; part: string }[] = await (prisma as any).availabilitySlot.findMany({
       where: { date: { gte: start, lte: end }, status: 'available' },
       select: { date: true, boatId: true, part: true }
     });
-    
-    // Récupérer les réservations actives (uniquement payées) pour soustraire les jours réservés
-    // Ne pas compter les réservations pending_deposit car elles ne sont créées qu'après paiement maintenant
-    const reservations = boatId ? await (prisma as any).reservation.findMany({
-      where: {
-        boatId: boatId,
-        status: { in: ['deposit_paid', 'paid', 'completed'] }, // Uniquement les réservations payées
-        startDate: { lte: end },
-        endDate: { gte: start }
-      },
-      select: { startDate: true, endDate: true, part: true }
-    }) : [];
-    
-    // Créer un Set des jours réservés pour le bateau spécifié
-    const reservedDays = new Set<string>();
-    for (const res of reservations) {
-      const resStart = new Date(res.startDate);
-      const resEnd = new Date(res.endDate);
-      let current = new Date(resStart);
-      while (current <= resEnd) {
-        const dateStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2,'0')}-${String(current.getDate()).padStart(2,'0')}`;
-        reservedDays.add(dateStr);
-        current = new Date(current.getTime() + 86400000);
-      }
-    }
     // Regrouper par boatId -> date -> parts
     const byBoat: Record<number, Record<string, { AM?: boolean; PM?: boolean; FULL?: boolean }>> = {};
     for (const s of slots) {
@@ -86,7 +57,6 @@ export async function GET(req: Request) {
       amOnly: s.amOnly.size,
       pmOnly: s.pmOnly.size,
       boats: s.any.size, // compat ancien champ
-      reserved: boatId ? reservedDays.has(date) : false, // true si le bateau est réservé ce jour
     })).sort((a,b)=>a.date.localeCompare(b.date));
     return NextResponse.json({ days });
   } catch (e) {
