@@ -16,9 +16,9 @@ import { getLabelsWithSettings } from '@/lib/settings';
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: { lang?: string };
+  searchParams?: Promise<{ lang?: string }>;
 }) {
-  const sp = searchParams || {};
+  const sp = await searchParams || {};
   const locale: Locale = sp.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 
