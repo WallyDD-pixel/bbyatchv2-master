@@ -166,27 +166,49 @@ cd "$APP_DIR"
 
 # Vérifier que Docker est démarré
 if ! docker info > /dev/null 2>&1; then
-    echo -e "${YELLOW}⚠ Docker daemon n'est pas démarré, démarrage...${NC}"
-    sudo systemctl start docker || sudo service docker start || true
-    sleep 2
+    echo -e "${YELLOW}⚠ Docker daemon n'est pas démarré, tentative de démarrage...${NC}"
+    
+    # Essayer de démarrer Docker
+    if sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null; then
+        sleep 3
+    else
+        echo -e "${RED}✗ Impossible de démarrer Docker automatiquement${NC}"
+        echo ""
+        echo "Docker ne démarre pas. Essayez:"
+        echo "  1. Diagnostiquer: bash deploy/fix-docker.sh"
+        echo "  2. Voir les erreurs: sudo journalctl -xeu docker.service"
+        echo "  3. Vérifier les permissions: groups | grep docker"
+        echo ""
+        echo "Si Docker ne peut pas démarrer, vous pouvez utiliser PostgreSQL installé directement"
+        echo "au lieu de Docker. Modifiez DATABASE_URL dans .env en conséquence."
+        exit 1
+    fi
     
     # Vérifier à nouveau
     if ! docker info > /dev/null 2>&1; then
-        echo -e "${RED}✗ Impossible de démarrer Docker${NC}"
-        echo "Essayez manuellement: sudo systemctl start docker"
+        echo -e "${RED}✗ Docker ne répond toujours pas${NC}"
+        echo ""
+        echo "Essayez: bash deploy/fix-docker.sh"
         exit 1
     fi
 fi
 
 # Détecter la commande docker compose (nouvelle syntaxe) ou docker-compose (ancienne)
 DOCKER_COMPOSE_CMD=""
-if command -v docker &> /dev/null && docker compose version > /dev/null 2>&1; then
+if docker compose version > /dev/null 2>&1; then
     DOCKER_COMPOSE_CMD="docker compose"
-elif command -v docker-compose &> /dev/null; then
+    echo -e "${GREEN}✓ Utilisation de 'docker compose' (nouvelle syntaxe)${NC}"
+elif command -v docker-compose &> /dev/null && docker-compose --version > /dev/null 2>&1; then
     DOCKER_COMPOSE_CMD="docker-compose"
+    echo -e "${GREEN}✓ Utilisation de 'docker-compose' (ancienne syntaxe)${NC}"
 else
     echo -e "${RED}✗ docker compose ou docker-compose n'est pas disponible${NC}"
-    exit 1
+    echo ""
+    echo "Installation de docker-compose..."
+    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+    DOCKER_COMPOSE_CMD="docker-compose"
+    echo -e "${GREEN}✓ docker-compose installé${NC}"
 fi
 
 if docker ps -a --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
