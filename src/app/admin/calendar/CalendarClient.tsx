@@ -631,12 +631,31 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           endAccessor='end'
           onSelectSlot={(slotInfo) => {
             // Gestion du clic sur une date vide
-            if (selectedBoat && isMultiDateMode && showAddSlot) {
+            if (selectedBoat || selectedExperience) {
               const clickedDate = slotInfo.start.toISOString().split('T')[0];
-              toggleDateSelection(clickedDate);
+              
+              // Si le formulaire d'ajout est ouvert et en mode multi-dates
+              if (showAddSlot && isMultiDateMode) {
+                toggleDateSelection(clickedDate);
+              } 
+              // Sinon, ouvrir le formulaire et sélectionner la date
+              else if (selectedBoat) {
+                if (!showAddSlot) {
+                  setShowAddSlot(true);
+                  setIsMultiDateMode(true);
+                }
+                toggleDateSelection(clickedDate);
+              } else if (selectedExperience) {
+                // Pour les expériences, on peut aussi permettre la sélection
+                if (!showAddSlot) {
+                  setShowAddSlot(true);
+                  setIsMultiDateMode(true);
+                }
+                toggleDateSelection(clickedDate);
+              }
             }
           }}
-          selectable={selectedBoat && isMultiDateMode && showAddSlot}
+          selectable={selectedBoat !== null || selectedExperience !== null}
           components={{ 
             month: { dateHeader: DateHeader },
             event: (props: any) => {
