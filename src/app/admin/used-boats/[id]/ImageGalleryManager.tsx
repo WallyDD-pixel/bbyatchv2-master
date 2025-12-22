@@ -103,23 +103,61 @@ export default function ImageGalleryManager({
 
   // Gestion du drag & drop de fichiers depuis l'extérieur
   const handleZoneDragOver = (e: React.DragEvent) => {
+    // Ne gérer que si c'est un drag de fichiers externes, pas un drag interne d'images
+    if (dragIndex.current !== null) {
+      return; // C'est un drag interne, laisser les images le gérer
+    }
+    
+    // Vérifier si le target est un élément draggable (une image)
+    const target = e.target as HTMLElement;
+    if (target.closest('[draggable="true"]')) {
+      return; // C'est un drag d'image interne, ne pas interférer
+    }
+    
     e.preventDefault();
     e.stopPropagation();
     setIsDragOverZone(true);
   };
 
   const handleZoneDragLeave = (e: React.DragEvent) => {
+    // Ne gérer que si c'est un drag de fichiers externes
+    if (dragIndex.current !== null) {
+      return; // C'est un drag interne, laisser les images le gérer
+    }
+    
+    // Vérifier si le target est un élément draggable (une image)
+    const target = e.target as HTMLElement;
+    if (target.closest('[draggable="true"]')) {
+      return; // C'est un drag d'image interne, ne pas interférer
+    }
+    
     e.preventDefault();
     e.stopPropagation();
     setIsDragOverZone(false);
   };
 
   const handleZoneDrop = (e: React.DragEvent) => {
+    // Ne gérer que si c'est un drop de fichiers externes, pas un drop interne d'images
+    if (dragIndex.current !== null) {
+      return; // C'est un drop interne, laisser les images le gérer
+    }
+    
+    // Vérifier si le target est un élément draggable (une image)
+    const target = e.target as HTMLElement;
+    if (target.closest('[draggable="true"]')) {
+      return; // C'est un drop d'image interne, ne pas interférer
+    }
+    
+    const files = Array.from(e.dataTransfer.files);
+    // Si pas de fichiers, c'est probablement un drop interne qui a été mal intercepté
+    if (files.length === 0) {
+      return;
+    }
+    
     e.preventDefault();
     e.stopPropagation();
     setIsDragOverZone(false);
 
-    const files = Array.from(e.dataTransfer.files);
     console.log('📁 Fichiers déposés:', files.length);
     
     files.forEach(file => {
@@ -160,15 +198,18 @@ export default function ImageGalleryManager({
   };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
-    dragIndex.current = index;
-    setDragOverIndex(null);
-    e.dataTransfer.effectAllowed = 'move';
     // Empêcher les éléments enfants d'interférer
     const target = e.target as HTMLElement;
     if (target.tagName === 'BUTTON' || target.closest('button')) {
       e.preventDefault();
       return;
     }
+    
+    console.log('🚀 Drag start sur image', index);
+    dragIndex.current = index;
+    setDragOverIndex(null);
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation(); // Empêcher la propagation vers le conteneur parent
   };
 
   const handleDragEnd = () => {
@@ -177,27 +218,53 @@ export default function ImageGalleryManager({
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
+    // Ne gérer que si c'est un drag interne
+    if (dragIndex.current === null) {
+      return;
+    }
+    
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     
     // Ne pas définir dragOver sur l'élément qu'on est en train de déplacer
-    if (dragIndex.current !== null && dragIndex.current !== index) {
+    if (dragIndex.current !== index) {
       setDragOverIndex(index);
     }
   };
 
-  const handleDragLeave = () => {
-    setDragOverIndex(null);
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Ne gérer que si c'est un drag interne
+    if (dragIndex.current === null) {
+      return;
+    }
+    
+    // Vérifier qu'on quitte vraiment l'élément (pas juste un enfant)
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setDragOverIndex(null);
+    }
   };
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    console.log('🎯 Drop sur image', dropIndex, 'draggedIndex:', dragIndex.current);
+    
+    // Ne gérer que si c'est un drop interne
+    if (dragIndex.current === null) {
+      console.log('❌ Pas de drag en cours, drop ignoré');
+      return;
+    }
+    
     e.preventDefault();
     e.stopPropagation();
     
     setDragOverIndex(null);
     
-    if (dragIndex.current === null || dragIndex.current === dropIndex) {
+    if (dragIndex.current === dropIndex) {
+      console.log('❌ Même position, drop ignoré');
       dragIndex.current = null;
       return;
     }
@@ -205,10 +272,7 @@ export default function ImageGalleryManager({
     const from = dragIndex.current;
     const to = dropIndex;
     
-    if (from === to) {
-      dragIndex.current = null;
-      return;
-    }
+    console.log('✅ Déplacement de', from, 'vers', to);
     
     setImages(prev => {
       const newImages = [...prev];
@@ -227,6 +291,7 @@ export default function ImageGalleryManager({
       // Insérer à la nouvelle position
       newImages.splice(finalDropIndex, 0, draggedItem);
       
+      console.log('✅ Images réorganisées');
       return newImages;
     });
     
