@@ -208,6 +208,7 @@ export default function ImageGalleryManager({
     console.log('🚀 Drag start sur image', index);
     dragIndex.current = index;
     setDragOverIndex(null);
+    setIsDragOverZone(false); // Désactiver la zone de drop externe pendant le drag interne
     e.dataTransfer.effectAllowed = 'move';
     e.stopPropagation(); // Empêcher la propagation vers le conteneur parent
   };
@@ -335,7 +336,7 @@ export default function ImageGalleryManager({
           return (
             <div
               key={`${image.url}-${index}`}
-              className={`group relative w-40 h-28 rounded-lg overflow-hidden bg-white border-2 flex-shrink-0 cursor-move transition-all duration-200 ${
+              className={`group relative w-40 h-28 rounded-lg overflow-hidden bg-white border-2 flex-shrink-0 cursor-move transition-all duration-200 select-none ${
                 isDragged 
                   ? 'opacity-50 scale-95 rotate-2 border-blue-400 shadow-lg' 
                   : isDragOver 
@@ -376,7 +377,7 @@ export default function ImageGalleryManager({
               />
               
               {/* Fallback si l'image ne charge pas */}
-              <div className="absolute inset-0 bg-gray-100 flex items-center justify-center text-gray-400 text-xs" style={{ display: 'none' }}>
+              <div className="absolute inset-0 bg-gray-100 flex items-center justify-center text-gray-400 text-xs pointer-events-none" style={{ display: 'none' }}>
                 <div className="text-center">
                   <div>📷</div>
                   <div>Image</div>
@@ -385,13 +386,13 @@ export default function ImageGalleryManager({
               </div>
               
               {image.isMain && (
-                <span className="absolute top-1 left-1 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-semibold shadow-sm">
+                <span className="absolute top-1 left-1 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-semibold shadow-sm pointer-events-none">
                   {locale === 'fr' ? 'PRINCIPALE' : 'MAIN'}
                 </span>
               )}
               
               {isDragOver && (
-                <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center pointer-events-none z-30">
                   <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium shadow-lg">
                     {locale === 'fr' ? 'Déposer ici' : 'Drop here'}
                   </div>
@@ -399,7 +400,7 @@ export default function ImageGalleryManager({
               )}
               
               {isDragged && (
-                <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/10 flex items-center justify-center pointer-events-none z-30">
                   <div className="bg-black/70 text-white text-xs px-2 py-1 rounded">
                     {locale === 'fr' ? 'Déplacement...' : 'Moving...'}
                   </div>
@@ -410,10 +411,18 @@ export default function ImageGalleryManager({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   removeImage(index);
                 }}
-                onMouseDown={(e) => e.stopPropagation()}
-                className="hidden group-hover:flex absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white items-center justify-center text-xs z-20 hover:bg-red-700 transition-colors shadow-sm"
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                onDragStart={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                className="hidden group-hover:flex absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white items-center justify-center text-xs z-40 hover:bg-red-700 transition-colors shadow-sm pointer-events-auto"
               >
                 ✕
               </button>
@@ -423,17 +432,25 @@ export default function ImageGalleryManager({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     setAsMainImage(index);
                   }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  className="hidden group-hover:flex absolute bottom-1 left-1 right-1 h-6 text-[10px] items-center justify-center rounded bg-green-600 text-white font-medium z-20 hover:bg-green-700 transition-colors shadow-sm"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
+                  className="hidden group-hover:flex absolute bottom-1 left-1 right-1 h-6 text-[10px] items-center justify-center rounded bg-green-600 text-white font-medium z-40 hover:bg-green-700 transition-colors shadow-sm pointer-events-auto"
                 >
                   {locale === 'fr' ? 'Définir principale' : 'Set as main'}
                 </button>
               )}
               
               {/* Indicateur de position */}
-              <div className="absolute top-1 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-1 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                 {index + 1}
               </div>
             </div>
@@ -456,8 +473,8 @@ export default function ImageGalleryManager({
           </div>
         )}
         
-        {isDragOverZone && images.length > 0 && (
-          <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed rounded-xl flex items-center justify-center">
+        {isDragOverZone && images.length > 0 && dragIndex.current === null && (
+          <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed rounded-xl flex items-center justify-center z-10">
             <div className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
               <div className="text-sm font-medium">
                 {locale === 'fr' ? '📷 Déposez vos images ici' : '📷 Drop your images here'}
