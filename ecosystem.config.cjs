@@ -1,10 +1,26 @@
-// Charger les variables d'environnement depuis .env si disponible
-try {
-  require('dotenv').config();
-} catch (e) {
-  // dotenv n'est pas installé, on utilisera les variables d'environnement du système
-  console.warn('dotenv non disponible, utilisation des variables d\'environnement système');
+// Charger les variables d'environnement depuis .env manuellement
+const fs = require('fs');
+const path = require('path');
+
+// Fonction pour charger .env sans dépendance externe
+function loadEnv() {
+  const envPath = path.join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    const envFile = fs.readFileSync(envPath, 'utf8');
+    envFile.split('\n').forEach(line => {
+      const trimmedLine = line.trim();
+      if (trimmedLine && !trimmedLine.startsWith('#')) {
+        const [key, ...valueParts] = trimmedLine.split('=');
+        if (key && valueParts.length > 0) {
+          const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+          process.env[key.trim()] = value.trim();
+        }
+      }
+    });
+  }
 }
+
+loadEnv();
 
 module.exports = {
   apps: [

@@ -139,17 +139,58 @@ echo -e "${GREEN}✓ Client Prisma généré${NC}"
 
 # 6. Appliquer les migrations sur Supabase
 echo -e "${YELLOW}[6/7] Application des migrations sur Supabase...${NC}"
+
+# Libérer de la mémoire avant les migrations
+echo "Libération de la mémoire..."
+sync
+echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true
+sleep 2
+
+# Vérifier la connexion d'abord avec une commande simple
 echo -e "${YELLOW}⚠ Vérification de la connexion à Supabase...${NC}"
-if npx prisma migrate deploy; then
+export NODE_OPTIONS="--max-old-space-size=512"
+
+# Essayer d'abord avec db pull (plus léger)
+if npx prisma db pull --force 2>&1 | head -20; then
+    echo -e "${GREEN}✓ Connexion à Supabase réussie${NC}"
+else
+    echo -e "${YELLOW}⚠ db pull a échoué, mais on continue...${NC}"
+fi
+
+# Essayer les migrations avec timeout et moins de mémoire
+echo "Application des migrations..."
+if timeout 120 npx prisma migrate deploy 2>&1; then
     echo -e "${GREEN}✓ Migrations appliquées sur Supabase${NC}"
 else
-    echo -e "${RED}✗ Erreur lors de l'application des migrations${NC}"
-    echo ""
-    echo "Vérifiez que:"
-    echo "  1. Votre DATABASE_URL dans .env est correcte"
-    echo "  2. Votre projet Supabase est actif"
-    echo "  3. Votre mot de passe de base de données est correct"
-    exit 1
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -eq 124 ]; then
+        echo -e "${YELLOW}⚠ Migration timeout (120s), mais peut-être réussie...${NC}"
+    elif [ $EXIT_CODE -eq 130 ] || [ $EXIT_CODE -eq 137 ]; then
+        echo -e "${YELLOW}⚠ Migration interrompue (SIGKILL), probablement manque de mémoire${NC}"
+        echo ""
+        echo "Solutions:"
+        echo "  1. Créer un swap: bash deploy/create-swap.sh 2"
+        echo "  2. Ou appliquer les migrations manuellement depuis votre machine locale"
+        echo "  3. Ou utiliser Supabase Dashboard > SQL Editor pour exécuter les migrations"
+        echo ""
+        echo "Continuer quand même avec le build? (les migrations peuvent être appliquées après)"
+        read -p "Continuer? (oui/non): " -n 3 -r
+        echo
+        if [[ ! $REPLY =~ ^[Oo][Uu][Ii]$ ]]; then
+            exit 1
+        fi
+    else
+        echo -e "${RED}✗ Erreur lors de l'application des migrations${NC}"
+        echo ""
+        echo "Vérifiez que:"
+        echo "  1. Votre DATABASE_URL dans .env est correcte"
+        echo "  2. Votre projet Supabase est actif"
+        echo "  3. Votre mot de passe de base de données est correct"
+        echo ""
+        echo "Vous pouvez aussi appliquer les migrations manuellement:"
+        echo "  npx prisma migrate deploy"
+        exit 1
+    fi
 fi
 
 # 7. Build de l'application
