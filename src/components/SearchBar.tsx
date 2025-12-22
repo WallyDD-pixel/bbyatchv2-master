@@ -196,6 +196,8 @@ export default function SearchBar({
 
   const avail = monthCache.get(monthKey(calMonth.y, calMonth.m)) || [];
   const availMap = new Map(avail.map((d:any)=>[d.date,d]));
+  const reservationStartDates = new Set(avail.filter((d:any)=>d.isReservationStart).map((d:any)=>d.date));
+  const reservationEndDates = new Set(avail.filter((d:any)=>d.isReservationEnd).map((d:any)=>d.date));
 
   const buildMonthMatrix = () => {
     const { y, m } = calMonth; const first = new Date(y,m,1); const startWeekday = (first.getDay()+6)%7; // lundi=0
@@ -805,6 +807,8 @@ export default function SearchBar({
                 const isEnd = !!c.date && values.endDate && c.date===values.endDate;
                 const stats:any = c.stats;
                 const past = !!c.date && c.date < todayStr; // passé
+                const isReservationStart = !!c.date && reservationStartDates.has(c.date);
+                const isReservationEnd = !!c.date && reservationEndDates.has(c.date);
                 let clickable = false;
                 if (c.date && !past) {
                   if (!stats && !tempStart) {
@@ -835,6 +839,9 @@ export default function SearchBar({
                 let bgClass = 'text-white/30';
                 if (past) {
                   bgClass = ' bg-white/5 text-white/30 line-through';
+                } else if (isReservationStart || isReservationEnd) {
+                  // Dates de début ou de fin de réservation en rouge
+                  bgClass = ' bg-red-500/30 border-2 border-red-500 text-red-200 font-bold';
                 } else if (unavailable) {
                   bgClass = ' bg-red-400/15 border border-red-400/40 text-red-200';
                 } else if (stats) {

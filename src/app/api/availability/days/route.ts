@@ -16,10 +16,33 @@ export async function GET(req: Request) {
   const end = new Date(to + 'T23:59:59');
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return NextResponse.json({ error: 'bad_range' }, { status: 400 });
   try {
-    const slots: { date: Date; boatId: number; part: string }[] = await (prisma as any).availabilitySlot.findMany({
-      where: { date: { gte: start, lte: end }, status: 'available' },
-      select: { date: true, boatId: true, part: true }
-    });
+    const [slots, reservations] = await Promise.all([
+      (prisma as any).availabilitySlot.findMany({
+        where: { date: { gte: start, lte: end }, status: 'available' },
+        select: { date: true, boatId: true, part: true }
+      }),
+      (prisma as any).reservation.findMany({
+        where: { 
+          startDate: { lte: end }, 
+          endDate: { gte: start }, 
+          status: { not: 'canceled' } 
+        },
+        select: { startDate: true, endDate: true }
+      })
+    ]);
+    
+    // Extraire les dates de début et de fin des réservations
+    const reservationStartDates = new Set<string>();
+    const reservationEndDates = new Set<string>();
+    for (const res of reservations) {
+      const startDate = new Date(res.startDate);
+      const endDate = new Date(res.endDate);
+      const startKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2,'0')}-${String(startDate.getDate()).padStart(2,'0')}`;
+      const endKey = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}`;
+      reservationStartDates.add(startKey);
+      reservationEndDates.add(endKey);
+    }
+    
     // Regrouper par boatId -> date -> parts
     const byBoat: Record<number, Record<string, { AM?: boolean; PM?: boolean; FULL?: boolean }>> = {};
     for (const s of slots) {
@@ -57,6 +80,8 @@ export async function GET(req: Request) {
       amOnly: s.amOnly.size,
       pmOnly: s.pmOnly.size,
       boats: s.any.size, // compat ancien champ
+      isReservationStart: reservationStartDates.has(date),
+      isReservationEnd: reservationEndDates.has(date),
     })).sort((a,b)=>a.date.localeCompare(b.date));
     return NextResponse.json({ days });
   } catch (e) {
