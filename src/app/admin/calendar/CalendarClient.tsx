@@ -664,25 +664,20 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
             if (selectedBoat || selectedExperience) {
               const clickedDate = slotInfo.start.toISOString().split('T')[0];
               
-              // Si le formulaire d'ajout est ouvert et en mode multi-dates
-              if (showAddSlot && isMultiDateMode) {
-                toggleDateSelection(clickedDate);
-              } 
-              // Sinon, ouvrir le formulaire et sélectionner la date
-              else if (selectedBoat) {
-                if (!showAddSlot) {
-                  setShowAddSlot(true);
-                  setIsMultiDateMode(true);
-                }
-                toggleDateSelection(clickedDate);
-              } else if (selectedExperience) {
-                // Pour les expériences, on peut aussi permettre la sélection
-                if (!showAddSlot) {
-                  setShowAddSlot(true);
-                  setIsMultiDateMode(true);
-                }
-                toggleDateSelection(clickedDate);
+              // Ouvrir le formulaire si nécessaire et activer le mode multi-dates
+              if (!showAddSlot) {
+                setShowAddSlot(true);
+                setIsMultiDateMode(true);
               }
+              
+              // Toujours ajouter/retirer la date de la sélection
+              setSelectedDates(prev => {
+                if (prev.includes(clickedDate)) {
+                  return prev.filter(d => d !== clickedDate);
+                } else {
+                  return [...prev, clickedDate].sort();
+                }
+              });
             }
           }}
           selectable={selectedBoat !== null || selectedExperience !== null}
