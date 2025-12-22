@@ -235,16 +235,14 @@ export default function ImageGalleryManager({
   };
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h3 className="text-base font-semibold text-gray-900">
+        <p className="text-sm font-medium">
           {locale === 'fr' ? 'Galerie images' : 'Image gallery'}
-        </h3>
-        <label className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg cursor-pointer hover:bg-blue-700 transition-colors shadow-sm">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span>{locale === 'fr' ? 'Ajouter des images' : 'Add images'}</span>
+        </p>
+        <label className="text-xs rounded-full border border-black/15 px-4 h-9 inline-flex items-center gap-2 cursor-pointer hover:bg-black/5">
+          <span>➕</span> 
+          <span>{locale === 'fr' ? 'Ajouter' : 'Add'}</span>
           <input
             ref={fileInputRef}
             type="file"
@@ -257,10 +255,10 @@ export default function ImageGalleryManager({
       </div>
       
       <div 
-        className={`relative min-h-[200px] rounded-xl border-2 border-dashed p-4 transition-all duration-200 ${
+        className={`relative min-h-[140px] rounded-xl border-2 border-dashed p-3 transition-all duration-200 ${
           isDraggingFile && draggingId === null
             ? 'border-blue-500 bg-blue-50 shadow-inner' 
-            : 'border-gray-300 bg-gray-50'
+            : 'border-black/15 bg-black/[0.02]'
         }`}
         onDragOver={handleFileDragOver}
         onDragLeave={handleFileDragLeave}
@@ -268,23 +266,21 @@ export default function ImageGalleryManager({
         onMouseUp={handleMouseUp}
       >
         {images.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+          <div className="w-full text-center py-8">
+            <div className="text-4xl mb-2">📷</div>
+            <div className="text-black/50 text-sm mb-2">
+              {locale === 'fr' 
+                ? 'Aucune image ajoutée' 
+                : 'No images added'}
             </div>
-            <p className="text-gray-600 font-medium mb-1">
-              {locale === 'fr' ? 'Aucune image' : 'No images'}
-            </p>
-            <p className="text-sm text-gray-500">
+            <div className="text-black/40 text-xs">
               {locale === 'fr' 
                 ? 'Cliquez sur "Ajouter" ou glissez des images ici' 
                 : 'Click "Add" or drag images here'}
-            </p>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="flex flex-wrap gap-3 items-start">
             {images.map((image, index) => {
               const isDragging = draggingId === index;
               const isDragOver = dragOverId === index && draggingId !== null && draggingId !== index;
@@ -292,14 +288,14 @@ export default function ImageGalleryManager({
               return (
                 <div
                   key={`${image.url}-${index}`}
-                  className={`group relative aspect-[4/3] rounded-lg overflow-hidden bg-white border-2 transition-all duration-200 ${
+                  className={`group relative w-40 h-28 rounded-lg overflow-hidden bg-white border-2 flex-shrink-0 transition-all duration-200 ${
                     isDragging
                       ? 'opacity-40 scale-95 border-blue-400 shadow-lg z-50'
                       : isDragOver
                         ? 'border-blue-500 border-dashed scale-105 shadow-xl z-40 bg-blue-50'
                         : image.isMain
-                          ? 'border-green-500 shadow-md'
-                          : 'border-gray-200 hover:border-gray-300 hover:shadow-lg'
+                          ? 'border-green-400 shadow-sm'
+                          : 'border-black/10 hover:border-black/20 hover:shadow-sm'
                   }`}
                   draggable
                   onDragStart={(e) => handleDragStart(e, index)}
@@ -323,62 +319,61 @@ export default function ImageGalleryManager({
                   
                   {/* Badge image principale */}
                   {image.isMain && (
-                    <div className="absolute top-2 left-2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg pointer-events-none">
+                    <span className="absolute top-1 left-1 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-semibold shadow-sm pointer-events-none">
                       {locale === 'fr' ? 'PRINCIPALE' : 'MAIN'}
-                    </div>
+                    </span>
                   )}
                   
                   {/* Indicateur de position */}
-                  <div className="absolute top-2 right-2 bg-black/70 text-white text-xs font-medium px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    #{index + 1}
-                  </div>
-                  
-                  {/* Poignée de drag */}
-                  <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <div className="bg-black/70 text-white text-[10px] px-2 py-1 rounded text-center font-medium">
-                      {locale === 'fr' ? '☰ Glisser pour réorganiser' : '☰ Drag to reorder'}
-                    </div>
+                  <div className="absolute top-1 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    {index + 1}
                   </div>
                   
                   {/* Indicateur de drop */}
                   {isDragOver && (
-                    <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center z-30 pointer-events-none">
-                      <div className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-xl font-medium">
-                        {locale === 'fr' ? '↓ Déposer ici' : '↓ Drop here'}
+                    <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center pointer-events-none z-30">
+                      <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium shadow-lg">
+                        {locale === 'fr' ? 'Déposer ici' : 'Drop here'}
                       </div>
                     </div>
                   )}
                   
-                  {/* Boutons d'action */}
-                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  {/* Indicateur de déplacement */}
+                  {isDragging && (
+                    <div className="absolute inset-0 bg-black/10 flex items-center justify-center pointer-events-none z-30">
+                      <div className="bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        {locale === 'fr' ? 'Déplacement...' : 'Moving...'}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Bouton supprimer */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      removeImage(index);
+                    }}
+                    className="hidden group-hover:flex absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white items-center justify-center text-xs z-40 hover:bg-red-700 transition-colors shadow-sm"
+                  >
+                    ✕
+                  </button>
+                  
+                  {/* Bouton définir principale */}
+                  {!image.isMain && (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        removeImage(index);
+                        e.preventDefault();
+                        setAsMainImage(index);
                       }}
-                      className="pointer-events-auto w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg z-50"
-                      title={locale === 'fr' ? 'Supprimer' : 'Delete'}
+                      className="hidden group-hover:flex absolute bottom-1 left-1 right-1 h-6 text-[10px] items-center justify-center rounded bg-green-600 text-white font-medium z-40 hover:bg-green-700 transition-colors shadow-sm"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                      {locale === 'fr' ? 'Définir principale' : 'Set as main'}
                     </button>
-                    
-                    {!image.isMain && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAsMainImage(index);
-                        }}
-                        className="pointer-events-auto px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors shadow-lg z-50"
-                        title={locale === 'fr' ? 'Définir comme principale' : 'Set as main'}
-                      >
-                        {locale === 'fr' ? 'Principale' : 'Main'}
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
               );
             })}
@@ -387,13 +382,10 @@ export default function ImageGalleryManager({
         
         {/* Message de drop de fichiers */}
         {isDraggingFile && draggingId === null && images.length > 0 && (
-          <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed rounded-xl flex items-center justify-center z-50 pointer-events-none">
-            <div className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-xl">
-              <div className="text-base font-semibold flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                {locale === 'fr' ? 'Déposez vos images ici' : 'Drop your images here'}
+          <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed rounded-xl flex items-center justify-center z-10 pointer-events-none">
+            <div className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
+              <div className="text-sm font-medium">
+                {locale === 'fr' ? '📷 Déposez vos images ici' : '📷 Drop your images here'}
               </div>
             </div>
           </div>
@@ -402,32 +394,23 @@ export default function ImageGalleryManager({
       
       {/* Instructions */}
       {images.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <div className="text-blue-600 text-lg">💡</div>
-            <div className="text-sm text-blue-900">
-              <div className="font-semibold mb-2">
-                {locale === 'fr' ? 'Comment réorganiser les images :' : 'How to reorder images:'}
+        <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <div className="text-blue-600 text-sm">💡</div>
+            <div className="text-[11px] text-blue-800 leading-relaxed">
+              <div className="font-medium mb-1">
+                {locale === 'fr' ? 'Comment utiliser :' : 'How to use:'}
               </div>
-              <ul className="space-y-1 text-blue-800">
-                <li className="flex items-start gap-2">
-                  <span>•</span>
-                  <span>{locale === 'fr' 
-                    ? 'Cliquez et maintenez sur une image, puis glissez-la vers une autre position' 
-                    : 'Click and hold on an image, then drag it to another position'}</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span>•</span>
-                  <span>{locale === 'fr' 
-                    ? 'Survolez une image pour voir les options (supprimer, définir comme principale)' 
-                    : 'Hover over an image to see options (delete, set as main)'}</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span>•</span>
-                  <span>{locale === 'fr' 
-                    ? 'L\'image principale (badge vert) apparaîtra en premier sur le site' 
-                    : 'The main image (green badge) will appear first on the website'}</span>
-                </li>
+              <ul className="space-y-1">
+                <li>• {locale === 'fr' 
+                  ? 'Glissez-déposez les images pour les réorganiser' 
+                  : 'Drag & drop images to reorder them'}</li>
+                <li>• {locale === 'fr' 
+                  ? 'Survolez une image pour voir les options' 
+                  : 'Hover over an image to see options'}</li>
+                <li>• {locale === 'fr' 
+                  ? 'L\'image principale apparaît en premier sur le site' 
+                  : 'The main image appears first on the website'}</li>
               </ul>
             </div>
           </div>
