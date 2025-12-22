@@ -155,12 +155,6 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
         <ReservationsTableClient
           reservations={reservations}
           locale={locale}
-          dateFmt={dateFmt}
-          dayCount={dayCount}
-          partLabel={partLabel}
-          money={money}
-          statusLabel={statusLabel}
-          badgeClass={badgeClass}
           updateReservationStatus={updateReservationStatus}
           updateFinalFuelAmount={updateFinalFuelAmount}
           deleteReservations={deleteReservations}

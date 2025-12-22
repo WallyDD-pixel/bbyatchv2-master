@@ -21,12 +21,6 @@ interface Reservation {
 interface Props {
   reservations: Reservation[];
   locale: "fr" | "en";
-  dateFmt: (d: Date) => string;
-  dayCount: (r: Reservation) => number;
-  partLabel: (p: string | null | undefined) => string;
-  money: (v: number | undefined | null) => string;
-  statusLabel: (s: string) => string;
-  badgeClass: (s: string) => string;
   updateReservationStatus: (formData: FormData) => void;
   updateFinalFuelAmount: (formData: FormData) => void;
   deleteReservations: (ids: string[]) => Promise<void>;
@@ -35,16 +29,61 @@ interface Props {
 export default function ReservationsTableClient({
   reservations,
   locale,
-  dateFmt,
-  dayCount,
-  partLabel,
-  money,
-  statusLabel,
-  badgeClass,
   updateReservationStatus,
   updateFinalFuelAmount,
   deleteReservations,
 }: Props) {
+  // Fonctions utilitaires définies dans le composant client
+  const dateFmt = (d: Date) => d.toISOString().slice(0, 10);
+  const dayCount = (r: Reservation) => {
+    const s = new Date(r.startDate);
+    const e = new Date(r.endDate);
+    return Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
+  };
+  const partLabel = (p: string | null | undefined) =>
+    p === "FULL"
+      ? locale === "fr"
+        ? "Journée entière"
+        : "Full day"
+      : p === "AM"
+      ? locale === "fr"
+        ? "Matin"
+        : "Morning"
+      : p === "PM"
+      ? locale === "fr"
+        ? "Après-midi"
+        : "Afternoon"
+      : "—";
+  const money = (v: number | undefined | null) =>
+    v == null ? "—" : (v / 1).toLocaleString(locale === "fr" ? "fr-FR" : "en-US") + " €";
+  const statusLabel = (s: string) => {
+    switch (s) {
+      case "pending_deposit":
+        return locale === "fr" ? "Acompte en attente" : "Deposit pending";
+      case "deposit_paid":
+        return locale === "fr" ? "Acompte payé" : "Deposit paid";
+      case "completed":
+        return locale === "fr" ? "Terminée" : "Completed";
+      case "cancelled":
+        return locale === "fr" ? "Annulée" : "Cancelled";
+      default:
+        return s;
+    }
+  };
+  const badgeClass = (s: string) => {
+    switch (s) {
+      case "deposit_paid":
+        return "bg-emerald-100 text-emerald-700";
+      case "pending_deposit":
+        return "bg-amber-100 text-amber-700";
+      case "completed":
+        return "bg-blue-100 text-blue-700";
+      case "cancelled":
+        return "bg-red-100 text-red-700";
+      default:
+        return "bg-black/10 text-black/60";
+    }
+  };
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 
