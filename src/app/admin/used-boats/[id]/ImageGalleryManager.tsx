@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 interface ImageItem {
   url: string;
   isMain: boolean;
-  isTemp?: boolean; // Pour les nouvelles images ajoutées
+  isTemp?: boolean;
 }
 
 interface ImageGalleryManagerProps {
@@ -18,50 +18,38 @@ export default function ImageGalleryManager({
   initialPhotos, 
   locale 
 }: ImageGalleryManagerProps) {
-  console.log('🖼️ ImageGalleryManager - initialMainImage:', initialMainImage);
-  console.log('🖼️ ImageGalleryManager - initialPhotos:', initialPhotos);
-  
   const [images, setImages] = useState<ImageItem[]>(() => {
     const items: ImageItem[] = [];
-    
-    // Ajouter l'image principale en premier si elle existe
     if (initialMainImage) {
       items.push({ url: initialMainImage, isMain: true });
     }
-    
-    // Ajouter les autres photos
     initialPhotos.forEach(url => {
-      // Éviter les doublons avec l'image principale
       if (url !== initialMainImage) {
         items.push({ url, isMain: false });
       }
     });
-    
-    console.log('🖼️ Images initiales:', items);
     return items;
   });
 
-  const dragIndex = useRef<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [isDragOverZone, setIsDragOverZone] = useState(false);
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const keepPhotosInputRef = useRef<HTMLInputElement>(null);
   const mainImageInputRef = useRef<HTMLInputElement>(null);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
-  // Mettre à jour les champs cachés quand les images changent
+  // Mise à jour des champs cachés
   useEffect(() => {
-    console.log('🔄 Mise à jour des champs cachés, images:', images.length);
     const mainImage = images.find(img => img.isMain);
     const otherImages = images.filter(img => !img.isMain);
     
     if (mainImageInputRef.current) {
       mainImageInputRef.current.value = mainImage?.url || '';
-      console.log('✅ mainImageInput mis à jour');
     }
-    
     if (keepPhotosInputRef.current) {
       keepPhotosInputRef.current.value = JSON.stringify(otherImages.map(img => img.url));
-      console.log('✅ keepPhotosInput mis à jour');
     }
   }, [images]);
 
@@ -69,96 +57,55 @@ export default function ImageGalleryManager({
     const files = e.target.files;
     if (!files) return;
 
-    console.log('📁 Fichiers sélectionnés:', files.length);
-
     Array.from(files).forEach(file => {
-      if (!file.type.startsWith('image/')) {
-        console.log('❌ Fichier ignoré (pas une image):', file.name, file.type);
-        return;
-      }
-      
-      console.log('✅ Traitement du fichier image:', file.name, file.size, 'bytes');
+      if (!file.type.startsWith('image/')) return;
       
       const reader = new FileReader();
       reader.onload = (event) => {
         const url = event.target?.result as string;
         if (url) {
-          console.log('📷 Image convertie en Data URL, longueur:', url.length);
-          setImages(prev => {
-            const newImages = [...prev, { url, isMain: false, isTemp: true }];
-            console.log('📊 Nouvelles images dans l\'état:', newImages.length);
-            return newImages;
-          });
+          setImages(prev => [...prev, { url, isMain: false, isTemp: true }]);
         }
-      };
-      reader.onerror = (error) => {
-        console.error('❌ Erreur lors de la lecture du fichier:', error);
       };
       reader.readAsDataURL(file);
     });
 
-    // Reset input
     e.target.value = '';
   };
 
-  // Gestion du drag & drop de fichiers depuis l'extérieur
-  const handleZoneDragOver = (e: React.DragEvent) => {
-    // Ne gérer que si c'est un drag de fichiers externes, pas un drag interne d'images
-    if (dragIndex.current !== null) {
-      return; // C'est un drag interne, laisser les images le gérer
-    }
+  // Gestion du drop de fichiers externes
+  const handleFileDragOver = (e: React.DragEvent) => {
+    if (draggingId !== null) return; // Ignorer si on drag une image interne
     
-    // Vérifier si le target est un élément draggable (une image)
-    const target = e.target as HTMLElement;
-    if (target.closest('[draggable="true"]')) {
-      return; // C'est un drag d'image interne, ne pas interférer
-    }
+    const hasFiles = e.dataTransfer.types.includes('Files');
+    if (!hasFiles) return;
     
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOverZone(true);
+    setIsDraggingFile(true);
   };
 
-  const handleZoneDragLeave = (e: React.DragEvent) => {
-    // Ne gérer que si c'est un drag de fichiers externes
-    if (dragIndex.current !== null) {
-      return; // C'est un drag interne, laisser les images le gérer
-    }
+  const handleFileDragLeave = (e: React.DragEvent) => {
+    if (draggingId !== null) return;
     
-    // Vérifier si le target est un élément draggable (une image)
-    const target = e.target as HTMLElement;
-    if (target.closest('[draggable="true"]')) {
-      return; // C'est un drag d'image interne, ne pas interférer
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setIsDraggingFile(false);
     }
+  };
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    if (draggingId !== null) return;
     
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOverZone(false);
-  };
+    setIsDraggingFile(false);
 
-  const handleZoneDrop = (e: React.DragEvent) => {
-    // Ne gérer que si c'est un drop de fichiers externes, pas un drop interne d'images
-    if (dragIndex.current !== null) {
-      return; // C'est un drop interne, laisser les images le gérer
-    }
-    
-    // Vérifier si le target est un élément draggable (une image)
-    const target = e.target as HTMLElement;
-    if (target.closest('[draggable="true"]')) {
-      return; // C'est un drop d'image interne, ne pas interférer
-    }
-    
     const files = Array.from(e.dataTransfer.files);
-    // Si pas de fichiers, c'est probablement un drop interne qui a été mal intercepté
-    if (files.length === 0) {
-      return;
-    }
-    
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOverZone(false);
-
-    console.log('📁 Fichiers déposés:', files.length);
+    if (files.length === 0) return;
     
     files.forEach(file => {
       if (!file.type.startsWith('image/')) return;
@@ -181,8 +128,6 @@ export default function ImageGalleryManager({
     
     setImages(prev => {
       const newImages = prev.filter((_, i) => i !== index);
-      // Si on supprime l'image principale et qu'il y a d'autres images, 
-      // faire de la première image restante la nouvelle image principale
       if (prev[index].isMain && newImages.length > 0) {
         newImages[0].isMain = true;
       }
@@ -197,117 +142,109 @@ export default function ImageGalleryManager({
     })));
   };
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    // Empêcher les éléments enfants d'interférer
+  // Drag & Drop pour réorganiser les images
+  const handleMouseDown = (e: React.MouseEvent, index: number) => {
     const target = e.target as HTMLElement;
-    if (target.tagName === 'BUTTON' || target.closest('button')) {
+    if (target.closest('button')) return;
+    
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent, index: number) => {
+    if (draggingId !== index || !dragStartPos.current) return;
+    
+    const deltaX = Math.abs(e.clientX - dragStartPos.current.x);
+    const deltaY = Math.abs(e.clientY - dragStartPos.current.y);
+    
+    // Seuil pour démarrer le drag
+    if (deltaX > 5 || deltaY > 5) {
+      setDraggingId(index);
+    }
+  };
+
+  const handleMouseUp = () => {
+    dragStartPos.current = null;
+    if (draggingId !== null) {
+      setDraggingId(null);
+      setDragOverId(null);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) {
       e.preventDefault();
       return;
     }
     
-    console.log('🚀 Drag start sur image', index);
-    dragIndex.current = index;
-    setDragOverIndex(null);
-    setIsDragOverZone(false); // Désactiver la zone de drop externe pendant le drag interne
+    setDraggingId(index);
     e.dataTransfer.effectAllowed = 'move';
-    e.stopPropagation(); // Empêcher la propagation vers le conteneur parent
+    e.dataTransfer.setData('text/html', index.toString());
+    
+    // Créer une image fantôme personnalisée
+    const dragImage = document.createElement('div');
+    dragImage.style.position = 'absolute';
+    dragImage.style.top = '-1000px';
+    dragImage.innerHTML = `<img src="${images[index].url}" style="width: 120px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #3b82f6;" />`;
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, 60, 40);
+    setTimeout(() => document.body.removeChild(dragImage), 0);
   };
 
   const handleDragEnd = () => {
-    dragIndex.current = null;
-    setDragOverIndex(null);
+    setDraggingId(null);
+    setDragOverId(null);
+    dragStartPos.current = null;
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
-    // Ne gérer que si c'est un drag interne
-    if (dragIndex.current === null) {
-      return;
-    }
+    if (draggingId === null || draggingId === index) return;
     
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
-    
-    // Ne pas définir dragOver sur l'élément qu'on est en train de déplacer
-    if (dragIndex.current !== index) {
-      setDragOverIndex(index);
-    }
+    setDragOverId(index);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    // Ne gérer que si c'est un drag interne
-    if (dragIndex.current === null) {
-      return;
-    }
-    
-    // Vérifier qu'on quitte vraiment l'élément (pas juste un enfant)
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setDragOverIndex(null);
-    }
+  const handleDragLeave = () => {
+    setDragOverId(null);
   };
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    console.log('🎯 Drop sur image', dropIndex, 'draggedIndex:', dragIndex.current);
-    
-    // Ne gérer que si c'est un drop interne
-    if (dragIndex.current === null) {
-      console.log('❌ Pas de drag en cours, drop ignoré');
-      return;
-    }
-    
     e.preventDefault();
     e.stopPropagation();
     
-    setDragOverIndex(null);
-    
-    if (dragIndex.current === dropIndex) {
-      console.log('❌ Même position, drop ignoré');
-      dragIndex.current = null;
+    if (draggingId === null || draggingId === dropIndex) {
+      setDraggingId(null);
+      setDragOverId(null);
       return;
     }
     
-    const from = dragIndex.current;
+    const from = draggingId;
     const to = dropIndex;
-    
-    console.log('✅ Déplacement de', from, 'vers', to);
     
     setImages(prev => {
       const newImages = [...prev];
-      const draggedItem = newImages[from];
-      
-      // Supprimer l'élément de sa position actuelle
-      newImages.splice(from, 1);
-      
-      // Calculer la nouvelle position correctement
-      let finalDropIndex = to;
-      if (from < to) {
-        // Déplacement vers la droite : l'index de destination diminue de 1
-        finalDropIndex = to - 1;
-      }
-      
-      // Insérer à la nouvelle position
-      newImages.splice(finalDropIndex, 0, draggedItem);
-      
-      console.log('✅ Images réorganisées');
+      const [draggedItem] = newImages.splice(from, 1);
+      newImages.splice(to, 0, draggedItem);
       return newImages;
     });
     
-    dragIndex.current = null;
+    setDraggingId(null);
+    setDragOverId(null);
   };
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <p className="text-sm font-medium">
+        <h3 className="text-base font-semibold text-gray-900">
           {locale === 'fr' ? 'Galerie images' : 'Image gallery'}
-        </p>
-        <label className="text-xs rounded-full border border-black/15 px-4 h-9 inline-flex items-center gap-2 cursor-pointer hover:bg-black/5">
-          <span>➕</span> 
-          <span>{locale === 'fr' ? 'Ajouter' : 'Add'}</span>
+        </h3>
+        <label className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg cursor-pointer hover:bg-blue-700 transition-colors shadow-sm">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span>{locale === 'fr' ? 'Ajouter des images' : 'Add images'}</span>
           <input
             ref={fileInputRef}
             type="file"
@@ -320,193 +257,182 @@ export default function ImageGalleryManager({
       </div>
       
       <div 
-        className={`min-h-[140px] rounded-xl border-2 border-dashed p-3 flex flex-wrap gap-3 items-start justify-start transition-all duration-200 ${
-          isDragOverZone 
+        className={`relative min-h-[200px] rounded-xl border-2 border-dashed p-4 transition-all duration-200 ${
+          isDraggingFile && draggingId === null
             ? 'border-blue-500 bg-blue-50 shadow-inner' 
-            : 'border-black/15 bg-black/[0.02]'
+            : 'border-gray-300 bg-gray-50'
         }`}
-        onDragOver={handleZoneDragOver}
-        onDragLeave={handleZoneDragLeave}
-        onDrop={handleZoneDrop}
+        onDragOver={handleFileDragOver}
+        onDragLeave={handleFileDragLeave}
+        onDrop={handleFileDrop}
+        onMouseUp={handleMouseUp}
       >
-        {images.map((image, index) => {
-          const isDragged = dragIndex.current === index;
-          const isDragOver = dragOverIndex === index && dragIndex.current !== index;
-          
-          return (
-            <div
-              key={`${image.url}-${index}`}
-              className={`group relative w-40 h-28 rounded-lg overflow-hidden bg-white border-2 flex-shrink-0 cursor-move transition-all duration-200 select-none ${
-                isDragged 
-                  ? 'opacity-50 scale-95 rotate-2 border-blue-400 shadow-lg' 
-                  : isDragOver 
-                    ? 'border-blue-500 shadow-md scale-105 bg-blue-50' 
-                    : image.isMain
-                      ? 'border-green-400 shadow-sm'
-                      : 'border-black/10 hover:border-black/20 hover:shadow-sm'
-              }`}
-              draggable
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, index)}
-            >
-              <img 
-                src={image.url} 
-                alt=""
-                draggable={false}
-                className="w-full h-full object-cover pointer-events-none"
-                onError={(e) => {
-                  console.error('❌ Erreur de chargement image:', image.url);
-                  // Afficher le fallback au lieu de cacher l'image
-                  const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
-                  if (fallback) {
-                    fallback.style.display = 'flex';
-                  }
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-                onLoad={() => {
-                  console.log('✅ Image chargée avec succès:', image.url.substring(0, 50) + '...');
-                  // Cacher le fallback si l'image se charge
-                  const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
-                  if (fallback) {
-                    fallback.style.display = 'none';
-                  }
-                }}
-              />
-              
-              {/* Fallback si l'image ne charge pas */}
-              <div className="absolute inset-0 bg-gray-100 flex items-center justify-center text-gray-400 text-xs pointer-events-none" style={{ display: 'none' }}>
-                <div className="text-center">
-                  <div>📷</div>
-                  <div>Image</div>
-                  <div className="text-[10px] mt-1">Erreur de chargement</div>
-                </div>
-              </div>
-              
-              {image.isMain && (
-                <span className="absolute top-1 left-1 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-semibold shadow-sm pointer-events-none">
-                  {locale === 'fr' ? 'PRINCIPALE' : 'MAIN'}
-                </span>
-              )}
-              
-              {isDragOver && (
-                <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center pointer-events-none z-30">
-                  <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium shadow-lg">
-                    {locale === 'fr' ? 'Déposer ici' : 'Drop here'}
-                  </div>
-                </div>
-              )}
-              
-              {isDragged && (
-                <div className="absolute inset-0 bg-black/10 flex items-center justify-center pointer-events-none z-30">
-                  <div className="bg-black/70 text-white text-xs px-2 py-1 rounded">
-                    {locale === 'fr' ? 'Déplacement...' : 'Moving...'}
-                  </div>
-                </div>
-              )}
-              
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  removeImage(index);
-                }}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-                onDragStart={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-                className="hidden group-hover:flex absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white items-center justify-center text-xs z-40 hover:bg-red-700 transition-colors shadow-sm pointer-events-auto"
-              >
-                ✕
-              </button>
-              
-              {!image.isMain && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setAsMainImage(index);
-                  }}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                  }}
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                  }}
-                  className="hidden group-hover:flex absolute bottom-1 left-1 right-1 h-6 text-[10px] items-center justify-center rounded bg-green-600 text-white font-medium z-40 hover:bg-green-700 transition-colors shadow-sm pointer-events-auto"
-                >
-                  {locale === 'fr' ? 'Définir principale' : 'Set as main'}
-                </button>
-              )}
-              
-              {/* Indicateur de position */}
-              <div className="absolute top-1 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                {index + 1}
-              </div>
+        {images.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
-          );
-        })}
-        
-        {images.length === 0 && (
-          <div className="w-full text-center py-8">
-            <div className="text-4xl mb-2">📷</div>
-            <div className="text-black/50 text-sm mb-2">
-              {locale === 'fr' 
-                ? 'Aucune image ajoutée' 
-                : 'No images added'}
-            </div>
-            <div className="text-black/40 text-xs">
+            <p className="text-gray-600 font-medium mb-1">
+              {locale === 'fr' ? 'Aucune image' : 'No images'}
+            </p>
+            <p className="text-sm text-gray-500">
               {locale === 'fr' 
                 ? 'Cliquez sur "Ajouter" ou glissez des images ici' 
                 : 'Click "Add" or drag images here'}
-            </div>
+            </p>
           </div>
-        )}
-        
-        {isDragOverZone && images.length > 0 && dragIndex.current === null && (
-          <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed rounded-xl flex items-center justify-center z-10">
-            <div className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
-              <div className="text-sm font-medium">
-                {locale === 'fr' ? '📷 Déposez vos images ici' : '📷 Drop your images here'}
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {images.length > 0 && (
-          <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-            <div className="flex items-start gap-2">
-              <div className="text-blue-600 text-sm">💡</div>
-              <div className="text-[11px] text-blue-800 leading-relaxed">
-                <div className="font-medium mb-1">
-                  {locale === 'fr' ? 'Comment utiliser :' : 'How to use:'}
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {images.map((image, index) => {
+              const isDragging = draggingId === index;
+              const isDragOver = dragOverId === index && draggingId !== null && draggingId !== index;
+              
+              return (
+                <div
+                  key={`${image.url}-${index}`}
+                  className={`group relative aspect-[4/3] rounded-lg overflow-hidden bg-white border-2 transition-all duration-200 ${
+                    isDragging
+                      ? 'opacity-40 scale-95 border-blue-400 shadow-lg z-50'
+                      : isDragOver
+                        ? 'border-blue-500 border-dashed scale-105 shadow-xl z-40 bg-blue-50'
+                        : image.isMain
+                          ? 'border-green-500 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300 hover:shadow-lg'
+                  }`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onMouseDown={(e) => handleMouseDown(e, index)}
+                  onMouseMove={(e) => handleMouseMove(e, index)}
+                >
+                  {/* Image */}
+                  <img 
+                    src={image.url} 
+                    alt=""
+                    draggable={false}
+                    className="w-full h-full object-cover pointer-events-none"
+                  />
+                  
+                  {/* Overlay au survol */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors pointer-events-none" />
+                  
+                  {/* Badge image principale */}
+                  {image.isMain && (
+                    <div className="absolute top-2 left-2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg pointer-events-none">
+                      {locale === 'fr' ? 'PRINCIPALE' : 'MAIN'}
+                    </div>
+                  )}
+                  
+                  {/* Indicateur de position */}
+                  <div className="absolute top-2 right-2 bg-black/70 text-white text-xs font-medium px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    #{index + 1}
+                  </div>
+                  
+                  {/* Poignée de drag */}
+                  <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className="bg-black/70 text-white text-[10px] px-2 py-1 rounded text-center font-medium">
+                      {locale === 'fr' ? '☰ Glisser pour réorganiser' : '☰ Drag to reorder'}
+                    </div>
+                  </div>
+                  
+                  {/* Indicateur de drop */}
+                  {isDragOver && (
+                    <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center z-30 pointer-events-none">
+                      <div className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-xl font-medium">
+                        {locale === 'fr' ? '↓ Déposer ici' : '↓ Drop here'}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Boutons d'action */}
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage(index);
+                      }}
+                      className="pointer-events-auto w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg z-50"
+                      title={locale === 'fr' ? 'Supprimer' : 'Delete'}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                    
+                    {!image.isMain && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAsMainImage(index);
+                        }}
+                        className="pointer-events-auto px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors shadow-lg z-50"
+                        title={locale === 'fr' ? 'Définir comme principale' : 'Set as main'}
+                      >
+                        {locale === 'fr' ? 'Principale' : 'Main'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <ul className="space-y-1">
-                  <li>• {locale === 'fr' 
-                    ? 'Glissez-déposez les images pour les réorganiser' 
-                    : 'Drag & drop images to reorder them'}</li>
-                  <li>• {locale === 'fr' 
-                    ? 'Survolez une image pour voir les options' 
-                    : 'Hover over an image to see options'}</li>
-                  <li>• {locale === 'fr' 
-                    ? 'L\'image principale apparaît en premier sur le site' 
-                    : 'The main image appears first on the website'}</li>
-                </ul>
+              );
+            })}
+          </div>
+        )}
+        
+        {/* Message de drop de fichiers */}
+        {isDraggingFile && draggingId === null && images.length > 0 && (
+          <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed rounded-xl flex items-center justify-center z-50 pointer-events-none">
+            <div className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-xl">
+              <div className="text-base font-semibold flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                {locale === 'fr' ? 'Déposez vos images ici' : 'Drop your images here'}
               </div>
             </div>
           </div>
         )}
       </div>
+      
+      {/* Instructions */}
+      {images.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-blue-600 text-lg">💡</div>
+            <div className="text-sm text-blue-900">
+              <div className="font-semibold mb-2">
+                {locale === 'fr' ? 'Comment réorganiser les images :' : 'How to reorder images:'}
+              </div>
+              <ul className="space-y-1 text-blue-800">
+                <li className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>{locale === 'fr' 
+                    ? 'Cliquez et maintenez sur une image, puis glissez-la vers une autre position' 
+                    : 'Click and hold on an image, then drag it to another position'}</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>{locale === 'fr' 
+                    ? 'Survolez une image pour voir les options (supprimer, définir comme principale)' 
+                    : 'Hover over an image to see options (delete, set as main)'}</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>{locale === 'fr' 
+                    ? 'L\'image principale (badge vert) apparaîtra en premier sur le site' 
+                    : 'The main image (green badge) will appear first on the website'}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Champs cachés pour le formulaire */}
       <input 
