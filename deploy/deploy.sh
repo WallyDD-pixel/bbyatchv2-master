@@ -73,8 +73,50 @@ echo -e "${GREEN}✓ Projet trouvé dans $APP_DIR${NC}"
 
 # 3. Installer les dépendances
 echo -e "${YELLOW}[3/10] Installation des dépendances npm...${NC}"
-npm ci
-echo -e "${GREEN}✓ Dépendances installées${NC}"
+
+# Vérifier la mémoire disponible
+TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
+AVAIL_MEM=$(free -m | awk '/^Mem:/{print $7}')
+echo "Mémoire disponible: ${AVAIL_MEM}MB / ${TOTAL_MEM}MB"
+
+if [ "$AVAIL_MEM" -lt 512 ]; then
+    echo -e "${YELLOW}⚠ Mémoire faible détectée (< 512MB). Nettoyage du cache npm...${NC}"
+    npm cache clean --force
+    # Libérer de la mémoire en arrêtant les processus non essentiels si possible
+    sync && echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true
+fi
+
+# Nettoyer node_modules si nécessaire (en cas d'erreur précédente)
+if [ -d "node_modules" ] && [ -f "package-lock.json" ]; then
+    echo -e "${YELLOW}⚠ Nettoyage de node_modules avant réinstallation...${NC}"
+    # Supprimer node_modules de manière plus robuste
+    find node_modules -mindepth 1 -delete 2>/dev/null || rm -rf node_modules
+    echo -e "${GREEN}✓ node_modules nettoyé${NC}"
+fi
+
+# Installer avec des options pour réduire l'utilisation mémoire
+echo "Installation des dépendances (cela peut prendre quelques minutes)..."
+if npm ci --prefer-offline --no-audit --legacy-peer-deps; then
+    echo -e "${GREEN}✓ Dépendances installées${NC}"
+else
+    echo -e "${RED}✗ Erreur lors de l'installation avec npm ci${NC}"
+    echo -e "${YELLOW}⚠ Tentative avec npm install...${NC}"
+    
+    # Si npm ci échoue, essayer npm install avec options mémoire
+    export NODE_OPTIONS="--max-old-space-size=1024"
+    if npm install --prefer-offline --no-audit --legacy-peer-deps; then
+        echo -e "${GREEN}✓ Dépendances installées avec npm install${NC}"
+    else
+        echo -e "${RED}✗ Échec de l'installation des dépendances${NC}"
+        echo ""
+        echo "Solutions possibles:"
+        echo "  1. Vérifier la mémoire disponible: free -h"
+        echo "  2. Nettoyer le cache npm: npm cache clean --force"
+        echo "  3. Supprimer node_modules et réessayer: rm -rf node_modules && npm install"
+        echo "  4. Vérifier les logs: cat ~/.npm/_logs/$(ls -t ~/.npm/_logs/ | head -1)"
+        exit 1
+    fi
+fi
 
 # 4. Vérifier/Créer le fichier .env
 echo -e "${YELLOW}[4/10] Configuration du fichier .env...${NC}"
