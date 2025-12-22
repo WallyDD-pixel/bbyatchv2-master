@@ -41,7 +41,7 @@ export default function ImageGalleryManager({
     return items;
   });
 
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const dragIndex = useRef<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isDragOverZone, setIsDragOverZone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -160,16 +160,19 @@ export default function ImageGalleryManager({
   };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
-    console.log('🔄 Drag start:', index);
-    setDraggedIndex(index);
+    dragIndex.current = index;
     setDragOverIndex(null);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', index.toString());
+    // Empêcher les éléments enfants d'interférer
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'BUTTON' || target.closest('button')) {
+      e.preventDefault();
+      return;
+    }
   };
 
   const handleDragEnd = () => {
-    console.log('🔄 Drag end');
-    setDraggedIndex(null);
+    dragIndex.current = null;
     setDragOverIndex(null);
   };
 
@@ -179,69 +182,55 @@ export default function ImageGalleryManager({
     e.dataTransfer.dropEffect = 'move';
     
     // Ne pas définir dragOver sur l'élément qu'on est en train de déplacer
-    if (draggedIndex !== index) {
+    if (dragIndex.current !== null && dragIndex.current !== index) {
       setDragOverIndex(index);
     }
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Vérifier si on quitte vraiment l'élément (pas juste un enfant)
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setDragOverIndex(null);
-    }
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
   };
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🎯 Drop - draggedIndex:', draggedIndex, 'dropIndex:', dropIndex);
-    
     setDragOverIndex(null);
     
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      console.log('❌ Drop annulé - même position ou pas de drag');
+    if (dragIndex.current === null || dragIndex.current === dropIndex) {
+      dragIndex.current = null;
+      return;
+    }
+    
+    const from = dragIndex.current;
+    const to = dropIndex;
+    
+    if (from === to) {
+      dragIndex.current = null;
       return;
     }
     
     setImages(prev => {
       const newImages = [...prev];
-      const draggedItem = newImages[draggedIndex];
-      
-      console.log('📋 Avant déplacement:', newImages.map((img, i) => `${i}: ${img.url.substring(img.url.length - 20)}`));
+      const draggedItem = newImages[from];
       
       // Supprimer l'élément de sa position actuelle
-      newImages.splice(draggedIndex, 1);
+      newImages.splice(from, 1);
       
       // Calculer la nouvelle position correctement
-      let finalDropIndex = dropIndex;
-      
-      if (draggedIndex < dropIndex) {
+      let finalDropIndex = to;
+      if (from < to) {
         // Déplacement vers la droite : l'index de destination diminue de 1
-        finalDropIndex = dropIndex - 1;
-        console.log('➡️ Déplacement vers la droite, finalDropIndex:', finalDropIndex);
-      } else {
-        // Déplacement vers la gauche : pas d'ajustement
-        console.log('⬅️ Déplacement vers la gauche, finalDropIndex:', finalDropIndex);
+        finalDropIndex = to - 1;
       }
-      
-      // S'assurer que l'index est dans les limites
-      finalDropIndex = Math.max(0, Math.min(finalDropIndex, newImages.length));
       
       // Insérer à la nouvelle position
       newImages.splice(finalDropIndex, 0, draggedItem);
       
-      console.log('📋 Après déplacement:', newImages.map((img, i) => `${i}: ${img.url.substring(img.url.length - 20)}`));
-      
       return newImages;
     });
+    
+    dragIndex.current = null;
   };
 
   return (
@@ -275,8 +264,8 @@ export default function ImageGalleryManager({
         onDrop={handleZoneDrop}
       >
         {images.map((image, index) => {
-          const isDragged = draggedIndex === index;
-          const isDragOver = dragOverIndex === index && draggedIndex !== index;
+          const isDragged = dragIndex.current === index;
+          const isDragOver = dragOverIndex === index && dragIndex.current !== index;
           
           return (
             <div
@@ -300,7 +289,8 @@ export default function ImageGalleryManager({
               <img 
                 src={image.url} 
                 alt=""
-                className="w-full h-full object-cover"
+                draggable={false}
+                className="w-full h-full object-cover pointer-events-none"
                 onError={(e) => {
                   console.error('❌ Erreur de chargement image:', image.url);
                   // Afficher le fallback au lieu de cacher l'image
@@ -353,7 +343,11 @@ export default function ImageGalleryManager({
               
               <button
                 type="button"
-                onClick={() => removeImage(index)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeImage(index);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
                 className="hidden group-hover:flex absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white items-center justify-center text-xs z-20 hover:bg-red-700 transition-colors shadow-sm"
               >
                 ✕
@@ -362,7 +356,11 @@ export default function ImageGalleryManager({
               {!image.isMain && (
                 <button
                   type="button"
-                  onClick={() => setAsMainImage(index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAsMainImage(index);
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
                   className="hidden group-hover:flex absolute bottom-1 left-1 right-1 h-6 text-[10px] items-center justify-center rounded bg-green-600 text-white font-medium z-20 hover:bg-green-700 transition-colors shadow-sm"
                 >
                   {locale === 'fr' ? 'Définir principale' : 'Set as main'}

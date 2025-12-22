@@ -94,3 +94,5 @@ Si vous ne pouvez pas vous connecter, vous pouvez exécuter les migrations SQL d
 2. Copiez le contenu de chaque fichier dans `prisma/migrations/[NOM]/migration.sql`
 3. Exécutez-les dans l'ordre
 
+
+

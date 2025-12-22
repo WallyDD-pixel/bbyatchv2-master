@@ -50,3 +50,5 @@ echo "  3. Collez et exécutez dans SQL Editor"
 echo "  4. Vérifiez que toutes les tables sont créées"
 echo "  5. Déployez l'application: bash deploy/deploy-sans-migrations.sh"
 
+
+

@@ -49,3 +49,5 @@ echo -e "${YELLOW}Après modification, redémarrer PM2:${NC}"
 echo "pm2 restart bbyatchv2-preprod --update-env"
 echo "pm2 logs bbyatchv2-preprod --lines 20"
 
+
+

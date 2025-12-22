@@ -79,3 +79,5 @@ DATABASE_URL="postgresql://postgres:Escalop08%26%26@db.nbovypcv.supabase.co:5432
 
 **Note** : Remplacez `nbovypcv` par votre vraie référence de projet Supabase si ce n'est pas la bonne.
 
+
+

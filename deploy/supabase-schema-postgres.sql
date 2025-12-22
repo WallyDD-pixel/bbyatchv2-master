@@ -387,3 +387,5 @@ CREATE TABLE IF NOT EXISTS "InfoCard" (
 -- Fin du schéma
 -- ============================================
 
+
+

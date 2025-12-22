@@ -65,3 +65,5 @@ echo "  2. Copiez le contenu de $OUTPUT_FILE"
 echo "  3. Collez et exécutez dans SQL Editor"
 echo "  4. Vérifiez que toutes les tables sont créées"
 
+
+

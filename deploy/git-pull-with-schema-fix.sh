@@ -74,3 +74,5 @@ echo ""
 echo "Vérification:"
 grep "provider" prisma/schema.prisma | head -2
 
+
+

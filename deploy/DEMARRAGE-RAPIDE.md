@@ -162,3 +162,5 @@ sudo tail -f /var/log/nginx/error.log
 
 C'est tout ! Pas besoin de Docker, pas besoin de PostgreSQL local. Supabase s'occupe de tout. 🎉
 
+
+

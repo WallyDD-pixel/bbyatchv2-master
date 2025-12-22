@@ -75,3 +75,5 @@ fi
 echo ""
 echo -e "${GREEN}✅ Migrations terminées!${NC}"
 
+
+

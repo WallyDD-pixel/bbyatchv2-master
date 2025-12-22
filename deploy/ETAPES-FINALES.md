@@ -155,3 +155,5 @@ sudo tail -f /var/log/nginx/error.log
 
 Une fois ces étapes terminées, votre application devrait être en ligne ! 🚀
 
+
+

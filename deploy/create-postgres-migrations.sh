@@ -82,3 +82,5 @@ echo ""
 echo "⚠️  IMPORTANT: Vérifiez manuellement le fichier avant de l'exécuter dans Supabase"
 echo "   Certaines conversions peuvent nécessiter des ajustements"
 
+
+

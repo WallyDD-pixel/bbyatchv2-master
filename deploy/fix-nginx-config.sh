@@ -69,3 +69,5 @@ echo "Testez maintenant:"
 echo "  curl http://localhost"
 echo "  curl https://preprod.bbservicescharter.com"
 
+
+

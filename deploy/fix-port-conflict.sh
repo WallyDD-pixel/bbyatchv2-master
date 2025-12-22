@@ -84,3 +84,5 @@ echo "Vérifiez que l'application fonctionne:"
 echo "  curl http://localhost:$PORT"
 echo "  pm2 logs $APP_NAME"
 
+
+

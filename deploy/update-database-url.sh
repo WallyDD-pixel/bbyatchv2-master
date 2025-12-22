@@ -69,3 +69,5 @@ echo -e "${YELLOW}Vérification des logs (attendez 5 secondes)...${NC}"
 sleep 5
 pm2 logs bbyatchv2-preprod --lines 10 --nostream
 
+
+

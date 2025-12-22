@@ -54,3 +54,5 @@ echo "  - Voir les logs: pm2 logs bbyatchv2-preprod"
 echo "  - Redémarrer: pm2 restart bbyatchv2-preprod"
 echo "  - Vérifier l'URL: https://preprod.bbservicescharter.com"
 
+
+
