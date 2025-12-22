@@ -524,8 +524,8 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   }, [linkBoatId, showLinkManager]);
 
   async function addSlot(): Promise<void> {
-    if (!selectedBoat) {
-      alert(locale === 'fr' ? 'Sélectionnez un bateau' : 'Select a boat');
+    if (!selectedBoat && !selectedExperience) {
+      alert(locale === 'fr' ? 'Sélectionnez un bateau ou une expérience' : 'Select a boat or experience');
       return;
     }
 
@@ -553,30 +553,60 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
       // Créer les créneaux pour chaque date sélectionnée
       for (const date of datesToProcess) {
         try {
-          const res = await fetch('/api/admin/availability', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              boatId: selectedBoat,
-              date: date,
-              part: newSlotPart,
-              note: newSlotNote.trim() || null,
-            }),
-          });
+          let res: Response;
           
-          if (res.ok) {
-            const result = await res.json();
-            if (result.toggled === 'added' && result.slot) {
-              setSlots(slots => [...slots, { ...result.slot, date: localKey(result.slot.date) }]);
-              successCount++;
+          if (selectedExperience) {
+            // Créer un créneau d'expérience
+            res = await fetch('/api/admin/availability/experiences', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                experienceId: selectedExperience,
+                date: date,
+                part: newSlotPart,
+                note: newSlotNote.trim() || null,
+              }),
+            });
+            
+            if (res.ok) {
+              const result = await res.json();
+              if (result.toggled === 'added' && result.slot) {
+                setExpSlots(slots => [...slots, { ...result.slot, date: localKey(result.slot.date) }]);
+                successCount++;
+              }
+            } else {
+              errorCount++;
             }
-          } else {
-            errorCount++;
+          } else if (selectedBoat) {
+            // Créer un créneau de bateau
+            res = await fetch('/api/admin/availability', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                boatId: selectedBoat,
+                date: date,
+                part: newSlotPart,
+                note: newSlotNote.trim() || null,
+              }),
+            });
+            
+            if (res.ok) {
+              const result = await res.json();
+              if (result.toggled === 'added' && result.slot) {
+                setSlots(slots => [...slots, { ...result.slot, date: localKey(result.slot.date) }]);
+                successCount++;
+              }
+            } else {
+              errorCount++;
+            }
           }
         } catch {
           errorCount++;
         }
       }
+
+      // Recharger les données
+      await load(date);
 
       // Réinitialiser les champs
       setNewSlotDate('');
@@ -1078,10 +1108,16 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         </div>
         
         {/* Section pour ajouter des créneaux */}
-        {selectedBoat && !showAll && (
-          <div className='p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 shadow-sm'>
+        {(selectedBoat || selectedExperience) && !showAll && (
+          <div className={`p-4 rounded-xl border shadow-sm ${
+            selectedBoat 
+              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'
+              : 'bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200'
+          }`}>
             <div className='flex items-center justify-between mb-3'>
-              <h3 className='font-bold text-sm text-green-800 flex items-center gap-2'>
+              <h3 className={`font-bold text-sm flex items-center gap-2 ${
+                selectedBoat ? 'text-green-800' : 'text-purple-800'
+              }`}>
                 <span className="text-lg">➕</span>
                 {locale==='fr' ? 'Ajouter un créneau' : 'Add availability slot'}
               </h3>
@@ -1090,7 +1126,11 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
             {!showAddSlot ? (
               <button 
                 onClick={() => setShowAddSlot(true)}
-                className='w-full h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2'
+                className={`w-full h-10 rounded-lg text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                  selectedBoat 
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-purple-600 hover:bg-purple-700'
+                }`}
               >
                 <span>➕</span>
                 {locale==='fr' ? 'Nouveau créneau' : 'New slot'}
@@ -1108,8 +1148,8 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       !isMultiDateMode 
-                        ? 'bg-green-600 text-white' 
-                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        ? (selectedBoat ? 'bg-green-600 text-white' : 'bg-purple-600 text-white')
+                        : (selectedBoat ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-purple-100 text-purple-700 hover:bg-purple-200')
                     }`}
                   >
                     {locale==='fr' ? 'Date unique' : 'Single date'}
@@ -1122,8 +1162,8 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       isMultiDateMode 
-                        ? 'bg-green-600 text-white' 
-                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        ? (selectedBoat ? 'bg-green-600 text-white' : 'bg-purple-600 text-white')
+                        : (selectedBoat ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-purple-100 text-purple-700 hover:bg-purple-200')
                     }`}
                   >
                     {locale==='fr' ? 'Plusieurs dates' : 'Multiple dates'}
@@ -1132,14 +1172,20 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
 
                 {!isMultiDateMode ? (
                   <div>
-                    <label className='block text-xs font-medium mb-1 text-green-800'>
+                    <label className={`block text-xs font-medium mb-1 ${
+                      selectedBoat ? 'text-green-800' : 'text-purple-800'
+                    }`}>
                       {locale==='fr' ? 'Date' : 'Date'}
                     </label>
                     <input
                       type='date'
                       value={newSlotDate}
                       onChange={(e) => setNewSlotDate(e.target.value)}
-                      className='w-full h-9 px-3 rounded-lg border border-green-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30'
+                      className={`w-full h-9 px-3 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 ${
+                        selectedBoat 
+                          ? 'border-green-300 focus:ring-green-500/30'
+                          : 'border-purple-300 focus:ring-purple-500/30'
+                      }`}
                       min={new Date().toISOString().split('T')[0]}
                     />
                   </div>
@@ -1147,26 +1193,38 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                   <div className='space-y-3'>
                     <div className='grid grid-cols-2 gap-2'>
                       <div>
-                        <label className='block text-xs font-medium mb-1 text-green-800'>
+                        <label className={`block text-xs font-medium mb-1 ${
+                          selectedBoat ? 'text-green-800' : 'text-purple-800'
+                        }`}>
                           {locale==='fr' ? 'Date début' : 'Start date'}
                         </label>
                         <input
                           type='date'
                           value={newSlotDate}
                           onChange={(e) => setNewSlotDate(e.target.value)}
-                          className='w-full h-9 px-3 rounded-lg border border-green-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30'
+                          className={`w-full h-9 px-3 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 ${
+                            selectedBoat 
+                              ? 'border-green-300 focus:ring-green-500/30'
+                              : 'border-purple-300 focus:ring-purple-500/30'
+                          }`}
                           min={new Date().toISOString().split('T')[0]}
                         />
                       </div>
                       <div>
-                        <label className='block text-xs font-medium mb-1 text-green-800'>
+                        <label className={`block text-xs font-medium mb-1 ${
+                          selectedBoat ? 'text-green-800' : 'text-purple-800'
+                        }`}>
                           {locale==='fr' ? 'Date fin' : 'End date'}
                         </label>
                         <input
                           type='date'
                           value={newSlotEndDate}
                           onChange={(e) => setNewSlotEndDate(e.target.value)}
-                          className='w-full h-9 px-3 rounded-lg border border-green-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30'
+                          className={`w-full h-9 px-3 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 ${
+                            selectedBoat 
+                              ? 'border-green-300 focus:ring-green-500/30'
+                              : 'border-purple-300 focus:ring-purple-500/30'
+                          }`}
                           min={newSlotDate || new Date().toISOString().split('T')[0]}
                         />
                       </div>
@@ -1176,22 +1234,36 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                       <button
                         type='button'
                         onClick={selectDateRange}
-                        className='w-full h-8 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium transition-colors'
+                        className={`w-full h-8 rounded-lg text-xs font-medium transition-colors ${
+                          selectedBoat
+                            ? 'bg-green-100 hover:bg-green-200 text-green-700'
+                            : 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+                        }`}
                       >
                         {locale==='fr' ? 'Sélectionner cette plage' : 'Select this range'}
                       </button>
                     )}
 
                     {selectedDates.length > 0 && (
-                      <div className='p-3 rounded-lg bg-green-50 border border-green-200'>
+                      <div className={`p-3 rounded-lg border ${
+                        selectedBoat
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-purple-50 border-purple-200'
+                      }`}>
                         <div className='flex items-center justify-between mb-2'>
-                          <span className='text-xs font-medium text-green-800'>
+                          <span className={`text-xs font-medium ${
+                            selectedBoat ? 'text-green-800' : 'text-purple-800'
+                          }`}>
                             {locale==='fr' ? 'Dates sélectionnées' : 'Selected dates'} ({selectedDates.length})
                           </span>
                           <button
                             type='button'
                             onClick={() => setSelectedDates([])}
-                            className='text-xs text-green-600 hover:text-green-800'
+                            className={`text-xs ${
+                              selectedBoat 
+                                ? 'text-green-600 hover:text-green-800'
+                                : 'text-purple-600 hover:text-purple-800'
+                            }`}
                           >
                             {locale==='fr' ? 'Effacer' : 'Clear'}
                           </button>
@@ -1200,13 +1272,15 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                           {selectedDates.map(date => (
                             <span
                               key={date}
-                              className='inline-flex items-center gap-1 px-2 py-1 rounded bg-green-600 text-white text-[10px] font-medium'
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-white text-[10px] font-medium ${
+                                selectedBoat ? 'bg-green-600' : 'bg-purple-600'
+                              }`}
                             >
                               {new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
                               <button
                                 type='button'
                                 onClick={() => toggleDateSelection(date)}
-                                className='hover:bg-green-700 rounded-full w-3 h-3 flex items-center justify-center'
+                                className={`hover:opacity-80 rounded-full w-3 h-3 flex items-center justify-center`}
                               >
                                 ×
                               </button>
@@ -1216,7 +1290,11 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                       </div>
                     )}
 
-                    <div className='text-xs text-green-700 bg-green-50 p-2 rounded'>
+                    <div className={`text-xs p-2 rounded ${
+                      selectedBoat
+                        ? 'text-green-700 bg-green-50'
+                        : 'text-purple-700 bg-purple-50'
+                    }`}>
                       💡 {locale==='fr' 
                         ? 'Astuce: Définissez une plage de dates ou cliquez sur les dates individuelles dans le calendrier'
                         : 'Tip: Set a date range or click individual dates in the calendar'
@@ -1226,13 +1304,19 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                 )}
                 
                 <div>
-                  <label className='block text-xs font-medium mb-1 text-green-800'>
+                  <label className={`block text-xs font-medium mb-1 ${
+                    selectedBoat ? 'text-green-800' : 'text-purple-800'
+                  }`}>
                     {locale==='fr' ? 'Type de créneau' : 'Slot type'}
                   </label>
                   <select
                     value={newSlotPart}
                     onChange={(e) => setNewSlotPart(e.target.value as 'FULL'|'AM'|'PM'|'SUNSET')}
-                    className='w-full h-9 px-3 rounded-lg border border-green-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30'
+                    className={`w-full h-9 px-3 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 ${
+                      selectedBoat
+                        ? 'border-green-300 focus:ring-green-500/30'
+                        : 'border-purple-300 focus:ring-purple-500/30'
+                    }`}
                   >
                     <option value='FULL'>{locale==='fr' ? 'Journée complète (8h)' : 'Full day (8h)'}</option>
                     <option value='AM'>{locale==='fr' ? 'Matin (4h)' : 'Morning (4h)'}</option>
@@ -1242,13 +1326,19 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                 </div>
                 
                 <div>
-                  <label className='block text-xs font-medium mb-1 text-green-800'>
+                  <label className={`block text-xs font-medium mb-1 ${
+                    selectedBoat ? 'text-green-800' : 'text-purple-800'
+                  }`}>
                     {locale==='fr' ? 'Note (optionnelle)' : 'Note (optional)'}
                   </label>
                   <textarea
                     value={newSlotNote}
                     onChange={(e) => setNewSlotNote(e.target.value)}
-                    className='w-full h-16 px-3 py-2 rounded-lg border border-green-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 resize-none'
+                    className={`w-full h-16 px-3 py-2 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 resize-none ${
+                      selectedBoat
+                        ? 'border-green-300 focus:ring-green-500/30'
+                        : 'border-purple-300 focus:ring-purple-500/30'
+                    }`}
                     placeholder={locale==='fr' ? 'Note ou commentaire...' : 'Note or comment...'}
                   />
                 </div>
@@ -1257,7 +1347,11 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                   <button
                     onClick={addSlot}
                     disabled={saving || (!isMultiDateMode && !newSlotDate) || (isMultiDateMode && selectedDates.length === 0)}
-                    className='flex-1 h-9 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors'
+                    className={`flex-1 h-9 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors ${
+                      selectedBoat
+                        ? 'bg-green-600 hover:bg-green-700'
+                        : 'bg-purple-600 hover:bg-purple-700'
+                    }`}
                   >
                     {saving ? (
                       locale==='fr' ? 'Ajout...' : 'Adding...'
@@ -1289,10 +1383,16 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
             )}
             
             <p className='text-[10px] text-green-700 mt-2'>
-              {locale==='fr' 
-                ? `Bateau sélectionné: ${boats.find(b => b.id === selectedBoat)?.name || 'N/A'}`
-                : `Selected boat: ${boats.find(b => b.id === selectedBoat)?.name || 'N/A'}`
-              }
+              {selectedBoat && (
+                locale==='fr' 
+                  ? `Bateau sélectionné: ${boats.find(b => b.id === selectedBoat)?.name || 'N/A'}`
+                  : `Selected boat: ${boats.find(b => b.id === selectedBoat)?.name || 'N/A'}`
+              )}
+              {selectedExperience && (
+                locale==='fr'
+                  ? `Expérience sélectionnée: ${experiences.find(e => e.id === selectedExperience)?.[locale==='fr'?'titleFr':'titleEn'] || 'N/A'}`
+                  : `Selected experience: ${experiences.find(e => e.id === selectedExperience)?.[locale==='fr'?'titleFr':'titleEn'] || 'N/A'}`
+              )}
             </p>
           </div>
         )}

@@ -53,16 +53,18 @@ export async function POST(req: Request) {
   let body: any = {}; try { body = await req.json(); } catch {}
   const { experienceId, date, part, note } = body || {};
   if (!experienceId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
-  if (!['AM','PM','FULL'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
+  if (!['AM','PM','FULL','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
   const day = new Date(date + 'T00:00:00');
   if (isNaN(day.getTime())) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
   try {
     const existing = await (prisma as any).experienceAvailabilitySlot.findUnique({ where: { experienceId_date_part: { experienceId: Number(experienceId), date: day, part } } });
     if (existing) { await (prisma as any).experienceAvailabilitySlot.delete({ where: { id: existing.id } }); return NextResponse.json({ toggled:'removed', id: existing.id }); }
     if (part==='FULL') {
-      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: { experienceId: Number(experienceId), date: day, part: { in:['AM','PM'] } } });
+      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: { experienceId: Number(experienceId), date: day, part: { in:['AM','PM','SUNSET'] } } });
+    } else if (part==='SUNSET') {
+      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: { experienceId: Number(experienceId), date: day, part: { in:['FULL','AM','PM'] } } });
     } else {
-      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: { experienceId: Number(experienceId), date: day, part:'FULL' } });
+      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: { experienceId: Number(experienceId), date: day, part: { in:['FULL','SUNSET'] } } });
     }
     const created = await (prisma as any).experienceAvailabilitySlot.create({ data: { experienceId: Number(experienceId), date: day, part, status:'available', note: note||null } });
     return NextResponse.json({ toggled:'added', slot: created });
