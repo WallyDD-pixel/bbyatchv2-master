@@ -70,13 +70,50 @@ export async function POST(req: Request){
       return NextResponse.json({ error: 'slot_unavailable' }, { status: 409 });
     }
 
-    // Slot dispo jour départ (logique existante conservée)
-    const startSlots = await prisma.availabilitySlot.findMany({ where: { boat: { slug: boatSlug }, date: { gte: s, lte: s }, status: 'available' }, select: { part: true } });
-    const partsSet = new Set(startSlots.map(s=>s.part));
-    const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
-    if((part==='FULL' || part==='SUNSET') && !hasFullEquivalent) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
-    if(part==='AM' && !(partsSet.has('AM') || partsSet.has('FULL'))) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
-    if(part==='PM' && !(partsSet.has('PM') || partsSet.has('FULL'))) return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+    // Vérification de disponibilité pour tous les jours de la plage
+    if(part==='FULL' || part==='SUNSET'){
+      // Pour les réservations multi-jours, vérifier tous les jours
+      const requiredDays: Date[] = [];
+      let current = new Date(s);
+      while(current <= e){
+        requiredDays.push(new Date(current));
+        current = new Date(current.getTime() + 86400000);
+      }
+      
+      // Vérifier chaque jour
+      for(const day of requiredDays){
+        const daySlots = await prisma.availabilitySlot.findMany({ 
+          where: { 
+            boat: { slug: boatSlug }, 
+            date: { gte: day, lte: day }, 
+            status: 'available' 
+          }, 
+          select: { part: true } 
+        });
+        const partsSet = new Set(daySlots.map(s=>s.part));
+        const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
+        if(!hasFullEquivalent){
+          return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+        }
+      }
+    } else {
+      // Pour les demi-journées, vérifier seulement le jour de départ
+      const startSlots = await prisma.availabilitySlot.findMany({ 
+        where: { 
+          boat: { slug: boatSlug }, 
+          date: { gte: s, lte: s }, 
+          status: 'available' 
+        }, 
+        select: { part: true } 
+      });
+      const partsSet = new Set(startSlots.map(s=>s.part));
+      if(part==='AM' && !(partsSet.has('AM') || partsSet.has('FULL'))){
+        return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+      }
+      if(part==='PM' && !(partsSet.has('PM') || partsSet.has('FULL'))){
+        return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+      }
+    }
     // Prix selon rôle (agence ou normal)
     const boatWithPrices = await (prisma as any).boat.findUnique({ where: { slug: boatSlug }, select: { pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true, priceAgencyPerDay:true, priceAgencyAm:true, priceAgencyPm:true, priceAgencySunset:true, options: { select:{ id:true, label:true, price:true } } } });
     let total: number|null = null;
