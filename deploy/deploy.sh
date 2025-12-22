@@ -163,12 +163,38 @@ fi
 # 5. Démarrer PostgreSQL avec Docker
 echo -e "${YELLOW}[5/10] Démarrage de PostgreSQL...${NC}"
 cd "$APP_DIR"
+
+# Vérifier que Docker est démarré
+if ! docker info > /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠ Docker daemon n'est pas démarré, démarrage...${NC}"
+    sudo systemctl start docker || sudo service docker start || true
+    sleep 2
+    
+    # Vérifier à nouveau
+    if ! docker info > /dev/null 2>&1; then
+        echo -e "${RED}✗ Impossible de démarrer Docker${NC}"
+        echo "Essayez manuellement: sudo systemctl start docker"
+        exit 1
+    fi
+fi
+
+# Détecter la commande docker compose (nouvelle syntaxe) ou docker-compose (ancienne)
+DOCKER_COMPOSE_CMD=""
+if command -v docker &> /dev/null && docker compose version > /dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+else
+    echo -e "${RED}✗ docker compose ou docker-compose n'est pas disponible${NC}"
+    exit 1
+fi
+
 if docker ps -a --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
     echo -e "${YELLOW}⚠ Container Docker existant trouvé, démarrage...${NC}"
     docker start "$DB_CONTAINER" 2>/dev/null || true
 else
     echo "Création et démarrage du container PostgreSQL..."
-    docker compose -f docker-compose.preprod.yml up -d
+    $DOCKER_COMPOSE_CMD -f docker-compose.preprod.yml up -d
 fi
 
 # Attendre que PostgreSQL soit prêt
