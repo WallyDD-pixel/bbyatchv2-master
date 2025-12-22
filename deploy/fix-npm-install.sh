@@ -56,25 +56,55 @@ if [ -f "package-lock.json" ]; then
     echo -e "${GREEN}✓ package-lock.json supprimé${NC}"
 fi
 
-# 5. Réinstaller avec npm install (plus tolérant que npm ci)
-echo -e "${YELLOW}[5/6] Réinstallation des dépendances...${NC}"
+# 5. Vérifier/Créer un swap si nécessaire
+echo -e "${YELLOW}[5/7] Vérification du swap...${NC}"
+SWAP_TOTAL=$(free -m | awk '/^Swap:/{print $2}')
+if [ "$SWAP_TOTAL" -eq 0 ] && [ "$AVAIL_MEM" -lt 1024 ]; then
+    echo -e "${YELLOW}⚠ Pas de swap détecté. Création d'un swap de 1GB...${NC}"
+    if [ ! -f /swapfile ]; then
+        sudo fallocate -l 1G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=1024 2>/dev/null
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+        if ! grep -q "/swapfile" /etc/fstab; then
+            echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+        fi
+        echo -e "${GREEN}✓ Swap créé et activé${NC}"
+        sleep 2
+    fi
+else
+    echo -e "${GREEN}✓ Swap disponible: ${SWAP_TOTAL}MB${NC}"
+fi
+
+# 6. Réinstaller avec npm install (plus tolérant que npm ci)
+echo -e "${YELLOW}[6/7] Réinstallation des dépendances...${NC}"
 export NODE_OPTIONS="--max-old-space-size=1024"
 
 # Installer avec npm install au lieu de npm ci pour éviter les problèmes
-if npm install --legacy-peer-deps --no-audit; then
+echo "Installation en cours (cela peut prendre plusieurs minutes avec peu de mémoire)..."
+if npm install --legacy-peer-deps --no-audit 2>&1 | tee /tmp/npm-install.log; then
     echo -e "${GREEN}✓ Dépendances installées${NC}"
 else
     echo -e "${RED}✗ Échec de l'installation${NC}"
     echo ""
-    echo "Vérifiez:"
-    echo "  - Mémoire disponible: free -h"
-    echo "  - Espace disque: df -h"
-    echo "  - Logs npm: cat ~/.npm/_logs/$(ls -t ~/.npm/_logs/ | head -1)"
+    echo "Le problème persiste. Solutions:"
+    echo ""
+    echo "1. Créer un swap plus grand:"
+    echo "   bash deploy/create-swap.sh 2"
+    echo ""
+    echo "2. Vérifier la mémoire:"
+    echo "   free -h"
+    echo ""
+    echo "3. Vérifier les logs:"
+    echo "   tail -50 /tmp/npm-install.log"
+    echo ""
+    echo "4. Essayer d'installer esbuild séparément:"
+    echo "   bash deploy/install-esbuild-separately.sh"
     exit 1
 fi
 
-# 6. Vérifier l'installation
-echo -e "${YELLOW}[6/6] Vérification de l'installation...${NC}"
+# 7. Vérifier l'installation
+echo -e "${YELLOW}[7/7] Vérification de l'installation...${NC}"
 if [ -d "node_modules" ] && [ -d "node_modules/.bin" ]; then
     echo -e "${GREEN}✓ Installation vérifiée${NC}"
     echo ""

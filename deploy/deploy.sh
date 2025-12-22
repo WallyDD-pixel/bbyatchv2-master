@@ -77,43 +77,68 @@ echo -e "${YELLOW}[3/10] Installation des dépendances npm...${NC}"
 # Vérifier la mémoire disponible
 TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
 AVAIL_MEM=$(free -m | awk '/^Mem:/{print $7}')
+SWAP_TOTAL=$(free -m | awk '/^Swap:/{print $2}')
 echo "Mémoire disponible: ${AVAIL_MEM}MB / ${TOTAL_MEM}MB"
+echo "Swap disponible: ${SWAP_TOTAL}MB"
+
+# Vérifier si un swap existe, sinon en créer un petit
+if [ "$SWAP_TOTAL" -eq 0 ] && [ "$AVAIL_MEM" -lt 1024 ]; then
+    echo -e "${YELLOW}⚠ Pas de swap détecté et mémoire faible. Création d'un swap de 1GB...${NC}"
+    if [ ! -f /swapfile ]; then
+        sudo fallocate -l 1G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=1024 2>/dev/null
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+        echo -e "${GREEN}✓ Swap créé et activé${NC}"
+    fi
+fi
 
 if [ "$AVAIL_MEM" -lt 512 ]; then
     echo -e "${YELLOW}⚠ Mémoire faible détectée (< 512MB). Nettoyage du cache npm...${NC}"
     npm cache clean --force
-    # Libérer de la mémoire en arrêtant les processus non essentiels si possible
+    # Libérer de la mémoire
     sync && echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true
 fi
 
-# Nettoyer node_modules si nécessaire (en cas d'erreur précédente)
-if [ -d "node_modules" ] && [ -f "package-lock.json" ]; then
-    echo -e "${YELLOW}⚠ Nettoyage de node_modules avant réinstallation...${NC}"
-    # Supprimer node_modules de manière plus robuste
-    find node_modules -mindepth 1 -delete 2>/dev/null || rm -rf node_modules
-    echo -e "${GREEN}✓ node_modules nettoyé${NC}"
-fi
-
 # Installer avec des options pour réduire l'utilisation mémoire
-echo "Installation des dépendances (cela peut prendre quelques minutes)..."
-if npm ci --prefer-offline --no-audit --legacy-peer-deps; then
-    echo -e "${GREEN}✓ Dépendances installées${NC}"
+export NODE_OPTIONS="--max-old-space-size=1024"
+
+# Vérifier si package-lock.json existe
+if [ -f "package-lock.json" ]; then
+    echo "Installation avec npm ci (package-lock.json trouvé)..."
+    if npm ci --prefer-offline --no-audit --legacy-peer-deps 2>&1 | tee /tmp/npm-install.log; then
+        echo -e "${GREEN}✓ Dépendances installées${NC}"
+    else
+        echo -e "${YELLOW}⚠ Erreur avec npm ci, tentative avec npm install...${NC}"
+        if npm install --prefer-offline --no-audit --legacy-peer-deps 2>&1 | tee /tmp/npm-install.log; then
+            echo -e "${GREEN}✓ Dépendances installées avec npm install${NC}"
+        else
+            echo -e "${RED}✗ Échec de l'installation des dépendances${NC}"
+            echo ""
+            echo "Le problème semble être lié à esbuild qui nécessite beaucoup de mémoire."
+            echo ""
+            echo "Solutions:"
+            echo "  1. Créer un swap file: bash deploy/create-swap.sh"
+            echo "  2. Installer esbuild séparément: npm install esbuild --legacy-peer-deps"
+            echo "  3. Vérifier les logs: cat /tmp/npm-install.log"
+            echo "  4. Vérifier la mémoire: free -h"
+            exit 1
+        fi
+    fi
 else
-    echo -e "${RED}✗ Erreur lors de l'installation avec npm ci${NC}"
-    echo -e "${YELLOW}⚠ Tentative avec npm install...${NC}"
-    
-    # Si npm ci échoue, essayer npm install avec options mémoire
-    export NODE_OPTIONS="--max-old-space-size=1024"
-    if npm install --prefer-offline --no-audit --legacy-peer-deps; then
-        echo -e "${GREEN}✓ Dépendances installées avec npm install${NC}"
+    echo "Installation avec npm install (pas de package-lock.json)..."
+    if npm install --prefer-offline --no-audit --legacy-peer-deps 2>&1 | tee /tmp/npm-install.log; then
+        echo -e "${GREEN}✓ Dépendances installées${NC}"
     else
         echo -e "${RED}✗ Échec de l'installation des dépendances${NC}"
         echo ""
-        echo "Solutions possibles:"
-        echo "  1. Vérifier la mémoire disponible: free -h"
-        echo "  2. Nettoyer le cache npm: npm cache clean --force"
-        echo "  3. Supprimer node_modules et réessayer: rm -rf node_modules && npm install"
-        echo "  4. Vérifier les logs: cat ~/.npm/_logs/$(ls -t ~/.npm/_logs/ | head -1)"
+        echo "Le problème semble être lié à esbuild qui nécessite beaucoup de mémoire."
+        echo ""
+        echo "Solutions:"
+        echo "  1. Créer un swap file: bash deploy/create-swap.sh"
+        echo "  2. Installer esbuild séparément: npm install esbuild --legacy-peer-deps"
+        echo "  3. Vérifier les logs: cat /tmp/npm-install.log"
+        echo "  4. Vérifier la mémoire: free -h"
         exit 1
     fi
 fi
