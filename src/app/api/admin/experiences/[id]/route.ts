@@ -125,6 +125,10 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       let descEn = String(data.get('descEn')||'').trim();
       let timeFr = String(data.get('timeFr')||'').trim()||undefined;
       let timeEn = String(data.get('timeEn')||'').trim()||undefined;
+      // Récupérer les champs pour horaires fixes
+      let fixedDepartureTime = String(data.get('fixedDepartureTime')||'').trim()||undefined;
+      let fixedReturnTime = String(data.get('fixedReturnTime')||'').trim()||undefined;
+      let hasFixedTimes = data.get('hasFixedTimes') === 'on' || data.get('hasFixedTimes') === 'true';
       // Gestion des images multiples
       const imageUrlParam = data.get('imageUrl');
       let imageUrl: string | null | undefined;
@@ -234,7 +238,10 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
         descEn: descEn??'',
         timeFr: timeFr??null,
         timeEn: timeEn??null,
-        imageUrl: finalImageUrl
+        imageUrl: finalImageUrl,
+        fixedDepartureTime: fixedDepartureTime || null,
+        fixedReturnTime: fixedReturnTime || null,
+        hasFixedTimes: hasFixedTimes ?? false,
       };
       
       // Ajouter photoUrls si on a des photos ou si c'était dans le formData
@@ -295,11 +302,14 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
         });
       }
       
-      // Sinon, rediriger après sauvegarde normale
-      // Utiliser NEXTAUTH_URL pour forcer HTTPS en production
-      const baseUrl = process.env.NEXTAUTH_URL || req.url.split('/api')[0];
-      const url = new URL(`/admin/experiences/${id}?updated=1`, baseUrl);
-      return NextResponse.redirect(url,303);
+      // Sinon, retourner JSON pour cohérence avec le client
+      // Le client gérera la redirection côté navigateur
+      return NextResponse.json({ 
+        ok: true, 
+        experience: updated,
+        photoUrls: responsePhotoUrls,
+        imageUrl: finalImageUrl
+      });
     }
     return NextResponse.json({ error:'unsupported' },{ status:400 });
   } catch(e:any){

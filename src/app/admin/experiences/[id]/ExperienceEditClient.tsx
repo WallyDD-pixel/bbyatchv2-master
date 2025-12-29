@@ -319,10 +319,30 @@ export default function ExperienceEditClient({
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'unknown_error' }));
-        alert(locale === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error saving');
+        const error = await response.json().catch(() => ({ error: 'unknown_error', message: 'Erreur inconnue' }));
+        const errorMessage = error.message || error.error || (locale === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error saving');
+        alert(`${errorMessage} (Status: ${response.status})`);
         console.error('Error:', error);
+        console.error('Response status:', response.status);
         return;
+      }
+
+      // Parser la réponse JSON
+      const data = await response.json().catch(() => null);
+      
+      if (!data || !data.ok) {
+        const errorMessage = data?.message || data?.error || (locale === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error saving');
+        alert(errorMessage);
+        console.error('Unexpected response:', data);
+        return;
+      }
+
+      // Mettre à jour les photos si retournées
+      if (data.photoUrls && Array.isArray(data.photoUrls)) {
+        setPhotos(data.photoUrls);
+      }
+      if (data.imageUrl) {
+        setImageUrl(data.imageUrl);
       }
 
       // Redirection après succès (utiliser window.location pour éviter Mixed Content)
