@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 interface ImageItem {
   url: string;
   isMain: boolean;
-  isTemp?: boolean;
+  isTemp?: boolean; // Pour les nouvelles images ajoutées
 }
 
 interface ImageGalleryManagerProps {
@@ -18,38 +18,50 @@ export default function ImageGalleryManager({
   initialPhotos, 
   locale 
 }: ImageGalleryManagerProps) {
+  console.log('🖼️ ImageGalleryManager - initialMainImage:', initialMainImage);
+  console.log('🖼️ ImageGalleryManager - initialPhotos:', initialPhotos);
+  
   const [images, setImages] = useState<ImageItem[]>(() => {
     const items: ImageItem[] = [];
+    
+    // Ajouter l'image principale en premier si elle existe
     if (initialMainImage) {
       items.push({ url: initialMainImage, isMain: true });
     }
+    
+    // Ajouter les autres photos
     initialPhotos.forEach(url => {
+      // Éviter les doublons avec l'image principale
       if (url !== initialMainImage) {
         items.push({ url, isMain: false });
       }
     });
+    
+    console.log('🖼️ Images initiales:', items);
     return items;
   });
 
-  const [draggingId, setDraggingId] = useState<number | null>(null);
-  const [dragOverId, setDragOverId] = useState<number | null>(null);
-  const [isDraggingFile, setIsDraggingFile] = useState(false);
-  
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [isDragOverZone, setIsDragOverZone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const keepPhotosInputRef = useRef<HTMLInputElement>(null);
   const mainImageInputRef = useRef<HTMLInputElement>(null);
-  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
-  // Mise à jour des champs cachés
+  // Mettre à jour les champs cachés quand les images changent
   useEffect(() => {
+    console.log('🔄 Mise à jour des champs cachés, images:', images.length);
     const mainImage = images.find(img => img.isMain);
     const otherImages = images.filter(img => !img.isMain);
     
     if (mainImageInputRef.current) {
       mainImageInputRef.current.value = mainImage?.url || '';
+      console.log('✅ mainImageInput mis à jour');
     }
+    
     if (keepPhotosInputRef.current) {
       keepPhotosInputRef.current.value = JSON.stringify(otherImages.map(img => img.url));
+      console.log('✅ keepPhotosInput mis à jour');
     }
   }, [images]);
 
@@ -57,55 +69,58 @@ export default function ImageGalleryManager({
     const files = e.target.files;
     if (!files) return;
 
+    console.log('📁 Fichiers sélectionnés:', files.length);
+
     Array.from(files).forEach(file => {
-      if (!file.type.startsWith('image/')) return;
+      if (!file.type.startsWith('image/')) {
+        console.log('❌ Fichier ignoré (pas une image):', file.name, file.type);
+        return;
+      }
+      
+      console.log('✅ Traitement du fichier image:', file.name, file.size, 'bytes');
       
       const reader = new FileReader();
       reader.onload = (event) => {
         const url = event.target?.result as string;
         if (url) {
-          setImages(prev => [...prev, { url, isMain: false, isTemp: true }]);
+          console.log('📷 Image convertie en Data URL, longueur:', url.length);
+          setImages(prev => {
+            const newImages = [...prev, { url, isMain: false, isTemp: true }];
+            console.log('📊 Nouvelles images dans l\'état:', newImages.length);
+            return newImages;
+          });
         }
+      };
+      reader.onerror = (error) => {
+        console.error('❌ Erreur lors de la lecture du fichier:', error);
       };
       reader.readAsDataURL(file);
     });
 
+    // Reset input
     e.target.value = '';
   };
 
-  // Gestion du drop de fichiers externes
-  const handleFileDragOver = (e: React.DragEvent) => {
-    if (draggingId !== null) return; // Ignorer si on drag une image interne
-    
-    const hasFiles = e.dataTransfer.types.includes('Files');
-    if (!hasFiles) return;
-    
+  // Gestion du drag & drop de fichiers depuis l'extérieur
+  const handleZoneDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDraggingFile(true);
+    setIsDragOverZone(true);
   };
 
-  const handleFileDragLeave = (e: React.DragEvent) => {
-    if (draggingId !== null) return;
-    
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setIsDraggingFile(false);
-    }
-  };
-
-  const handleFileDrop = (e: React.DragEvent) => {
-    if (draggingId !== null) return;
-    
+  const handleZoneDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDraggingFile(false);
+    setIsDragOverZone(false);
+  };
+
+  const handleZoneDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOverZone(false);
 
     const files = Array.from(e.dataTransfer.files);
-    if (files.length === 0) return;
+    console.log('📁 Fichiers déposés:', files.length);
     
     files.forEach(file => {
       if (!file.type.startsWith('image/')) return;
@@ -128,6 +143,8 @@ export default function ImageGalleryManager({
     
     setImages(prev => {
       const newImages = prev.filter((_, i) => i !== index);
+      // Si on supprime l'image principale et qu'il y a d'autres images, 
+      // faire de la première image restante la nouvelle image principale
       if (prev[index].isMain && newImages.length > 0) {
         newImages[0].isMain = true;
       }
@@ -142,96 +159,89 @@ export default function ImageGalleryManager({
     })));
   };
 
-  // Drag & Drop pour réorganiser les images
-  const handleMouseDown = (e: React.MouseEvent, index: number) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button')) return;
-    
-    dragStartPos.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handleMouseMove = (e: React.MouseEvent, index: number) => {
-    if (draggingId !== index || !dragStartPos.current) return;
-    
-    const deltaX = Math.abs(e.clientX - dragStartPos.current.x);
-    const deltaY = Math.abs(e.clientY - dragStartPos.current.y);
-    
-    // Seuil pour démarrer le drag
-    if (deltaX > 5 || deltaY > 5) {
-      setDraggingId(index);
-    }
-  };
-
-  const handleMouseUp = () => {
-    dragStartPos.current = null;
-    if (draggingId !== null) {
-      setDraggingId(null);
-      setDragOverId(null);
-    }
-  };
-
   const handleDragStart = (e: React.DragEvent, index: number) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button')) {
-      e.preventDefault();
-      return;
-    }
-    
-    setDraggingId(index);
+    console.log('🔄 Drag start:', index);
+    setDraggedIndex(index);
+    setDragOverIndex(null);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', index.toString());
-    
-    // Créer une image fantôme personnalisée
-    const dragImage = document.createElement('div');
-    dragImage.style.position = 'absolute';
-    dragImage.style.top = '-1000px';
-    dragImage.innerHTML = `<img src="${images[index].url}" style="width: 120px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #3b82f6;" />`;
-    document.body.appendChild(dragImage);
-    e.dataTransfer.setDragImage(dragImage, 60, 40);
-    setTimeout(() => document.body.removeChild(dragImage), 0);
+    e.dataTransfer.setData('text/plain', index.toString());
   };
 
   const handleDragEnd = () => {
-    setDraggingId(null);
-    setDragOverId(null);
-    dragStartPos.current = null;
+    console.log('🔄 Drag end');
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
-    if (draggingId === null || draggingId === index) return;
-    
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverId(index);
+    
+    // Ne pas définir dragOver sur l'élément qu'on est en train de déplacer
+    if (draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
   };
 
-  const handleDragLeave = () => {
-    setDragOverId(null);
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Vérifier si on quitte vraiment l'élément (pas juste un enfant)
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setDragOverIndex(null);
+    }
   };
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (draggingId === null || draggingId === dropIndex) {
-      setDraggingId(null);
-      setDragOverId(null);
+    console.log('🎯 Drop - draggedIndex:', draggedIndex, 'dropIndex:', dropIndex);
+    
+    setDragOverIndex(null);
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      console.log('❌ Drop annulé - même position ou pas de drag');
       return;
     }
     
-    const from = draggingId;
-    const to = dropIndex;
-    
     setImages(prev => {
       const newImages = [...prev];
-      const [draggedItem] = newImages.splice(from, 1);
-      newImages.splice(to, 0, draggedItem);
+      const draggedItem = newImages[draggedIndex];
+      
+      console.log('📋 Avant déplacement:', newImages.map((img, i) => `${i}: ${img.url.substring(img.url.length - 20)}`));
+      
+      // Supprimer l'élément de sa position actuelle
+      newImages.splice(draggedIndex, 1);
+      
+      // Calculer la nouvelle position correctement
+      let finalDropIndex = dropIndex;
+      
+      if (draggedIndex < dropIndex) {
+        // Déplacement vers la droite : l'index de destination diminue de 1
+        finalDropIndex = dropIndex - 1;
+        console.log('➡️ Déplacement vers la droite, finalDropIndex:', finalDropIndex);
+      } else {
+        // Déplacement vers la gauche : pas d'ajustement
+        console.log('⬅️ Déplacement vers la gauche, finalDropIndex:', finalDropIndex);
+      }
+      
+      // S'assurer que l'index est dans les limites
+      finalDropIndex = Math.max(0, Math.min(finalDropIndex, newImages.length));
+      
+      // Insérer à la nouvelle position
+      newImages.splice(finalDropIndex, 0, draggedItem);
+      
+      console.log('📋 Après déplacement:', newImages.map((img, i) => `${i}: ${img.url.substring(img.url.length - 20)}`));
+      
       return newImages;
     });
-    
-    setDraggingId(null);
-    setDragOverId(null);
   };
 
   return (
@@ -255,17 +265,119 @@ export default function ImageGalleryManager({
       </div>
       
       <div 
-        className={`relative min-h-[140px] rounded-xl border-2 border-dashed p-3 transition-all duration-200 ${
-          isDraggingFile && draggingId === null
+        className={`min-h-[140px] rounded-xl border-2 border-dashed p-3 flex flex-wrap gap-3 items-start justify-start transition-all duration-200 ${
+          isDragOverZone 
             ? 'border-blue-500 bg-blue-50 shadow-inner' 
             : 'border-black/15 bg-black/[0.02]'
         }`}
-        onDragOver={handleFileDragOver}
-        onDragLeave={handleFileDragLeave}
-        onDrop={handleFileDrop}
-        onMouseUp={handleMouseUp}
+        onDragOver={handleZoneDragOver}
+        onDragLeave={handleZoneDragLeave}
+        onDrop={handleZoneDrop}
       >
-        {images.length === 0 ? (
+        {images.map((image, index) => {
+          const isDragged = draggedIndex === index;
+          const isDragOver = dragOverIndex === index && draggedIndex !== index;
+          
+          return (
+            <div
+              key={`${image.url}-${index}`}
+              className={`group relative w-40 h-28 rounded-lg overflow-hidden bg-white border-2 flex-shrink-0 cursor-move transition-all duration-200 ${
+                isDragged 
+                  ? 'opacity-50 scale-95 rotate-2 border-blue-400 shadow-lg' 
+                  : isDragOver 
+                    ? 'border-blue-500 shadow-md scale-105 bg-blue-50' 
+                    : image.isMain
+                      ? 'border-green-400 shadow-sm'
+                      : 'border-black/10 hover:border-black/20 hover:shadow-sm'
+              }`}
+              draggable
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragEnd={handleDragEnd}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, index)}
+            >
+              <img 
+                src={image.url} 
+                alt=""
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error('❌ Erreur de chargement image:', image.url);
+                  // Afficher le fallback au lieu de cacher l'image
+                  const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                  if (fallback) {
+                    fallback.style.display = 'flex';
+                  }
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+                onLoad={() => {
+                  console.log('✅ Image chargée avec succès:', image.url.substring(0, 50) + '...');
+                  // Cacher le fallback si l'image se charge
+                  const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                  if (fallback) {
+                    fallback.style.display = 'none';
+                  }
+                }}
+              />
+              
+              {/* Fallback si l'image ne charge pas */}
+              <div className="absolute inset-0 bg-gray-100 flex items-center justify-center text-gray-400 text-xs" style={{ display: 'none' }}>
+                <div className="text-center">
+                  <div>📷</div>
+                  <div>Image</div>
+                  <div className="text-[10px] mt-1">Erreur de chargement</div>
+                </div>
+              </div>
+              
+              {image.isMain && (
+                <span className="absolute top-1 left-1 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-semibold shadow-sm">
+                  {locale === 'fr' ? 'PRINCIPALE' : 'MAIN'}
+                </span>
+              )}
+              
+              {isDragOver && (
+                <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                  <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium shadow-lg">
+                    {locale === 'fr' ? 'Déposer ici' : 'Drop here'}
+                  </div>
+                </div>
+              )}
+              
+              {isDragged && (
+                <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
+                  <div className="bg-black/70 text-white text-xs px-2 py-1 rounded">
+                    {locale === 'fr' ? 'Déplacement...' : 'Moving...'}
+                  </div>
+                </div>
+              )}
+              
+              <button
+                type="button"
+                onClick={() => removeImage(index)}
+                className="hidden group-hover:flex absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white items-center justify-center text-xs z-20 hover:bg-red-700 transition-colors shadow-sm"
+              >
+                ✕
+              </button>
+              
+              {!image.isMain && (
+                <button
+                  type="button"
+                  onClick={() => setAsMainImage(index)}
+                  className="hidden group-hover:flex absolute bottom-1 left-1 right-1 h-6 text-[10px] items-center justify-center rounded bg-green-600 text-white font-medium z-20 hover:bg-green-700 transition-colors shadow-sm"
+                >
+                  {locale === 'fr' ? 'Définir principale' : 'Set as main'}
+                </button>
+              )}
+              
+              {/* Indicateur de position */}
+              <div className="absolute top-1 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                {index + 1}
+              </div>
+            </div>
+          );
+        })}
+        
+        {images.length === 0 && (
           <div className="w-full text-center py-8">
             <div className="text-4xl mb-2">📷</div>
             <div className="text-black/50 text-sm mb-2">
@@ -279,110 +391,10 @@ export default function ImageGalleryManager({
                 : 'Click "Add" or drag images here'}
             </div>
           </div>
-        ) : (
-          <div className="flex flex-wrap gap-3 items-start">
-            {images.map((image, index) => {
-              const isDragging = draggingId === index;
-              const isDragOver = dragOverId === index && draggingId !== null && draggingId !== index;
-              
-              return (
-                <div
-                  key={`${image.url}-${index}`}
-                  className={`group relative w-40 h-28 rounded-lg overflow-hidden bg-white border-2 flex-shrink-0 transition-all duration-200 ${
-                    isDragging
-                      ? 'opacity-40 scale-95 border-blue-400 shadow-lg z-50'
-                      : isDragOver
-                        ? 'border-blue-500 border-dashed scale-105 shadow-xl z-40 bg-blue-50'
-                        : image.isMain
-                          ? 'border-green-400 shadow-sm'
-                          : 'border-black/10 hover:border-black/20 hover:shadow-sm'
-                  }`}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragEnd={handleDragEnd}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, index)}
-                  onMouseDown={(e) => handleMouseDown(e, index)}
-                  onMouseMove={(e) => handleMouseMove(e, index)}
-                >
-                  {/* Image */}
-                  <img 
-                    src={image.url} 
-                    alt=""
-                    draggable={false}
-                    className="w-full h-full object-cover pointer-events-none"
-                  />
-                  
-                  {/* Overlay au survol */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors pointer-events-none" />
-                  
-                  {/* Badge image principale */}
-                  {image.isMain && (
-                    <span className="absolute top-1 left-1 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-semibold shadow-sm pointer-events-none">
-                      {locale === 'fr' ? 'PRINCIPALE' : 'MAIN'}
-                    </span>
-                  )}
-                  
-                  {/* Indicateur de position */}
-                  <div className="absolute top-1 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    {index + 1}
-                  </div>
-                  
-                  {/* Indicateur de drop */}
-                  {isDragOver && (
-                    <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center pointer-events-none z-30">
-                      <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium shadow-lg">
-                        {locale === 'fr' ? 'Déposer ici' : 'Drop here'}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Indicateur de déplacement */}
-                  {isDragging && (
-                    <div className="absolute inset-0 bg-black/10 flex items-center justify-center pointer-events-none z-30">
-                      <div className="bg-black/70 text-white text-xs px-2 py-1 rounded">
-                        {locale === 'fr' ? 'Déplacement...' : 'Moving...'}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Bouton supprimer */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      removeImage(index);
-                    }}
-                    className="hidden group-hover:flex absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white items-center justify-center text-xs z-40 hover:bg-red-700 transition-colors shadow-sm"
-                  >
-                    ✕
-                  </button>
-                  
-                  {/* Bouton définir principale */}
-                  {!image.isMain && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        setAsMainImage(index);
-                      }}
-                      className="hidden group-hover:flex absolute bottom-1 left-1 right-1 h-6 text-[10px] items-center justify-center rounded bg-green-600 text-white font-medium z-40 hover:bg-green-700 transition-colors shadow-sm"
-                    >
-                      {locale === 'fr' ? 'Définir principale' : 'Set as main'}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         )}
         
-        {/* Message de drop de fichiers */}
-        {isDraggingFile && draggingId === null && images.length > 0 && (
-          <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed rounded-xl flex items-center justify-center z-10 pointer-events-none">
+        {isDragOverZone && images.length > 0 && (
+          <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed rounded-xl flex items-center justify-center">
             <div className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
               <div className="text-sm font-medium">
                 {locale === 'fr' ? '📷 Déposez vos images ici' : '📷 Drop your images here'}
@@ -390,32 +402,31 @@ export default function ImageGalleryManager({
             </div>
           </div>
         )}
-      </div>
-      
-      {/* Instructions */}
-      {images.length > 0 && (
-        <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <div className="flex items-start gap-2">
-            <div className="text-blue-600 text-sm">💡</div>
-            <div className="text-[11px] text-blue-800 leading-relaxed">
-              <div className="font-medium mb-1">
-                {locale === 'fr' ? 'Comment utiliser :' : 'How to use:'}
+        
+        {images.length > 0 && (
+          <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+            <div className="flex items-start gap-2">
+              <div className="text-blue-600 text-sm">💡</div>
+              <div className="text-[11px] text-blue-800 leading-relaxed">
+                <div className="font-medium mb-1">
+                  {locale === 'fr' ? 'Comment utiliser :' : 'How to use:'}
+                </div>
+                <ul className="space-y-1">
+                  <li>• {locale === 'fr' 
+                    ? 'Glissez-déposez les images pour les réorganiser' 
+                    : 'Drag & drop images to reorder them'}</li>
+                  <li>• {locale === 'fr' 
+                    ? 'Survolez une image pour voir les options' 
+                    : 'Hover over an image to see options'}</li>
+                  <li>• {locale === 'fr' 
+                    ? 'L\'image principale apparaît en premier sur le site' 
+                    : 'The main image appears first on the website'}</li>
+                </ul>
               </div>
-              <ul className="space-y-1">
-                <li>• {locale === 'fr' 
-                  ? 'Glissez-déposez les images pour les réorganiser' 
-                  : 'Drag & drop images to reorder them'}</li>
-                <li>• {locale === 'fr' 
-                  ? 'Survolez une image pour voir les options' 
-                  : 'Hover over an image to see options'}</li>
-                <li>• {locale === 'fr' 
-                  ? 'L\'image principale apparaît en premier sur le site' 
-                  : 'The main image appears first on the website'}</li>
-              </ul>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       
       {/* Champs cachés pour le formulaire */}
       <input 

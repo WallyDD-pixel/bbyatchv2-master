@@ -325,9 +325,15 @@ export default function ExperienceEditClient({
         return;
       }
 
-      // Redirection après succès
-      router.push(`/admin/experiences/${experience.id}?updated=1`);
-      router.refresh();
+      // Redirection après succès (utiliser window.location pour éviter Mixed Content)
+      const redirectUrl = `/admin/experiences/${experience.id}?updated=1`;
+      // Utiliser window.location pour forcer HTTPS si nécessaire
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+        window.location.href = redirectUrl;
+      } else {
+        router.push(redirectUrl);
+        router.refresh();
+      }
     } catch (error) {
       console.error('Error:', error);
       alert(locale === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error saving');
@@ -351,8 +357,14 @@ export default function ExperienceEditClient({
       });
 
       if (response.ok) {
-        router.push('/admin/experiences?deleted=1');
-        router.refresh();
+        // Utiliser window.location pour éviter Mixed Content
+        const redirectUrl = '/admin/experiences?deleted=1';
+        if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+          window.location.href = redirectUrl;
+        } else {
+          router.push(redirectUrl);
+          router.refresh();
+        }
       } else {
         alert(locale === 'fr' ? 'Erreur lors de la suppression' : 'Error deleting');
       }

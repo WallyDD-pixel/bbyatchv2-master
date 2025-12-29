@@ -130,6 +130,34 @@ pm2 logs bbyatchv2-preprod --err --lines 100
 pm2 restart bbyatchv2-preprod
 ```
 
+### Démarrer l'application manuellement avec PM2
+
+Si PM2 est configuré mais l'application n'est pas démarrée :
+
+```bash
+# Vérifier que l'application est buildée
+npm run build
+
+# Démarrer avec PM2
+pm2 start ecosystem.config.cjs
+
+# Sauvegarder la configuration
+pm2 save
+
+# Vérifier le statut
+pm2 status
+
+# Voir les logs
+pm2 logs bbyatchv2-preprod
+```
+
+Ou utilisez le script automatique :
+
+```bash
+chmod +x deploy/start-pm2.sh
+./deploy/start-pm2.sh
+```
+
 ## 📝 Commandes Utiles Après Déploiement
 
 ```bash
@@ -161,6 +189,7 @@ sudo tail -f /var/log/nginx/error.log
 4. ✅ Vérifier que ça fonctionne avec `pm2 logs`
 
 C'est tout ! Pas besoin de Docker, pas besoin de PostgreSQL local. Supabase s'occupe de tout. 🎉
+
 
 
 

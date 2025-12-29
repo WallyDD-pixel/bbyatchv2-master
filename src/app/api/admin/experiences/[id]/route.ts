@@ -110,7 +110,9 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       const method = String(data.get('_method')||'').toUpperCase();
       if(method==='DELETE'){
         await (prisma as any).experience.delete({ where:{ id } });
-        const url = new URL('/admin/experiences?deleted=1', req.url);
+        // Utiliser NEXTAUTH_URL pour forcer HTTPS en production
+        const baseUrl = process.env.NEXTAUTH_URL || req.url.split('/api')[0];
+        const url = new URL('/admin/experiences?deleted=1', baseUrl);
         return NextResponse.redirect(url,303);
       }
       // Repasser req (pas réutilisable) -> recréer formData lecture: on a déjà data
@@ -294,7 +296,9 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       }
       
       // Sinon, rediriger après sauvegarde normale
-      const url = new URL(`/admin/experiences/${id}?updated=1`, req.url);
+      // Utiliser NEXTAUTH_URL pour forcer HTTPS en production
+      const baseUrl = process.env.NEXTAUTH_URL || req.url.split('/api')[0];
+      const url = new URL(`/admin/experiences/${id}?updated=1`, baseUrl);
       return NextResponse.redirect(url,303);
     }
     return NextResponse.json({ error:'unsupported' },{ status:400 });
