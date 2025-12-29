@@ -41,8 +41,6 @@ export default function ImageGalleryManager({
     return items;
   });
 
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isDragOverZone, setIsDragOverZone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const keepPhotosInputRef = useRef<HTMLInputElement>(null);
@@ -159,87 +157,28 @@ export default function ImageGalleryManager({
     })));
   };
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    console.log('🔄 Drag start:', index);
-    setDraggedIndex(index);
-    setDragOverIndex(null);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', index.toString());
-  };
-
-  const handleDragEnd = () => {
-    console.log('🔄 Drag end');
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
-    
-    // Ne pas définir dragOver sur l'élément qu'on est en train de déplacer
-    if (draggedIndex !== index) {
-      setDragOverIndex(index);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Vérifier si on quitte vraiment l'élément (pas juste un enfant)
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setDragOverIndex(null);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log('🎯 Drop - draggedIndex:', draggedIndex, 'dropIndex:', dropIndex);
-    
-    setDragOverIndex(null);
-    
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      console.log('❌ Drop annulé - même position ou pas de drag');
-      return;
-    }
+  // Déplacer une image vers la gauche (indice diminue)
+  const moveImageLeft = (index: number) => {
+    if (index === 0) return; // Déjà en première position
     
     setImages(prev => {
       const newImages = [...prev];
-      const draggedItem = newImages[draggedIndex];
+      const temp = newImages[index];
+      newImages[index] = newImages[index - 1];
+      newImages[index - 1] = temp;
+      return newImages;
+    });
+  };
+
+  // Déplacer une image vers la droite (indice augmente)
+  const moveImageRight = (index: number) => {
+    setImages(prev => {
+      if (index === prev.length - 1) return prev; // Déjà en dernière position
       
-      console.log('📋 Avant déplacement:', newImages.map((img, i) => `${i}: ${img.url.substring(img.url.length - 20)}`));
-      
-      // Supprimer l'élément de sa position actuelle
-      newImages.splice(draggedIndex, 1);
-      
-      // Calculer la nouvelle position correctement
-      let finalDropIndex = dropIndex;
-      
-      if (draggedIndex < dropIndex) {
-        // Déplacement vers la droite : l'index de destination diminue de 1
-        finalDropIndex = dropIndex - 1;
-        console.log('➡️ Déplacement vers la droite, finalDropIndex:', finalDropIndex);
-      } else {
-        // Déplacement vers la gauche : pas d'ajustement
-        console.log('⬅️ Déplacement vers la gauche, finalDropIndex:', finalDropIndex);
-      }
-      
-      // S'assurer que l'index est dans les limites
-      finalDropIndex = Math.max(0, Math.min(finalDropIndex, newImages.length));
-      
-      // Insérer à la nouvelle position
-      newImages.splice(finalDropIndex, 0, draggedItem);
-      
-      console.log('📋 Après déplacement:', newImages.map((img, i) => `${i}: ${img.url.substring(img.url.length - 20)}`));
-      
+      const newImages = [...prev];
+      const temp = newImages[index];
+      newImages[index] = newImages[index + 1];
+      newImages[index + 1] = temp;
       return newImages;
     });
   };
@@ -275,27 +214,14 @@ export default function ImageGalleryManager({
         onDrop={handleZoneDrop}
       >
         {images.map((image, index) => {
-          const isDragged = draggedIndex === index;
-          const isDragOver = dragOverIndex === index && draggedIndex !== index;
-          
           return (
             <div
               key={`${image.url}-${index}`}
-              className={`group relative w-40 h-28 rounded-lg overflow-hidden bg-white border-2 flex-shrink-0 cursor-move transition-all duration-200 ${
-                isDragged 
-                  ? 'opacity-50 scale-95 rotate-2 border-blue-400 shadow-lg' 
-                  : isDragOver 
-                    ? 'border-blue-500 shadow-md scale-105 bg-blue-50' 
-                    : image.isMain
-                      ? 'border-green-400 shadow-sm'
-                      : 'border-black/10 hover:border-black/20 hover:shadow-sm'
+              className={`group relative w-40 h-28 rounded-lg overflow-hidden bg-white border-2 flex-shrink-0 transition-all duration-200 ${
+                image.isMain
+                  ? 'border-green-400 shadow-sm'
+                  : 'border-black/10 hover:border-black/20 hover:shadow-sm'
               }`}
-              draggable
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, index)}
             >
               <img 
                 src={image.url} 
@@ -310,10 +236,10 @@ export default function ImageGalleryManager({
                   }
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
-                onLoad={() => {
+                onLoad={(event) => {
                   console.log('✅ Image chargée avec succès:', image.url.substring(0, 50) + '...');
                   // Cacher le fallback si l'image se charge
-                  const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                  const fallback = (event.target as HTMLImageElement).nextElementSibling as HTMLElement;
                   if (fallback) {
                     fallback.style.display = 'none';
                   }
@@ -330,27 +256,34 @@ export default function ImageGalleryManager({
               </div>
               
               {image.isMain && (
-                <span className="absolute top-1 left-1 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-semibold shadow-sm">
+                <span className="absolute top-1 left-1 bg-green-600 text-white text-[9px] px-1.5 py-0.5 rounded font-semibold shadow-sm z-10">
                   {locale === 'fr' ? 'PRINCIPALE' : 'MAIN'}
                 </span>
               )}
               
-              {isDragOver && (
-                <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                  <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-medium shadow-lg">
-                    {locale === 'fr' ? 'Déposer ici' : 'Drop here'}
-                  </div>
-                </div>
-              )}
+              {/* Boutons de déplacement */}
+              <div className="hidden group-hover:flex absolute inset-0 bg-black/40 items-center justify-center gap-1 z-10">
+                <button
+                  type="button"
+                  onClick={() => moveImageLeft(index)}
+                  disabled={index === 0}
+                  className="w-8 h-8 rounded-full bg-white/90 text-black flex items-center justify-center text-sm font-bold hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                  title={locale === 'fr' ? 'Déplacer vers la gauche' : 'Move left'}
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveImageRight(index)}
+                  disabled={index === images.length - 1}
+                  className="w-8 h-8 rounded-full bg-white/90 text-black flex items-center justify-center text-sm font-bold hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                  title={locale === 'fr' ? 'Déplacer vers la droite' : 'Move right'}
+                >
+                  →
+                </button>
+              </div>
               
-              {isDragged && (
-                <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
-                  <div className="bg-black/70 text-white text-xs px-2 py-1 rounded">
-                    {locale === 'fr' ? 'Déplacement...' : 'Moving...'}
-                  </div>
-                </div>
-              )}
-              
+              {/* Bouton supprimer */}
               <button
                 type="button"
                 onClick={() => removeImage(index)}
@@ -359,6 +292,7 @@ export default function ImageGalleryManager({
                 ✕
               </button>
               
+              {/* Bouton définir comme principale */}
               {!image.isMain && (
                 <button
                   type="button"
@@ -370,7 +304,7 @@ export default function ImageGalleryManager({
               )}
               
               {/* Indicateur de position */}
-              <div className="absolute top-1 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-1 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-[8px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10">
                 {index + 1}
               </div>
             </div>
@@ -413,11 +347,11 @@ export default function ImageGalleryManager({
                 </div>
                 <ul className="space-y-1">
                   <li>• {locale === 'fr' 
-                    ? 'Glissez-déposez les images pour les réorganiser' 
-                    : 'Drag & drop images to reorder them'}</li>
+                    ? 'Survolez une image et utilisez les flèches ← → pour réorganiser' 
+                    : 'Hover over an image and use arrows ← → to reorder'}</li>
                   <li>• {locale === 'fr' 
-                    ? 'Survolez une image pour voir les options' 
-                    : 'Hover over an image to see options'}</li>
+                    ? 'Survolez une image pour voir toutes les options' 
+                    : 'Hover over an image to see all options'}</li>
                   <li>• {locale === 'fr' 
                     ? 'L\'image principale apparaît en premier sur le site' 
                     : 'The main image appears first on the website'}</li>
