@@ -54,14 +54,24 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: { 
   // Calculer le skipper si requis (même si le prix du bateau n'est pas défini, on utilise le prix par défaut)
   const skipperTotal = boat?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0;
   
+  // Calcul du prix agence : prix public - 20% sur la coque nue (hors taxe)
+  const calculateAgencyPrice = (publicPrice: number): number => {
+    return Math.round(publicPrice * 0.8); // -20% sur la coque nue
+  };
+  
   let total: number | null = null;
   if (boat) {
     if (isAgency) {
-      // Prix agence
-      if (slot==='FULL') total = (boat.priceAgencyPerDay ?? boat.pricePerDay) * nbJours;
-      else if (slot==='AM') total = boat.priceAgencyAm ?? boat.priceAm ?? null;
-      else if (slot==='PM') total = boat.priceAgencyPm ?? boat.pricePm ?? null;
-      else if (slot==='SUNSET') total = boat.priceAgencySunset ?? boat.priceSunset ?? null;
+      // Prix agence : utiliser prix agence défini ou calculer automatiquement (-20%)
+      if (slot==='FULL') {
+        total = boat.priceAgencyPerDay ? boat.priceAgencyPerDay * nbJours : calculateAgencyPrice(boat.pricePerDay) * nbJours;
+      } else if (slot==='AM') {
+        total = boat.priceAgencyAm ?? (boat.priceAm ? calculateAgencyPrice(boat.priceAm) : calculateAgencyPrice(Math.round(boat.pricePerDay / 2)));
+      } else if (slot==='PM') {
+        total = boat.priceAgencyPm ?? (boat.pricePm ? calculateAgencyPrice(boat.pricePm) : calculateAgencyPrice(Math.round(boat.pricePerDay / 2)));
+      } else if (slot==='SUNSET') {
+        total = boat.priceAgencySunset ?? (boat.priceSunset ? calculateAgencyPrice(boat.priceSunset) : null);
+      }
     } else {
       // Prix normal
       if (slot==='FULL') total = boat.pricePerDay * nbJours;
@@ -160,7 +170,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: { 
                     {total != null && (
                       <>
                         <div className='flex justify-between text-xs'>
-                          <span>{locale === 'fr' ? 'Location bateau' : 'Boat rental'}</span>
+                          <span>{isAgency ? (locale === 'fr' ? 'Location bateau (Prix agence)' : 'Boat rental (Agency price)') : (locale === 'fr' ? 'Location bateau' : 'Boat rental')}</span>
                           <span className='font-medium'>{total.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
                         </div>
                         {optionsTotal > 0 && (
@@ -219,7 +229,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: { 
                     <>
                       {total != null && (
                         <div className='flex justify-between text-xs text-black/70'>
-                          <span>{locale === 'fr' ? 'Location bateau' : 'Boat rental'}</span>
+                          <span>{isAgency ? (locale === 'fr' ? 'Location bateau (Prix agence)' : 'Boat rental (Agency price)') : (locale === 'fr' ? 'Location bateau' : 'Boat rental')}</span>
                           <span>{total.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
                         </div>
                       )}

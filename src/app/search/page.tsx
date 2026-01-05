@@ -52,7 +52,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
           // hors règle -> aucun résultat
         } else {
           const [allBoats, slots] = await Promise.all([
-            (prisma as any).boat.findMany({ where: { available: true }, select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, enginePower:true, speedKn:true, fuel:true } }),
+            (prisma as any).boat.findMany({ where: { available: true }, select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, enginePower:true, lengthM:true } }),
             (prisma as any).availabilitySlot.findMany({
               where: { date: { gte: fromDate, lte: toDate }, status: 'available' },
               select: { boatId:true, date:true, part:true }
@@ -83,7 +83,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
       } else {
         // AM ou PM (un seul jour)
         const [allBoats, slots] = await Promise.all([
-          (prisma as any).boat.findMany({ where: { available: true }, select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, enginePower:true, speedKn:true, fuel:true } }),
+          (prisma as any).boat.findMany({ where: { available: true }, select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, enginePower:true, lengthM:true } }),
           (prisma as any).availabilitySlot.findMany({
             where: { date: { gte: fromDate, lte: toDate }, status: 'available' },
             select: { boatId:true, date:true, part:true }
@@ -135,21 +135,13 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
         )}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {boats.map((b) => {
-            // Tarification : FULL multi jours -> pricePerDay * nbJours, demi-journée -> prix partiel si dispo sinon fallback
-            let total = 0;
-            if (partSel==='FULL') {
-              total = (nbJours>0 ? nbJours : 1) * b.pricePerDay;
-            } else if (partSel==='AM') {
-              total = (b.priceAm ?? Math.round(b.pricePerDay/2));
-            } else if (partSel==='PM') {
-              total = (b.pricePm ?? Math.round(b.pricePerDay/2));
-            }
-            const perDay = b.pricePerDay;
+            // Prix à partir de (demi-journée)
+            const priceFrom = b.priceAm || b.pricePm || Math.round(b.pricePerDay / 2);
+            
             const specs: string[] = [];
-            if (b.enginePower) specs.push(`⚙️ ${b.enginePower} cv`);
-            if (b.speedKn) specs.push(`🚀 ${b.speedKn} nds`);
-            if (b.fuel) specs.push(`🛢️ ${b.fuel} L`);
-            if (b.capacity) specs.push(`🧍 ${b.capacity} pax`);
+            if (b.capacity) specs.push(`${locale === 'fr' ? 'Places max' : 'Max places'}: ${b.capacity}`);
+            if (b.enginePower) specs.push(`${locale === 'fr' ? 'Puissance' : 'Power'}: ${b.enginePower} cv`);
+            if (b.lengthM) specs.push(`${locale === 'fr' ? 'Taille' : 'Length'}: ${b.lengthM} m`);
             const qs = new URLSearchParams({ lang: locale });
             qs.set('start', start || '');
             if (partSel==='FULL' && (end || start)) qs.set('end', end || start || '');
@@ -177,21 +169,9 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
                   <Image src={b.imageUrl} alt={b.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
                 )}
                 <div className="absolute left-3 top-3 bg-[var(--primary)] text-white px-4 py-2 rounded-xl shadow font-extrabold text-lg flex flex-col items-start leading-tight">
-                  <span>{total.toLocaleString('fr-FR')} €</span>
-                  {partSel==='FULL' && <span className="text-[10px] font-medium opacity-90">{nbJours} j</span>}
-                  {partSel==='AM' && <span className="text-[10px] font-medium opacity-90">Matin</span>}
-                  {partSel==='PM' && <span className="text-[10px] font-medium opacity-90">Après-midi</span>}
+                  <span className="text-xs font-medium opacity-90">{locale === 'fr' ? 'À partir de' : 'From'}</span>
+                  <span>{priceFrom.toLocaleString('fr-FR')} €</span>
                 </div>
-                {partSel==='FULL' && nbJours>1 && (
-                  <div className="absolute right-3 top-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[11px] font-medium shadow text-black/70">
-                    {perDay.toLocaleString('fr-FR')} €/j
-                  </div>
-                )}
-                {partSel!=='FULL' && (
-                  <div className="absolute right-3 top-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[11px] font-medium shadow text-black/70">
-                    {perDay.toLocaleString('fr-FR')} €/j (journée)
-                  </div>
-                )}
                 <div className="absolute left-3 bottom-3 text-white font-extrabold text-lg drop-shadow">
                   {b.name}
                 </div>

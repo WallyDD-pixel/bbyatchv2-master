@@ -492,6 +492,32 @@ export default function SearchBar({
         />
       </div>
       
+      {/* Passagers (caché en mode expérience) - aligné avec les autres champs */}
+      {!hidePassengers && mode!=='experience' && (
+        <div>
+          <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+            {labels.search_passengers}
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            className={baseInput}
+            value={passengersField}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/\D+/g,'')
+              const cleaned = raw.replace(/^0+(\d)/,'$1');
+              setPassengersField(cleaned);
+              setValues(v=>({...v, passengers: cleaned? parseInt(cleaned,10): 0 }));
+            }}
+            onBlur={()=>{
+              if(passengersField==='') { setPassengersField('1'); setValues(v=>({...v, passengers:1 })); }
+            }}
+            placeholder="1"
+          />
+        </div>
+      )}
+      
       {/* ÉTAPE 3: Horaires (uniquement si type et date sélectionnés, par pas de 15 minutes) */}
       {part && values.startDate && PARTS.find(p => p.key === part)?.flexible && (
         <div className="col-span-full grid grid-cols-2 gap-3 pt-2 border-t border-black/10">
@@ -564,31 +590,6 @@ export default function SearchBar({
               ? 'Horaires flexibles par pas de 15 minutes. Les horaires par défaut sont pré-sélectionnés.'
               : 'Flexible hours in 15-minute increments. Default hours are pre-selected.')}
           </p>
-        </div>
-      )}
-      {/* Passagers (caché en mode expérience) */}
-      {!hidePassengers && mode!=='experience' && (
-        <div>
-          <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-            {labels.search_passengers}
-          </label>
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            className={baseInput}
-            value={passengersField}
-            onChange={(e) => {
-              const raw = e.target.value.replace(/\D+/g,'')
-              const cleaned = raw.replace(/^0+(\d)/,'$1');
-              setPassengersField(cleaned);
-              setValues(v=>({...v, passengers: cleaned? parseInt(cleaned,10): 0 }));
-            }}
-            onBlur={()=>{
-              if(passengersField==='') { setPassengersField('1'); setValues(v=>({...v, passengers:1 })); }
-            }}
-            placeholder="1"
-          />
         </div>
       )}
       

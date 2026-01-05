@@ -33,10 +33,11 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
     pricePerDay: number;
     priceAm: number | null;
     pricePm: number | null;
+    priceAgencyPerDay: number | null;
+    priceAgencyAm: number | null;
+    priceAgencyPm: number | null;
     capacity: number;
-    speedKn: number;
     enginePower: number | null;
-    fuel: string | null;
     lengthM: number | null;
     avantagesFr: string | null;
     avantagesEn: string | null;
@@ -80,13 +81,30 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
     } catch { /* ignore */ }
   }
   // Total selon part (sans fallback moitié)
+  // Calcul du prix agence : prix public - 20% sur la coque nue (hors taxe)
+  const calculateAgencyPrice = (publicPrice: number): number => {
+    return Math.round(publicPrice * 0.8); // -20% sur la coque nue
+  };
+  
   let total: number | null = null;
-  if (part==='FULL') {
-    total = boat.pricePerDay * nbJours;
-  } else if (part==='AM') {
-    total = boat.priceAm != null ? boat.priceAm : null;
-  } else if (part==='PM') {
-    total = boat.pricePm != null ? boat.pricePm : null;
+  if (isAgency) {
+    // Prix agence : utiliser prix agence défini ou calculer automatiquement (-20%)
+    if (part==='FULL') {
+      total = boat.priceAgencyPerDay ? boat.priceAgencyPerDay * nbJours : calculateAgencyPrice(boat.pricePerDay) * nbJours;
+    } else if (part==='AM') {
+      total = boat.priceAgencyAm ?? (boat.priceAm ? calculateAgencyPrice(boat.priceAm) : calculateAgencyPrice(Math.round(boat.pricePerDay / 2)));
+    } else if (part==='PM') {
+      total = boat.priceAgencyPm ?? (boat.pricePm ? calculateAgencyPrice(boat.pricePm) : calculateAgencyPrice(Math.round(boat.pricePerDay / 2)));
+    }
+  } else {
+    // Prix public
+    if (part==='FULL') {
+      total = boat.pricePerDay * nbJours;
+    } else if (part==='AM') {
+      total = boat.priceAm != null ? boat.priceAm : null;
+    } else if (part==='PM') {
+      total = boat.pricePm != null ? boat.pricePm : null;
+    }
   }
   // Validation cohérence (option 1)
   const mismatch = boat.priceAm!=null && boat.pricePm!=null && (boat.priceAm + boat.pricePm !== boat.pricePerDay);
@@ -165,8 +183,9 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
         <div className='mt-4 flex flex-col md:flex-row md:items-end md:justify-between gap-4'>
           <h1 className='text-3xl sm:text-4xl font-extrabold tracking-tight'>{boat.name}</h1>
           <div className='flex gap-3 text-sm'>
-            <div className='px-3 py-1 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] font-medium'>{t.boat_field_capacity} {boat.capacity}</div>
-            <div className='px-3 py-1 rounded-full bg-black/5 text-black/70 font-medium'>{boat.speedKn} kn</div>
+            <div className='px-3 py-1 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] font-medium'>{locale === 'fr' ? 'Places max' : 'Max places'} {boat.capacity}</div>
+            {(boat as any).enginePower && <div className='px-3 py-1 rounded-full bg-black/5 text-black/70 font-medium'>{(boat as any).enginePower} cv</div>}
+            {(boat as any).lengthM && <div className='px-3 py-1 rounded-full bg-black/5 text-black/70 font-medium'>{(boat as any).lengthM} m</div>}
             {boat.city && <div className='px-3 py-1 rounded-full bg-black/5 text-black/70 font-medium'>{boat.city}</div>}
           </div>
         </div>
@@ -238,22 +257,20 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
               </section>
             )}
 
-            {/* Informations importantes */}
+            {/* Informations importantes - TOUJOURS affichées */}
             <section className='rounded-2xl border border-amber-200 bg-amber-50/50 p-6 shadow-sm'>
               <h2 className='text-lg font-semibold mb-3 text-amber-900'>{locale === 'fr' ? 'Informations importantes' : 'Important Information'}</h2>
               <div className='space-y-3 text-sm text-amber-900/80'>
+                <p className='leading-relaxed font-semibold'>
+                  {locale === 'fr' 
+                    ? `Skipper : Obligatoire à ${(boat as any).skipperPrice || 350}€/jour`
+                    : `Skipper: Required at ${(boat as any).skipperPrice || 350}€/day`}
+                </p>
                 <p className='leading-relaxed'>
                   {locale === 'fr' 
                     ? 'Carburant non inclus dans le tarif, à régler en fonction de la consommation à la fin de la location.'
                     : 'Fuel not included in the rate, to be paid according to consumption at the end of the rental.'}
                 </p>
-                {(boat as any).skipperRequired && (
-                  <p className='leading-relaxed font-semibold'>
-                    {locale === 'fr' 
-                      ? `Skipper : Obligatoire à ${(boat as any).skipperPrice || 350}€/jour`
-                      : `Skipper: Required at ${(boat as any).skipperPrice || 350}€/day`}
-                  </p>
-                )}
               </div>
             </section>
           </div>

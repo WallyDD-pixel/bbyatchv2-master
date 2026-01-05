@@ -2,7 +2,12 @@
 import { useMemo, useState, useCallback, useRef } from "react";
 
 export default function BoatEditClient({ boat, locale }: { boat: any; locale: "fr" | "en" }) {
-  const [form, setForm] = useState({ ...boat, videoUrls: boat.videoUrls ?? [] });
+  // S'assurer que skipperRequired est true par défaut si non défini
+  const [form, setForm] = useState({ 
+    ...boat, 
+    videoUrls: boat.videoUrls ?? [],
+    skipperRequired: boat.skipperRequired !== undefined ? boat.skipperRequired : true // Par défaut true
+  });
   const initialPhotos: string[] = Array.isArray(boat.photoUrls) ? boat.photoUrls : [];
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
   const [photoKeys, setPhotoKeys] = useState<Map<string, string>>(() => {
@@ -520,7 +525,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
         </label>
       </div>
 
-      {/* Skipper */}
+      {/* Skipper - TOUJOURS obligatoire par défaut */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">{locale === "fr" ? "Skipper" : "Skipper"}</h2>
         <label className="inline-flex items-center gap-2 text-sm">
@@ -531,26 +536,24 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
             onChange={onChange} 
             className="h-4 w-4" 
           />
-          <span>{locale === "fr" ? "Skipper obligatoire" : "Skipper required"}</span>
+          <span className="font-semibold">{locale === "fr" ? "Skipper obligatoire (par défaut)" : "Skipper required (default)"}</span>
         </label>
-        {form.skipperRequired && (
-          <label className="grid gap-1 text-sm">
-            <span>{locale === "fr" ? "Prix du skipper (€/jour)" : "Skipper price (€/day)"}</span>
-            <input 
-              name="skipperPrice" 
-              type="number" 
-              value={form.skipperPrice ?? 350} 
-              onChange={onChange} 
-              className="h-11 rounded-lg border border-black/15 px-3" 
-              placeholder="350"
-            />
-            <p className="text-xs text-black/50">
-              {locale === "fr" 
-                ? "Prix par défaut : 350€ HT/jour (sans TVA). Si skipper de l'agence = aucun coût."
-                : "Default price: 350€ HT/day (no VAT). If agency skipper = no cost."}
-            </p>
-          </label>
-        )}
+        <label className="grid gap-1 text-sm">
+          <span>{locale === "fr" ? "Prix du skipper (€/jour)" : "Skipper price (€/day)"}</span>
+          <input 
+            name="skipperPrice" 
+            type="number" 
+            value={form.skipperPrice ?? 350} 
+            onChange={onChange} 
+            className="h-11 rounded-lg border border-black/15 px-3" 
+            placeholder="350"
+          />
+          <p className="text-xs text-black/50">
+            {locale === "fr" 
+              ? "Prix par défaut : 350€ HT/jour (sans TVA). Si skipper de l'agence = aucun coût."
+              : "Default price: 350€ HT/day (no VAT). If agency skipper = no cost."}
+          </p>
+        </label>
       </div>
       {/* Prévisualisation image principale */}
       {form.imageUrl ? (

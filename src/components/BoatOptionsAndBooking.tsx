@@ -115,8 +115,17 @@ export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalL
       {/* Carte Récap + action */}
       <section className='rounded-2xl border border-black/10 bg-gradient-to-br from-[var(--primary)]/10 to-white p-6 shadow-sm flex flex-col gap-4'>
         <div>
-          <p className='text-xs uppercase tracking-wide text-black/50 mb-1'>{t.boat_total} {baseTotalLabel}</p>
-          <p className='text-3xl font-extrabold text-[var(--primary)]'>{grandTotal!=null? grandTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €':'—'}</p>
+          {isAgency ? (
+            <>
+              <p className='text-xs uppercase tracking-wide text-black/50 mb-1'>{locale === 'fr' ? 'Prix agence' : 'Agency price'} {baseTotalLabel}</p>
+              <p className='text-3xl font-extrabold text-[var(--primary)]'>{grandTotal!=null? grandTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €':'—'}</p>
+            </>
+          ) : (
+            <>
+              <p className='text-xs uppercase tracking-wide text-black/50 mb-1'>{t.boat_total} {baseTotalLabel}</p>
+              <p className='text-3xl font-extrabold text-[var(--primary)]'>{grandTotal!=null? grandTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €':'—'}</p>
+            </>
+          )}
           {(optionsTotal>0 || skipperTotal>0) && baseTotal!=null && (
             <p className='text-[11px] text-black/50 mt-1'>
               ({locale==='fr'? 'Base':'Base'} {baseTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €
@@ -124,8 +133,16 @@ export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalL
               {skipperTotal > 0 && ` + ${skipperTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} € ${locale==='fr'? 'skipper':'skipper'}`})
             </p>
           )}
-          {part==='FULL' && nbJours>1 && <p className='text-[11px] text-black/50 mt-1'>Soit {pricePerDay.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} {t.boat_per_day}</p>}
-          {part!=='FULL' && baseTotal!=null && <p className='text-[11px] text-black/50 mt-1'>{t.boat_full_day}: {pricePerDay.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</p>}
+          {part==='FULL' && nbJours>1 && (
+            <p className='text-[11px] text-black/50 mt-1'>
+              {locale === 'fr' ? 'Soit' : 'That is'} {pricePerDay.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} {t.boat_per_day}
+            </p>
+          )}
+          {part!=='FULL' && baseTotal!=null && (
+            <p className='text-[11px] text-black/50 mt-1'>
+              {locale === 'fr' ? 'Prix à partir de' : 'Price from'} {baseTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} € ({locale === 'fr' ? 'demi-journée' : 'half-day'})
+            </p>
+          )}
           {part!=='FULL' && baseTotal==null && <p className='text-[11px] text-red-600 mt-1'>{part==='AM'? t.boat_price_missing_am : t.boat_price_missing_pm}</p>}
         </div>
         {/* Bouton réservation */}

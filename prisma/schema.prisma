@@ -149,7 +149,7 @@ model Boat {
   avantagesEn       String?  // Points forts du bateau (EN)
   optionsInclusesFr String?  // Options incluses dans le prix (FR)
   optionsInclusesEn String?  // Options incluses dans le prix (EN)
-  skipperRequired   Boolean  @default(false) // Skipper obligatoire
+  skipperRequired   Boolean  @default(true) // Skipper obligatoire (par défaut)
   skipperPrice      Int?     // Prix du skipper (350€/jour par défaut)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt

@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   }
   if (!payload) return NextResponse.json({ error: "bad_request" }, { status: 400 });
 
-  let { slug, name, city, capacity, speedKn, fuel, enginePower, pricePerDay, priceAm, pricePm, imageUrl, available, videoUrls, photoUrls } = payload || {};
+  let { slug, name, city, capacity, enginePower, lengthM, pricePerDay, priceAm, pricePm, imageUrl, available, videoUrls, photoUrls, skipperRequired, skipperPrice } = payload || {};
   if (!name) return NextResponse.json({ error: "missing_fields" }, { status: 400 });
 
   const slugify = (str: string) => str.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-');
@@ -159,12 +159,13 @@ export async function POST(req: Request) {
         name,
         cityId: cityId,
         capacity: capacity != null && capacity !== "" ? Number(capacity) : 0,
-        speedKn: speedKn != null && speedKn !== "" ? Number(speedKn) : 0,
-        fuel: fuel != null && fuel !== "" ? Number(fuel) : null,
         enginePower: enginePower != null && enginePower !== "" ? Number(enginePower) : null,
+        lengthM: lengthM != null && lengthM !== "" ? Number(lengthM) : null,
         pricePerDay: dayNum,
         priceAm: priceAm != null && priceAm !== "" ? Number(priceAm) : null,
         pricePm: pricePm != null && pricePm !== "" ? Number(pricePm) : null,
+        skipperRequired: skipperRequired != null ? toBool(skipperRequired) : true, // Par défaut true
+        skipperPrice: skipperPrice != null && skipperPrice !== "" ? Number(skipperPrice) : 350,
         imageUrl: finalImageUrl,
         available: available != null ? toBool(available) : true,
         videoUrls: videoArray.length ? JSON.stringify(videoArray) : null,

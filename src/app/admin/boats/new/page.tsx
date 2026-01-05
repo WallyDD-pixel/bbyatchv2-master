@@ -55,30 +55,36 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Capacité" : "Capacity"}</span>
-              <input name="capacity" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Vitesse (kn)" : "Speed (kn)"}</span>
-              <input name="speedKn" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+              <span>{locale === "fr" ? "Nb de places maximum" : "Max places"}</span>
+              <input name="capacity" type="number" min="0" required className="h-11 rounded-lg border border-black/15 px-3" />
             </label>
             <label className="grid gap-1 text-sm">
               <span>{locale === "fr" ? "Puissance (cv)" : "Power (hp)"}</span>
               <input name="enginePower" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
             </label>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <label className="grid gap-1 text-sm">
-              <span>{locale === 'fr' ? 'Prix matin (AM)' : 'Morning price (AM)'}</span>
-              <input name="priceAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+              <span>{locale === "fr" ? "Taille (m)" : "Length (m)"}</span>
+              <input name="lengthM" type="number" step="0.1" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+            </label>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="grid gap-1 text-sm">
+              <span>{locale === "fr" ? "Prix à partir de (demi-journée) (€)" : "Price from (half-day) (€)"}</span>
+              <input name="priceAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" placeholder={locale === 'fr' ? 'Prix matin' : 'Morning price'} />
             </label>
             <label className="grid gap-1 text-sm">
-              <span>{locale === 'fr' ? 'Prix après-midi (PM)' : 'Afternoon price (PM)'}</span>
+              <span>{locale === 'fr' ? 'Prix après-midi (PM) (€)' : 'Afternoon price (PM) (€)'}</span>
               <input name="pricePm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
             </label>
-            <div className="grid gap-1 text-xs text-black/50 items-end">
-              <p>{locale === 'fr' ? 'Laissez vide pour utiliser une répartition du prix jour.' : 'Leave blank to derive from day price.'}</p>
-            </div>
+          </div>
+          <p className="text-xs text-black/50 -mt-2">{locale === 'fr' ? 'Le prix affiché sera "À partir de" avec le prix de la demi-journée (AM ou PM).' : 'The displayed price will be "From" with the half-day price (AM or PM).'}</p>
+          <div className="flex items-center gap-2 pt-2 border-t border-black/10">
+            <input id="skipperRequired" name="skipperRequired" type="checkbox" defaultChecked className="h-4 w-4" />
+            <label htmlFor="skipperRequired" className="text-sm font-semibold">{locale === "fr" ? "Skipper obligatoire (par défaut)" : "Skipper required (default)"}</label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input id="skipperPrice" name="skipperPrice" type="number" defaultValue="350" className="h-11 rounded-lg border border-black/15 px-3 w-32" />
+            <label htmlFor="skipperPrice" className="text-sm">{locale === "fr" ? "Prix du skipper (€/jour)" : "Skipper price (€/day)"}</label>
           </div>
           {/* Inputs fichiers images */}
           <div className="grid gap-2">
