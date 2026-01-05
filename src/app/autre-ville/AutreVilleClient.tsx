@@ -107,12 +107,43 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
 
   const router = useRouter();
 
-  const onSubmit = (e:React.FormEvent) => {
-    e.preventDefault(); if(!part) setPartHint(true); if(!ville || !experience || !message || !email || !part || !rgpd || !startDate) return;
-    const payload = { ville, passagers: passagers? parseInt(passagers,10): undefined, experience, part, startDate, endDate: part==='FULL'? endDate: startDate, message, email, tel, boatId: selectedBoat?.id };
-    console.log('Autre-ville request', payload); // TODO: POST API route
-    setShowSuccess(true);
-    setTimeout(()=>{ router.push('/'); }, 2500);
+  const onSubmit = async (e:React.FormEvent) => {
+    e.preventDefault(); 
+    if(!part) setPartHint(true); 
+    if(!ville || !experience || !message || !email || !part || !rgpd || !startDate) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append('ville', ville);
+      formData.append('passagers', passagers || '');
+      formData.append('experience', experience);
+      formData.append('part', part);
+      formData.append('startDate', startDate);
+      formData.append('endDate', part==='FULL'? endDate: startDate);
+      formData.append('message', message);
+      formData.append('email', email);
+      if(tel) formData.append('tel', tel);
+      if(selectedBoat?.id) formData.append('boatId', String(selectedBoat.id));
+      
+      const response = await fetch('/api/autre-ville', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if(response.ok || response.redirected) {
+        setShowSuccess(true);
+        setTimeout(()=>{ router.push('/'); }, 2500);
+      } else {
+        const data = await response.json();
+        alert(data.error === 'missing_fields' 
+          ? 'Veuillez remplir tous les champs obligatoires.'
+          : 'Une erreur est survenue. Veuillez réessayer.'
+        );
+      }
+    } catch(err) {
+      console.error('Error submitting autre-ville request:', err);
+      alert('Une erreur est survenue. Veuillez réessayer.');
+    }
   };
 
   // Modal bateaux dispo

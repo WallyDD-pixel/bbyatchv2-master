@@ -21,7 +21,12 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
 
   let contactMessages: any[] = [];
   try {
-    contactMessages = await (prisma as any).contactMessage.findMany({ orderBy:{ createdAt:'desc' }, take:200, include:{ usedBoat:{ select:{ id:true, slug:true, titleFr:true, titleEn:true } } } });
+    contactMessages = await (prisma as any).contactMessage.findMany({ 
+      orderBy:{ createdAt:'desc' }, 
+      take:200, 
+      include:{ usedBoat:{ select:{ id:true, slug:true, titleFr:true, titleEn:true } } },
+      where: {} // Tous les messages, y compris "autre-ville"
+    });
   } catch {}
 
   return (
@@ -52,9 +57,25 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
               {contactMessages.map(m=> (
                 <tr key={m.id} className='border-t border-black/10 align-top hover:bg-black/[0.03]'>
                   <td className='py-3 px-3 whitespace-nowrap text-[11px] text-black/60'>{new Date(m.createdAt).toLocaleString(locale==='fr'? 'fr-FR':'en-US',{ dateStyle:'short', timeStyle:'short' })}</td>
-                  <td className='py-3 px-3 whitespace-nowrap'>{m.name}</td>
+                  <td className='py-3 px-3 whitespace-nowrap'>
+                    {m.sourcePage === 'autre-ville' ? (
+                      <span className='inline-flex items-center gap-1'>
+                        <span className='text-xs'>📍</span>
+                        <span className='font-medium'>{m.name}</span>
+                        <span className='text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700'>Autre ville</span>
+                      </span>
+                    ) : (
+                      m.name
+                    )}
+                  </td>
                   <td className='py-3 px-3 whitespace-nowrap'><a href={`mailto:${m.email}`} className='text-[color:var(--primary)] hover:underline'>{m.email}</a></td>
-                  <td className='py-3 px-3 whitespace-nowrap'>{m.usedBoat ? <a href={`/used-sale/${m.usedBoat.slug}`} className='text-[color:var(--primary)] hover:underline' target='_blank'>{locale==='fr'? m.usedBoat.titleFr : m.usedBoat.titleEn}</a> : '—'}</td>
+                  <td className='py-3 px-3 whitespace-nowrap'>
+                    {m.sourcePage === 'autre-ville' ? (
+                      <span className='text-xs text-black/50'>Demande autre ville</span>
+                    ) : (
+                      m.usedBoat ? <a href={`/used-sale/${m.usedBoat.slug}`} className='text-[color:var(--primary)] hover:underline' target='_blank'>{locale==='fr'? m.usedBoat.titleFr : m.usedBoat.titleEn}</a> : '—'
+                    )}
+                  </td>
                   <td className='py-3 px-3 max-w-[380px] text-[13px] leading-snug line-clamp-3'><pre className='whitespace-pre-wrap font-sans'>{m.message}</pre></td>
                   <td className='py-3 px-3 whitespace-nowrap'><button data-view="1" data-id={m.id} className='h-8 px-3 rounded-full text-[11px] font-medium border border-black/15 hover:bg-black/5'>{locale==='fr'? 'Voir':'View'}</button></td>
                 </tr>
