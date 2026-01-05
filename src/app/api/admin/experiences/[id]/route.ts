@@ -104,8 +104,21 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       const method = String(data.get('_method')||'').toUpperCase();
       if(method==='DELETE'){
         await (prisma as any).experience.delete({ where:{ id } });
-        const url = new URL('/admin/experiences?deleted=1', req.url);
-        return NextResponse.redirect(url,303);
+        const origin =
+          (process.env as any).APP_BASE_URL ||
+          (process.env as any).NEXTAUTH_URL ||
+          "https://preprod.bbservicescharter.com" ||
+          (() => {
+            try {
+              return new URL(req.url).origin;
+            } catch {
+              return "";
+            }
+          })();
+        const redirectUrl = origin
+          ? `${origin}/admin/experiences?deleted=1`
+          : `/admin/experiences?deleted=1`;
+        return NextResponse.redirect(redirectUrl, 303);
       }
       // Repasser req (pas réutilisable) -> recréer formData lecture: on a déjà data
       // Simpler: reconstruire update en utilisant data déjà lue
@@ -280,8 +293,21 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       }
       
       // Sinon, rediriger après sauvegarde normale
-      const url = new URL(`/admin/experiences/${id}?updated=1`, req.url);
-      return NextResponse.redirect(url,303);
+      const origin =
+        (process.env as any).APP_BASE_URL ||
+        (process.env as any).NEXTAUTH_URL ||
+        "https://preprod.bbservicescharter.com" ||
+        (() => {
+          try {
+            return new URL(req.url).origin;
+          } catch {
+            return "";
+          }
+        })();
+      const redirectUrl = origin
+        ? `${origin}/admin/experiences/${id}?updated=1`
+        : `/admin/experiences/${id}?updated=1`;
+      return NextResponse.redirect(redirectUrl, 303);
     }
     return NextResponse.json({ error:'unsupported' },{ status:400 });
   } catch(e:any){

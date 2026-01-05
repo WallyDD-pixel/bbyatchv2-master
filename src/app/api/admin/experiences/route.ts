@@ -42,8 +42,21 @@ export async function POST(req: Request) {
     });
     // Si formulaire -> redirection vers la liste
     if(ctype.includes('multipart/form-data') || ctype.includes('application/x-www-form-urlencoded')){
-      const url = new URL(`/admin/experiences?created=${created.id}`, req.url);
-      return NextResponse.redirect(url, 303);
+      const origin =
+        (process.env as any).APP_BASE_URL ||
+        (process.env as any).NEXTAUTH_URL ||
+        "https://preprod.bbservicescharter.com" ||
+        (() => {
+          try {
+            return new URL(req.url).origin;
+          } catch {
+            return "";
+          }
+        })();
+      const redirectUrl = origin
+        ? `${origin}/admin/experiences?created=${created.id}`
+        : `/admin/experiences?created=${created.id}`;
+      return NextResponse.redirect(redirectUrl, 303);
     }
     return NextResponse.json({ ok: true, id: created.id });
   } catch (e: any) {
