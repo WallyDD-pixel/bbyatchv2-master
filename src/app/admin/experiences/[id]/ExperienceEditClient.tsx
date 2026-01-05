@@ -319,41 +319,15 @@ export default function ExperienceEditClient({
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'unknown_error', message: 'Erreur inconnue' }));
-        const errorMessage = error.message || error.error || (locale === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error saving');
-        alert(`${errorMessage} (Status: ${response.status})`);
+        const error = await response.json().catch(() => ({ error: 'unknown_error' }));
+        alert(locale === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error saving');
         console.error('Error:', error);
-        console.error('Response status:', response.status);
         return;
       }
 
-      // Parser la réponse JSON
-      const data = await response.json().catch(() => null);
-      
-      if (!data || !data.ok) {
-        const errorMessage = data?.message || data?.error || (locale === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error saving');
-        alert(errorMessage);
-        console.error('Unexpected response:', data);
-        return;
-      }
-
-      // Mettre à jour les photos si retournées
-      if (data.photoUrls && Array.isArray(data.photoUrls)) {
-        setPhotos(data.photoUrls);
-      }
-      if (data.imageUrl) {
-        setImageUrl(data.imageUrl);
-      }
-
-      // Redirection après succès (utiliser window.location pour éviter Mixed Content)
-      const redirectUrl = `/admin/experiences/${experience.id}?updated=1`;
-      // Utiliser window.location pour forcer HTTPS si nécessaire
-      if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-        window.location.href = redirectUrl;
-      } else {
-        router.push(redirectUrl);
-        router.refresh();
-      }
+      // Redirection après succès
+      router.push(`/admin/experiences/${experience.id}?updated=1`);
+      router.refresh();
     } catch (error) {
       console.error('Error:', error);
       alert(locale === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error saving');
@@ -377,14 +351,8 @@ export default function ExperienceEditClient({
       });
 
       if (response.ok) {
-        // Utiliser window.location pour éviter Mixed Content
-        const redirectUrl = '/admin/experiences?deleted=1';
-        if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-          window.location.href = redirectUrl;
-        } else {
-          router.push(redirectUrl);
-          router.refresh();
-        }
+        router.push('/admin/experiences?deleted=1');
+        router.refresh();
       } else {
         alert(locale === 'fr' ? 'Erreur lors de la suppression' : 'Error deleting');
       }

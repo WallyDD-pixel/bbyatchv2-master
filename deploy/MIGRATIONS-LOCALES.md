@@ -89,3 +89,6 @@ Vous pouvez aussi utiliser Supabase Dashboard > SQL Editor pour exécuter les mi
 
 
 
+
+
+
