@@ -338,7 +338,7 @@ export default function SearchBar({
         setPickerOpen(false);
       }}
     >
-      {/* Ville (cachée en mode expérience) */}
+      {/* ÉTAPE 1: Ville (cachée en mode expérience) */}
       {!hideCity && mode!=='experience' && (
         <div className="col-span-1">
           <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
@@ -417,98 +417,62 @@ export default function SearchBar({
           </div>
         </div>
       )}
-      {/* Suppression du bloc slug / créneau explicatif en mode expérience */}
-      {mode==='experience' && partFixed && (
-        <div className="hidden" />
-      )}
-      {/* Sélecteur de créneau uniquement si pas de partFixed */}
+      
+      {/* ÉTAPE 1: Sélecteur de type de créneau (en premier) */}
       {(!partFixed) && (
         <div>
           <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-            {labels.search_part || "Créneau"}
+            {labels.search_part || "Type de prestation"} *
           </label>
           <select
             className={`${baseInput} search-part-select bg-white text-slate-900 border-black/15 focus:ring-[color:var(--primary)]/30 focus:border-[color:var(--primary)] \
             dark:bg-black/60 dark:text-white dark:border-white/40 dark:focus:ring-white/60 dark:focus:border-white shadow-[0_0_0_1px_rgba(0,0,0,0.03)]`}
-              value={part ?? ''}
-            onChange={(e) => { const v = e.target.value as any; if(!v) { setPart(null); return; } applyPart(v);} }
+            value={part ?? ''}
+            onChange={(e) => { 
+              const v = e.target.value as any; 
+              if(!v) { 
+                setPart(null); 
+                setValues(v => ({ ...v, startDate: '', endDate: '', startTime: '08:00', endTime: '18:00' }));
+                setCustomStartTime('');
+                setCustomEndTime('');
+                return; 
+              } 
+              applyPart(v);
+            } }
           >
-            <option value="" disabled>{labels.search_part || 'Créneau'}...</option>
+            <option value="" disabled>{labels.search_part || 'Choisir le type'}...</option>
             {PARTS.map((p) => {
               let lbl = '';
               if (p.key === 'FULL') lbl = labels.search_part_full || 'Journée entière (8h)';
               else if (p.key === 'AM') lbl = labels.search_part_am || 'Matin (4h)';
               else if (p.key === 'PM') lbl = labels.search_part_pm || 'Après-midi (4h)';
               else if (p.key === 'SUNSET') lbl = labels.search_part_sunset || 'Sunset (2h)';
-              return <option key={p.key} value={p.key}>{lbl} {p.flexible ? '(horaires flexibles)' : ''}</option>;
+              return <option key={p.key} value={p.key}>{lbl}</option>;
             })}
           </select>
+          {!part && partHint && <p className="mt-1 text-[10px] text-red-600">{labels.search_hint_part_first || 'Choisis d\'abord le type'}</p>}
         </div>
       )}
       
-      {/* Horaires personnalisés si créneau flexible et sélectionné */}
-      {part && PARTS.find(p => p.key === part)?.flexible && (
-        <div className="col-span-full grid grid-cols-2 gap-3 pt-2 border-t border-black/10">
-          <div>
-            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-              {labels.search_custom_start_time || (currentLocale === 'fr' ? 'Heure de début (optionnel)' : 'Start time (optional)')}
-            </label>
-            <input
-              type="time"
-              value={customStartTime}
-              onChange={(e) => {
-                setCustomStartTime(e.target.value);
-                if (e.target.value) {
-                  setValues(v => ({ ...v, startTime: e.target.value }));
-                }
-              }}
-              className={baseInput}
-              placeholder={PARTS.find(p => p.key === part)?.start}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-              {labels.search_custom_end_time || (currentLocale === 'fr' ? 'Heure de fin (optionnel)' : 'End time (optional)')}
-            </label>
-            <input
-              type="time"
-              value={customEndTime}
-              onChange={(e) => {
-                setCustomEndTime(e.target.value);
-                if (e.target.value) {
-                  setValues(v => ({ ...v, endTime: e.target.value }));
-                }
-              }}
-              className={baseInput}
-              placeholder={PARTS.find(p => p.key === part)?.end}
-            />
-          </div>
-          <p className="col-span-2 text-[10px] text-black/50 dark:text-white/50">
-            {labels.search_flexible_hours_note || (currentLocale === 'fr' 
-              ? 'Les horaires sont flexibles. Laissez vide pour utiliser les horaires par défaut.'
-              : 'Hours are flexible. Leave empty to use default hours.')}
-          </p>
-        </div>
-      )}
-      
-      {/* Date début */}
+      {/* ÉTAPE 2: Date début */}
       <div>
         <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-          {labels.search_start_date}
+          {labels.search_start_date} *
         </label>
         <input
           type="text"
           readOnly
           onClick={openPicker}
           onFocus={openPicker}
-          placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part? 'Choisir un créneau d\'abord' : 'Sélectionner...')) : (!part? 'Choisir un créneau' : 'Sélectionner...')}
+          placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part? 'Choisir le type d\'abord' : 'Sélectionner...')) : (!part? 'Choisir le type d\'abord' : 'Sélectionner...')}
           className={baseInput + ' ' + ((!part || (needsCity && !values.city.trim()))? 'opacity-50 cursor-not-allowed':'cursor-pointer')}
           value={values.startDate}
           disabled={!part || (needsCity && !values.city.trim())}
         />
         {dateHint && !values.startDate && <p className="mt-1 text-[10px] text-red-600">Choisis une date.</p>}
       </div>
-      {/* Date fin (multi-jours seulement si FULL) */}
+      
+      {/* ÉTAPE 2: Date fin (multi-jours seulement si FULL) */}
       <div>
         <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
           {labels.search_end_date}
@@ -527,6 +491,81 @@ export default function SearchBar({
           disabled={!part || (needsCity && !values.city.trim()) || (part !== "FULL" && part !== "SUNSET")}
         />
       </div>
+      
+      {/* ÉTAPE 3: Horaires (uniquement si type et date sélectionnés, par pas de 15 minutes) */}
+      {part && values.startDate && PARTS.find(p => p.key === part)?.flexible && (
+        <div className="col-span-full grid grid-cols-2 gap-3 pt-2 border-t border-black/10">
+          <div>
+            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+              {labels.search_custom_start_time || (currentLocale === 'fr' ? 'Heure de début' : 'Start time')}
+            </label>
+            <select
+              value={customStartTime || PARTS.find(p => p.key === part)?.start || '08:00'}
+              onChange={(e) => {
+                setCustomStartTime(e.target.value);
+                setValues(v => ({ ...v, startTime: e.target.value }));
+              }}
+              className={baseInput}
+            >
+              {(() => {
+                const partDef = PARTS.find(p => p.key === part);
+                if (!partDef) return null;
+                const startHour = parseInt(partDef.start.split(':')[0]);
+                const endHour = parseInt(partDef.end.split(':')[0]);
+                const times: string[] = [];
+                // Générer les horaires par pas de 15 minutes
+                for (let h = startHour; h <= endHour; h++) {
+                  for (let m = 0; m < 60; m += 15) {
+                    if (h === endHour && m > parseInt(partDef.end.split(':')[1])) break;
+                    const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    times.push(timeStr);
+                  }
+                }
+                return times.map(time => (
+                  <option key={time} value={time}>{time}</option>
+                ));
+              })()}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+              {labels.search_custom_end_time || (currentLocale === 'fr' ? 'Heure de fin' : 'End time')}
+            </label>
+            <select
+              value={customEndTime || PARTS.find(p => p.key === part)?.end || '18:00'}
+              onChange={(e) => {
+                setCustomEndTime(e.target.value);
+                setValues(v => ({ ...v, endTime: e.target.value }));
+              }}
+              className={baseInput}
+            >
+              {(() => {
+                const partDef = PARTS.find(p => p.key === part);
+                if (!partDef) return null;
+                const startHour = parseInt(partDef.start.split(':')[0]);
+                const endHour = parseInt(partDef.end.split(':')[0]);
+                const times: string[] = [];
+                // Générer les horaires par pas de 15 minutes
+                for (let h = startHour; h <= endHour; h++) {
+                  for (let m = 0; m < 60; m += 15) {
+                    if (h === endHour && m > parseInt(partDef.end.split(':')[1])) break;
+                    const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    times.push(timeStr);
+                  }
+                }
+                return times.map(time => (
+                  <option key={time} value={time}>{time}</option>
+                ));
+              })()}
+            </select>
+          </div>
+          <p className="col-span-2 text-[10px] text-black/50 dark:text-white/50">
+            {labels.search_flexible_hours_note || (currentLocale === 'fr' 
+              ? 'Horaires flexibles par pas de 15 minutes. Les horaires par défaut sont pré-sélectionnés.'
+              : 'Flexible hours in 15-minute increments. Default hours are pre-selected.')}
+          </p>
+        </div>
+      )}
       {/* Passagers (caché en mode expérience) */}
       {!hidePassengers && mode!=='experience' && (
         <div>

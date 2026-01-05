@@ -108,6 +108,10 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   };
   // const [reservationInfo, setReservationInfo] = useState<Reservation|null>(null);
   const onSelectEvent = (ev: any) => {
+    // Masquer le tooltip quand on clique sur un événement
+    setHoveredEvent(null);
+    setTooltipPosition(null);
+    
     if (ev.type==='slot' || ev.type==='expSlot') {
       setEditingSlot(ev.slotData || ev.expSlotData);
       setNoteEdit((ev.slotData||ev.expSlotData).note||'');
@@ -302,6 +306,22 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     return agg;
   },[expSlots]);
 
+  // Map des dates avec des notes (pour afficher l'icône de cloche)
+  const datesWithNotes = useMemo(()=>{
+    const map = new Set<string>();
+    slots.forEach(s => {
+      if (s.note && s.note.trim()) {
+        map.add(s.date);
+      }
+    });
+    expSlots.forEach(s => {
+      if (s.note && s.note.trim()) {
+        map.add(s.date);
+      }
+    });
+    return map;
+  }, [slots, expSlots]);
+
   // DateHeader custom (vue mois) style Google Calendar avec badge de notification
   const DateHeader = ({ label, date }: { label: string; date: Date }) => {
     const key = localKey(date.toISOString());
@@ -309,6 +329,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     const has = !!data;
     const today = new Date();
     const isToday = date.toDateString() === today.toDateString();
+    const hasNote = datesWithNotes.has(key);
     
     // Compter les événements pour ce jour (corriger la comparaison de dates)
     const dayEvents = events.filter((ev: any) => {
@@ -358,6 +379,23 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         >
           {label}
         </a>
+        {/* Icône de cloche pour les dates avec notes */}
+        {hasNote && (
+          <span 
+            style={{
+              position: 'absolute',
+              top: '2px',
+              left: '2px',
+              fontSize: '12px',
+              lineHeight: '1',
+              color: '#f59e0b',
+              filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))',
+            }}
+            title={locale === 'fr' ? 'Note associée à cette date' : 'Note associated with this date'}
+          >
+            🔔
+          </span>
+        )}
         {hasMultipleEvents && (
           <span 
             style={{
@@ -383,17 +421,35 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     if (!editingSlot) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/availability/slot/${editingSlot.id}`, {
-        method: 'PATCH',
+      // Détecter si c'est un slot d'expérience (a un experienceId) ou un slot de bateau
+      const isExpSlot = (editingSlot as any).experienceId !== undefined;
+      const endpoint = isExpSlot 
+        ? '/api/admin/availability/experiences'
+        : `/api/admin/availability/slot/${editingSlot.id}`;
+      
+      const res = await fetch(endpoint, {
+        method: isExpSlot ? 'PATCH' : 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note: noteEdit }),
+        body: JSON.stringify({ 
+          id: editingSlot.id,
+          note: noteEdit.trim() || null 
+        }),
       });
+      
       if (res.ok) {
-        setSlots(slots =>
-          slots.map(s =>
-            s.id === editingSlot.id ? { ...s, note: noteEdit } : s
-          )
-        );
+        if (isExpSlot) {
+          setExpSlots(slots =>
+            slots.map(s =>
+              s.id === editingSlot.id ? { ...s, note: noteEdit.trim() || null } : s
+            )
+          );
+        } else {
+          setSlots(slots =>
+            slots.map(s =>
+              s.id === editingSlot.id ? { ...s, note: noteEdit.trim() || null } : s
+            )
+          );
+        }
         setEditingSlot(null);
       } else {
         const errorData = await res.json().catch(() => ({ error: 'unknown' }));
@@ -876,9 +932,9 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           const experienceTitle = meta?.experienceTitleFr || meta?.experienceTitleEn || meta?.expSlug || null;
           
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
               <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
-                <button className="absolute top-4 right-4 text-2xl text-black/50 hover:text-black" onClick={()=>setReservationInfo(null)}>×</button>
+                <button className="absolute top-4 right-4 text-2xl text-black/50 hover:text-black" onClick={()=>{setReservationInfo(null); setHoveredEvent(null); setTooltipPosition(null);}}>×</button>
                 <h2 className="text-2xl font-bold mb-4 text-red-600">{locale==='fr'?'Détails de la réservation':'Reservation details'}</h2>
                 
                 <div className="space-y-4 text-sm">
@@ -1602,8 +1658,8 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         )}
       </aside>
       
-      {/* Tooltip au survol */}
-      {hoveredEvent && hoveredEvent.type === 'reservation' && tooltipPosition && (() => {
+      {/* Tooltip au survol - Masquer si le modal de réservation est ouvert */}
+      {hoveredEvent && hoveredEvent.type === 'reservation' && tooltipPosition && !reservationInfo && (() => {
         const r = hoveredEvent.resData;
         const boatName = r.boat?.name || boats.find((b: Boat) => b.id === r.boatId)?.name || 'N/A';
         const clientName = r.user?.name || `${r.user?.firstName || ''} ${r.user?.lastName || ''}`.trim() || r.user?.email || 'N/A';
