@@ -25,9 +25,12 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
       orderBy:{ createdAt:'desc' }, 
       take:200, 
       include:{ usedBoat:{ select:{ id:true, slug:true, titleFr:true, titleEn:true } } },
-      where: {} // Tous les messages, y compris "autre-ville"
+      // Pas de filtre where - récupère tous les messages y compris "autre-ville"
     });
-  } catch {}
+    console.log(`Found ${contactMessages.length} contact messages, including ${contactMessages.filter((m: any) => m.sourcePage === 'autre-ville').length} autre-ville requests`);
+  } catch (e: any) {
+    console.error('Error fetching contact messages:', e);
+  }
 
   return (
     <div className='min-h-screen flex flex-col'>

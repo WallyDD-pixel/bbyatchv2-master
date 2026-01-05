@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     ].filter(Boolean).join('\n');
     
     // Stocker dans ContactMessage avec sourcePage="autre-ville"
-    await (prisma as any).contactMessage.create({
+    console.log('Creating autre-ville contact message:', { ville, email, experience, part, startDate });
+    const created = await (prisma as any).contactMessage.create({
       data: {
         name: ville, // Utiliser la ville comme nom pour faciliter l'identification
         email,
@@ -46,6 +47,7 @@ export async function POST(req: Request) {
         sourcePage: 'autre-ville',
       },
     });
+    console.log('Autre-ville message created with ID:', created.id);
     
     // Redirection vers la page d'accueil avec un message de succès
     const host = req.headers.get('host') || 'localhost:3000';
