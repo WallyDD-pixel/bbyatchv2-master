@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createRedirectUrl } from '@/lib/redirect';
 
 export async function POST(req: Request){
   const session = await getServerSession(auth as any) as any;
@@ -128,8 +129,8 @@ export async function POST(req: Request){
     };
 
     await (prisma as any).usedBoat.update({ where:{ id }, data: update });
-    const redirectUrl = new URL(`/admin/used-boats/${id}?updated=1`, req.url);
-    return NextResponse.redirect(redirectUrl);
+    const redirectUrl = createRedirectUrl(`/admin/used-boats/${id}?updated=1`, req);
+    return NextResponse.redirect(redirectUrl, 303);
   } catch(e:any){
     console.error(e);
     return NextResponse.json({ error:'server_error', details:e?.message },{ status:500 });

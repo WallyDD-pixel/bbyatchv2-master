@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { uploadMultipleToSupabase } from '@/lib/storage';
+import { createRedirectUrl } from '@/lib/redirect';
 
 export const runtime = 'nodejs';
 
@@ -10,21 +11,22 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const data = await req.formData();
-  const mainSliderTitle = data.get('mainSliderTitle') as string;
-  const mainSliderSubtitle = data.get('mainSliderSubtitle') as string;
-  const mainSliderText = data.get('mainSliderText') as string;
-  const mainSliderImageFile = data.get('mainSliderImageFile') as File | null; // legacy, un seul fichier
-  const mainSliderImagesFiles = data.getAll('mainSliderImagesFiles') as File[]; // multi fichiers
-  const aboutUsTitle = data.get('aboutUsTitle') as string;
-  const aboutUsSubtitle = data.get('aboutUsSubtitle') as string;
-  const aboutUsText = data.get('aboutUsText') as string;
-  const bbServiceText = data.get('bbServiceText') as string;
-  const footerInstagram = data.get('footerInstagram') as string;
-  const footerFacebook = data.get('footerFacebook') as string;
-  const footerLinkedIn = data.get('footerLinkedIn') as string;
-  const footerYouTube = data.get('footerYouTube') as string;
-  const footerTikTok = data.get('footerTikTok') as string;
+  try {
+    const data = await req.formData();
+    const mainSliderTitle = data.get('mainSliderTitle') as string;
+    const mainSliderSubtitle = data.get('mainSliderSubtitle') as string;
+    const mainSliderText = data.get('mainSliderText') as string;
+    const mainSliderImageFile = data.get('mainSliderImageFile') as File | null; // legacy, un seul fichier
+    const mainSliderImagesFiles = data.getAll('mainSliderImagesFiles') as File[]; // multi fichiers
+    const aboutUsTitle = data.get('aboutUsTitle') as string;
+    const aboutUsSubtitle = data.get('aboutUsSubtitle') as string;
+    const aboutUsText = data.get('aboutUsText') as string;
+    const bbServiceText = data.get('bbServiceText') as string;
+    const footerInstagram = data.get('footerInstagram') as string;
+    const footerFacebook = data.get('footerFacebook') as string;
+    const footerLinkedIn = data.get('footerLinkedIn') as string;
+    const footerYouTube = data.get('footerYouTube') as string;
+    const footerTikTok = data.get('footerTikTok') as string;
 
   // Récupère dynamiquement la liste d’avantages
 
@@ -109,9 +111,17 @@ export async function POST(req: Request) {
     dataUpdate.mainSliderImageUrl = mainSliderImageUrl;
   }
 
-  await prisma.settings.update({ where: { id: 1 }, data: dataUpdate as any });
+    await prisma.settings.update({ where: { id: 1 }, data: dataUpdate as any });
 
-  return NextResponse.redirect(new URL('/admin/homepage-settings', req.url));
+    // Redirection avec URL correcte (évite localhost)
+    const redirectUrl = createRedirectUrl('/admin/homepage-settings?success=1', req);
+    return NextResponse.redirect(redirectUrl, 303);
+  } catch (e: any) {
+    console.error('Error updating homepage settings:', e);
+    // En cas d'erreur, rediriger quand même pour éviter une page d'erreur
+    const redirectUrl = createRedirectUrl('/admin/homepage-settings?error=1', req);
+    return NextResponse.redirect(redirectUrl, 303);
+  }
 }
 
 // Suppression d'une image du slider par URL

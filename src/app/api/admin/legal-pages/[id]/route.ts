@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createRedirectUrl } from '@/lib/redirect';
 
 export const runtime = 'nodejs';
 
@@ -51,8 +52,8 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
   const method = String(data.get('_method')||'').toUpperCase();
   if(method==='DELETE'){
     await (prisma as any).legalPage.delete({ where:{ id } });
-    const url = new URL('/admin/legal-pages?deleted=1', req.url);
-    return NextResponse.redirect(url,303);
+    const redirectUrl = createRedirectUrl('/admin/legal-pages?deleted=1', req);
+    return NextResponse.redirect(redirectUrl,303);
   }
   // PUT fallback multipart/x-www-form-urlencoded
   const payload:any = {
@@ -71,6 +72,6 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
     fuelDepositEn: String(data.get('fuelDepositEn')||'').trim() || null,
   };
   await (prisma as any).legalPage.update({ where:{ id }, data: payload });
-  const url = new URL(`/admin/legal-pages/${id}?updated=1`, req.url);
-  return NextResponse.redirect(url,303);
+  const redirectUrl = createRedirectUrl(`/admin/legal-pages/${id}?updated=1`, req);
+  return NextResponse.redirect(redirectUrl,303);
 }

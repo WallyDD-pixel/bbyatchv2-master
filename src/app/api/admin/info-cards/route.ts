@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadMultipleToSupabase } from '@/lib/storage';
+import { createRedirectUrl } from '@/lib/redirect';
 
 export const runtime = 'nodejs';
 
@@ -39,7 +40,7 @@ export async function POST(req:Request){
     const sortRaw = String(data.get('sort')||'0');
     const sort = parseInt(sortRaw,10)||0;
     const created = await (prisma as any).infoCard.create({ data:{ titleFr, titleEn, descFr, descEn, imageUrl, sort } });
-    const redirectUrl = new URL(`/admin/info-cards?created=${created.id}`, req.url);
+    const redirectUrl = createRedirectUrl(`/admin/info-cards?created=${created.id}`, req);
     return NextResponse.redirect(redirectUrl,303);
   } catch(e:any){
     return NextResponse.json({ error:'server_error', details:e?.message },{ status:500 });

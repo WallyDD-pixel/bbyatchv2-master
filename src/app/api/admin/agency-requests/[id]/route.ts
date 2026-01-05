@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createRedirectUrl } from '@/lib/redirect';
 
 async function ensureAdmin(){
   const session = await getServerSession(auth as any) as any;
@@ -47,8 +48,8 @@ export async function POST(req:Request, { params }:{ params:Promise<{ id:string 
     const method = String(data.get('_method')||'').toUpperCase();
     if(method==='DELETE'){
       await (prisma as any).agencyRequest.delete({ where:{ id } });
-      const url = new URL('/admin/agency-requests?deleted=1', req.url);
-      return NextResponse.redirect(url,303);
+      const redirectUrl = createRedirectUrl('/admin/agency-requests?deleted=1', req);
+      return NextResponse.redirect(redirectUrl,303);
     }
     if(method==='PATCH'){
       const status = String(data.get('status')||'').trim();
@@ -95,8 +96,8 @@ export async function POST(req:Request, { params }:{ params:Promise<{ id:string 
         
         if (overlap) {
           // Il y a un chevauchement, on ne crée pas la réservation
-          const url = new URL(`/admin/agency-requests/${id}?error=overlap`, req.url);
-          return NextResponse.redirect(url, 303);
+          const redirectUrl = createRedirectUrl(`/admin/agency-requests/${id}?error=overlap`, req);
+          return NextResponse.redirect(redirectUrl, 303);
         }
         
         // Créer la réservation
@@ -128,8 +129,8 @@ export async function POST(req:Request, { params }:{ params:Promise<{ id:string 
         await (prisma as any).agencyRequest.update({ where:{ id }, data:{ status } });
       }
       
-      const url = new URL(`/admin/agency-requests/${id}?updated=1`, req.url);
-      return NextResponse.redirect(url,303);
+      const redirectUrl = createRedirectUrl(`/admin/agency-requests/${id}?updated=1`, req);
+      return NextResponse.redirect(redirectUrl,303);
     }
     return NextResponse.json({ error:'unsupported' },{ status:400 });
   } catch(e:any){

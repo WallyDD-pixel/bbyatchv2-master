@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createRedirectUrl } from '@/lib/redirect';
 
 export const runtime = 'nodejs';
 
@@ -39,8 +40,8 @@ export async function POST(req: Request){
       fuelDepositEn: String(data.get('fuelDepositEn')||'').trim() || null,
     };
     await (prisma as any).legalPage.create({ data: payload });
-    const url = new URL('/admin/legal-pages?created=1', req.url);
-    return NextResponse.redirect(url, 303);
+    const redirectUrl = createRedirectUrl('/admin/legal-pages?created=1', req);
+    return NextResponse.redirect(redirectUrl, 303);
   }catch(e:any){
     return NextResponse.json({ error:'server_error', details: e?.message }, { status: 500 });
   }

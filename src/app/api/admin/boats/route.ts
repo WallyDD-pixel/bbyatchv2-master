@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { uploadMultipleToSupabase } from "@/lib/storage";
+import { createRedirectUrl } from "@/lib/redirect";
 
 export async function POST(req: Request) {
   const session = (await getServerSession(auth as any)) as any;
@@ -180,23 +181,8 @@ export async function POST(req: Request) {
       // - Si APP_BASE_URL est défini (ex: https://preprod.bbservicescharter.com),
       //   on l'utilise pour éviter les redirections vers localhost:xxxx.
       // - Sinon on retombe sur l'origin de la requête.
-      // Origine utilisée pour la redirection
-      // 1) APP_BASE_URL si définie
-      // 2) sinon domaine préprod en dur (évite les retours vers localhost)
-      // 3) en dernier recours, on retombe sur l'origin de la requête
-      const origin =
-        (process.env as any).APP_BASE_URL ||
-        "https://preprod.bbservicescharter.com" ||
-        (() => {
-          try {
-            return new URL(req.url).origin;
-          } catch {
-            return "";
-          }
-        })();
-      const redirectUrl = origin
-        ? `${origin}/admin/boats?created=${created.slug}`
-        : `/admin/boats?created=${created.slug}`;
+      // Redirection avec URL correcte (évite localhost)
+      const redirectUrl = createRedirectUrl(`/admin/boats?created=${created.slug}`, req);
       return NextResponse.redirect(redirectUrl, 303);
     }
     return NextResponse.json({

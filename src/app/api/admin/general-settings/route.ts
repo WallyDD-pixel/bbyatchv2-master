@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createRedirectUrl } from '@/lib/redirect';
 import fs from 'fs';
 import path from 'path';
 
@@ -70,7 +71,8 @@ export async function POST(req: Request) {
       data: updateData,
     });
 
-    return NextResponse.redirect(new URL('/admin/general-settings?success=1', req.url));
+    const redirectUrl = createRedirectUrl('/admin/general-settings?success=1', req);
+    return NextResponse.redirect(redirectUrl, 303);
   } catch (e: any) {
     console.error('Error updating general settings:', e);
     return NextResponse.json({ error: 'server_error', details: e?.message }, { status: 500 });

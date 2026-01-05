@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { createRedirectUrl } from '@/lib/redirect';
 
 export async function POST(req: Request){
   try {
@@ -17,13 +18,12 @@ export async function POST(req: Request){
     let usedBoatId: number | undefined = undefined;
     if(usedBoatIdRaw){ const n = Number(usedBoatIdRaw); if(Number.isInteger(n)) usedBoatId = n; }
     await (prisma as any).contactMessage.create({ data:{ name, email, phone, message, usedBoatId, locale, sourcePage: slug || 'contact' } });
-    const host = req.headers.get('host') || 'localhost:3000';
-    const proto = host.startsWith('localhost') ? 'http' : 'https';
     // Si c'est un message depuis la page contact (pas de slug), rediriger vers /contact
-    const redirectUrl = slug && usedBoatId 
-      ? `${proto}://${host}/used-sale/${slug}?sent=1`
-      : `${proto}://${host}/contact?sent=1${locale ? `&lang=${locale}` : ''}`;
-    return NextResponse.redirect(redirectUrl);
+    const redirectPath = slug && usedBoatId 
+      ? `/used-sale/${slug}?sent=1`
+      : `/contact?sent=1${locale ? `&lang=${locale}` : ''}`;
+    const redirectUrl = createRedirectUrl(redirectPath, req);
+    return NextResponse.redirect(redirectUrl, 303);
   } catch(e){
     console.error(e);
     return NextResponse.json({ ok:false, error:'server_error' }, { status:500 });

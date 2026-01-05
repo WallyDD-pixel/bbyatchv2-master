@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createRedirectUrl } from '@/lib/redirect';
 
 async function ensureAdmin() {
   const session = (await getServerSession(auth as any)) as any;
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
     } as any,
   });
 
-  return NextResponse.redirect(new URL('/admin/used-sale-settings?success=1', req.url));
+  const redirectUrl = createRedirectUrl('/admin/used-sale-settings?success=1', req);
+  return NextResponse.redirect(redirectUrl, 303);
 }
 

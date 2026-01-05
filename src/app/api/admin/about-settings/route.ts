@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createRedirectUrl } from '@/lib/redirect';
 import fs from 'fs';
 import path from 'path';
 
@@ -104,6 +105,7 @@ export async function POST(req: Request) {
     } as any,
   });
 
-  return NextResponse.redirect(new URL('/admin/about-settings?success=1', req.url));
+  const redirectUrl = createRedirectUrl('/admin/about-settings?success=1', req);
+  return NextResponse.redirect(redirectUrl, 303);
 }
 

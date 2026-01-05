@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { createRedirectUrl } from '@/lib/redirect';
 
 export async function POST(req: Request) {
   try {
@@ -50,14 +51,8 @@ export async function POST(req: Request) {
     console.log('Autre-ville message created with ID:', created.id);
     
     // Redirection vers la page d'accueil avec un message de succès
-    const host = req.headers.get('host') || 'localhost:3000';
-    const proto = host.startsWith('localhost') ? 'http' : 'https';
-    const origin =
-      (process.env as any).APP_BASE_URL ||
-      (process.env as any).NEXTAUTH_URL ||
-      `${proto}://${host}`;
-    
-    return NextResponse.redirect(`${origin}/?autre-ville-sent=1`, 303);
+    const redirectUrl = createRedirectUrl('/?autre-ville-sent=1', req);
+    return NextResponse.redirect(redirectUrl, 303);
   } catch (e: any) {
     console.error('Error saving autre-ville request:', e);
     return NextResponse.json({ ok: false, error: 'server_error', details: e?.message }, { status: 500 });

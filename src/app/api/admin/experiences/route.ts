@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { uploadMultipleToSupabase } from "@/lib/storage";
+import { createRedirectUrl } from "@/lib/redirect";
 
 export async function POST(req: Request) {
   const session = (await getServerSession(auth as any)) as any;
@@ -42,20 +43,7 @@ export async function POST(req: Request) {
     });
     // Si formulaire -> redirection vers la liste
     if(ctype.includes('multipart/form-data') || ctype.includes('application/x-www-form-urlencoded')){
-      const origin =
-        (process.env as any).APP_BASE_URL ||
-        (process.env as any).NEXTAUTH_URL ||
-        "https://preprod.bbservicescharter.com" ||
-        (() => {
-          try {
-            return new URL(req.url).origin;
-          } catch {
-            return "";
-          }
-        })();
-      const redirectUrl = origin
-        ? `${origin}/admin/experiences?created=${created.id}`
-        : `/admin/experiences?created=${created.id}`;
+      const redirectUrl = createRedirectUrl(`/admin/experiences?created=${created.id}`, req);
       return NextResponse.redirect(redirectUrl, 303);
     }
     return NextResponse.json({ ok: true, id: created.id });

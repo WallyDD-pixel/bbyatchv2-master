@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadMultipleToSupabase } from '@/lib/storage';
+import { createRedirectUrl } from '@/lib/redirect';
 
 export async function GET(){
   try {
@@ -71,8 +72,8 @@ export async function POST(req: Request){
       const slugCandidate = attempt === 1 ? baseSlug : `${baseSlug}-${attempt}`;
       try {
         const created = await (prisma as any).usedBoat.create({ data: { ...payloadBase, slug: slugCandidate } });
-        const redirectUrl = new URL(`/admin/used-boats?created=${created.id}`, req.url);
-        return NextResponse.redirect(redirectUrl);
+        const redirectUrl = createRedirectUrl(`/admin/used-boats?created=${created.id}`, req);
+        return NextResponse.redirect(redirectUrl, 303);
       } catch(e:any){
         if(e?.code === 'P2002' && e?.meta?.target?.includes('slug')){ attempt++; continue; }
         throw e; // autre erreur
