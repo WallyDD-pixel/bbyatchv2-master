@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import path from 'path';
-import fs from 'fs';
+import { uploadMultipleToSupabase } from '@/lib/storage';
 
 export const runtime = 'nodejs';
 
@@ -29,51 +28,46 @@ export async function POST(req: Request) {
 
   // Récupère dynamiquement la liste d’avantages
 
-  // Gestion upload images slider (multi + legacy)
+  // Gestion upload images slider vers Supabase Storage (multi + legacy)
   let mainSliderImageUrl: string | undefined;
   let uploadedUrls: string[] = [];
   const allowedExt = new Set(['jpg','jpeg','png','webp','gif','avif']);
   try {
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
     // Multi-images si présentes
-  if (Array.isArray(mainSliderImagesFiles) && mainSliderImagesFiles.length > 0) {
-      for (const file of mainSliderImagesFiles) {
-        if (!file || !(file as any).arrayBuffer) continue;
-    const name = (file as any).name || '';
-    const ext = name.split('.').pop()?.toLowerCase() || '';
-    const mime = (file as any).type || '';
-    if (!(allowedExt.has(ext) || mime.startsWith('image/'))) continue; // ignore non-images
-        const fname = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-slider.${ext}`.replace(/\s+/g, '-');
-        const buf = Buffer.from(await file.arrayBuffer());
-        fs.writeFileSync(path.join(uploadsDir, fname), buf);
-        const url = `/uploads/${fname}`;
-        uploadedUrls.push(url);
-      }
-      if (uploadedUrls.length > 0) {
-        mainSliderImageUrl = uploadedUrls[0];
+    if (Array.isArray(mainSliderImagesFiles) && mainSliderImagesFiles.length > 0) {
+      const validFiles = mainSliderImagesFiles.filter(file => {
+        if (!file || !(file as any).arrayBuffer) return false;
+        const name = (file as any).name || '';
+        const ext = name.split('.').pop()?.toLowerCase() || '';
+        const mime = (file as any).type || '';
+        return allowedExt.has(ext) || mime.startsWith('image/');
+      });
+      
+      if (validFiles.length > 0) {
+        const urls = await uploadMultipleToSupabase(validFiles, 'homepage');
+        uploadedUrls.push(...urls);
+        if (uploadedUrls.length > 0) {
+          mainSliderImageUrl = uploadedUrls[0];
+        }
       }
     }
 
     // Legacy: un seul fichier si pas de multi fourni
     if (!mainSliderImageUrl && mainSliderImageFile && (mainSliderImageFile as any).arrayBuffer) {
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
       const name = (mainSliderImageFile as any).name || '';
       const ext = name.split('.').pop()?.toLowerCase() || '';
       const mime = (mainSliderImageFile as any).type || '';
-      if (!(allowedExt.has(ext) || mime.startsWith('image/'))) {
-        // ignorer le fichier non image
-      } else {
-      const fname = `${Date.now()}-slider-main.${ext}`.replace(/\s+/g, '-');
-      const buf = Buffer.from(await mainSliderImageFile.arrayBuffer());
-      fs.writeFileSync(path.join(uploadsDir, fname), buf);
-      mainSliderImageUrl = `/uploads/${fname}`;
-      uploadedUrls = [mainSliderImageUrl];
+      if (allowedExt.has(ext) || mime.startsWith('image/')) {
+        const result = await uploadMultipleToSupabase([mainSliderImageFile], 'homepage');
+        if (result.length > 0) {
+          mainSliderImageUrl = result[0];
+          uploadedUrls = [mainSliderImageUrl];
+        }
       }
     }
   } catch (e) {
-    // on ignore l’erreur d’upload, pas bloquant
+    console.error('Error uploading slider images to Supabase Storage:', e);
+    // on ignore l'erreur d'upload, pas bloquant
   }
 
   // Concaténer avec la liste existante si on a uploadé quelque chose

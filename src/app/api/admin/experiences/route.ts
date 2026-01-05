@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { uploadMultipleToSupabase } from "@/lib/storage";
 
 export async function POST(req: Request) {
   const session = (await getServerSession(auth as any)) as any;
@@ -22,16 +23,11 @@ export async function POST(req: Request) {
       timeEn = String(data.get('timeEn')||'').trim()||undefined;
       imageUrl = String(data.get('imageUrl')||'').trim()||undefined;
       const imageFile = data.get('imageFile') as File | null;
-      if(imageFile && (imageFile as any).arrayBuffer){
-        const fs = await import('fs');
-        const path = await import('path');
-        const uploadsDir = path.join(process.cwd(),'public','uploads');
-        if(!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir,{ recursive:true });
-        const buf = Buffer.from(await imageFile.arrayBuffer());
-        const ext = (imageFile.name.split('.').pop()||'jpg').toLowerCase();
-        const fname = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-        fs.writeFileSync(path.join(uploadsDir,fname), buf);
-        imageUrl = `/uploads/${fname}`;
+      if(imageFile && (imageFile as any).arrayBuffer && imageFile.size > 0){
+        const result = await uploadMultipleToSupabase([imageFile], 'experiences');
+        if(result.length > 0){
+          imageUrl = result[0];
+        }
       }
     } else {
       const body = await req.json().catch(() => null);

@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import fs from 'fs';
-import path from 'path';
+import { uploadMultipleToSupabase } from "@/lib/storage";
 
 export async function POST(req: Request) {
   const session = (await getServerSession(auth as any)) as any;
@@ -46,47 +45,44 @@ export async function POST(req: Request) {
     if (c > 50) break; // garde-fou
   }
 
-  // Upload images (multi prioritaire). Première = imageUrl principale
+  // Upload images et vidéos vers Supabase Storage
   const savedImageUrls: string[] = [];
   const savedVideoUrls: string[] = [];
   const allowedImages = ['image/jpeg','image/png','image/webp','image/gif'];
   const allowedVideos = ['video/mp4','video/webm','video/ogg'];
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-  if (multiImageFiles.length > 0 || singleImageFile) {
-    try { await fs.promises.mkdir(uploadDir, { recursive: true }); } catch {}
-  }
-  const handleSaveMedia = async (file: File) => {
-    const mime = (file as any).type;
-    const isImage = allowedImages.includes(mime);
-    const isVideo = allowedVideos.includes(mime);
-    if (!isImage && !isVideo) return null;
-    const safeName = (file as any).name.replace(/[^a-zA-Z0-9_.-]/g, '_');
-    const fileName = Date.now() + '-' + Math.random().toString(36).slice(2,8) + '-' + safeName;
-    const filePath = path.join(uploadDir, fileName);
-    const arrayBuffer = await (file as any).arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const max = isVideo ? 100 * 1024 * 1024 : 5 * 1024 * 1024; // 100MB vidéo, 5MB image
-    if (buffer.length > max) return null;
-    await fs.promises.writeFile(filePath, buffer);
-    return '/uploads/' + fileName;
-  };
+  
   try {
+    // Upload images
     if (multiImageFiles.length) {
-      for (const f of multiImageFiles) {
-        const url = await handleSaveMedia(f);
-        if (url) savedImageUrls.push(url);
+      const imageFiles = multiImageFiles.filter(f => {
+        const mime = (f as any).type;
+        return allowedImages.includes(mime);
+      });
+      if (imageFiles.length > 0) {
+        const urls = await uploadMultipleToSupabase(imageFiles, 'boats');
+        savedImageUrls.push(...urls);
       }
     } else if (singleImageFile) {
-      const url = await handleSaveMedia(singleImageFile);
-      if (url) savedImageUrls.push(url);
+      const mime = (singleImageFile as any).type;
+      if (allowedImages.includes(mime)) {
+        const result = await uploadMultipleToSupabase([singleImageFile], 'boats');
+        if (result.length > 0) savedImageUrls.push(...result);
+      }
     }
+    
+    // Upload vidéos
     if (videoFiles.length) {
-      for (const vf of videoFiles) {
-        const vurl = await handleSaveMedia(vf);
-        if (vurl) savedVideoUrls.push(vurl);
+      const validVideos = videoFiles.filter(f => {
+        const mime = (f as any).type;
+        return allowedVideos.includes(mime);
+      });
+      if (validVideos.length > 0) {
+        const urls = await uploadMultipleToSupabase(validVideos, 'boats/videos');
+        savedVideoUrls.push(...urls);
       }
     }
   } catch (e) {
+    console.error('Error uploading to Supabase Storage:', e);
     return NextResponse.json({ error: 'image_upload_failed' }, { status: 500 });
   }
   let finalImageUrl: string | null = null;

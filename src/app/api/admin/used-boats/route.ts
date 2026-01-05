@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { uploadMultipleToSupabase } from '@/lib/storage';
 
 export async function GET(){
   try {
@@ -30,23 +31,18 @@ export async function POST(req: Request){
     const rawTitleFr = String(data.get('titleFr')).trim();
     const baseSlug = slugify(rawTitleFr);
 
-    // Gestion fichiers images (si fournis)
+    // Gestion fichiers images (si fournis) - Upload vers Supabase Storage
     const imageFiles = data.getAll('images') as File[];
     const savedUrls: string[] = [];
     if(imageFiles && imageFiles.length){
-      const fs = await import('fs');
-      const path = await import('path');
-      const uploadsDir = path.join(process.cwd(),'public','uploads');
-      if(!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir,{ recursive:true });
-      for(const file of imageFiles){
-        if(!(file as any).arrayBuffer) continue;
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const ext = (file.name.split('.').pop()||'jpg').toLowerCase();
-        const fname = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-        const fpath = path.join(uploadsDir, fname);
-        (await import('fs')).writeFileSync(fpath, buffer);
-        savedUrls.push(`/uploads/${fname}`);
+      try {
+        const validFiles = imageFiles.filter(file => (file as any).arrayBuffer);
+        if(validFiles.length > 0){
+          const urls = await uploadMultipleToSupabase(validFiles, 'used-boats');
+          savedUrls.push(...urls);
+        }
+      } catch(e){
+        console.error('Error uploading to Supabase Storage:', e);
       }
     }
 

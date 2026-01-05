@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import * as fs from 'fs';
-import * as path from 'path';
+import { uploadMultipleToSupabase } from '@/lib/storage';
 
 async function ensureAdmin(){
   const session = await getServerSession(auth as any) as any;
@@ -29,15 +28,10 @@ async function handleUpdate(req:Request, id:number, ctype:string){
     hasFixedTimes = data.get('hasFixedTimes') === 'on' || data.get('hasFixedTimes') === 'true';
     const imageFile = data.get('imageFile') as File | null;
     if(imageFile && imageFile instanceof File && imageFile.size > 0){
-      const fs = await import('fs');
-      const path = await import('path');
-      const uploadsDir = path.join(process.cwd(),'public','uploads');
-      if(!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir,{ recursive:true });
-      const buf = Buffer.from(await imageFile.arrayBuffer());
-      const ext = (imageFile.name.split('.').pop()||'jpg').toLowerCase();
-      const fname = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-      fs.writeFileSync(path.join(uploadsDir,fname), buf);
-      imageUrl = `/uploads/${fname}`;
+      const result = await uploadMultipleToSupabase([imageFile], 'experiences');
+      if(result.length > 0){
+        imageUrl = result[0];
+      }
     }
   } else {
     const body = await req.json().catch(()=>null); if(!body) return { error:true, resp: NextResponse.json({ error:'bad_request' },{ status:400 }) };
@@ -153,30 +147,22 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       
       console.log('Image files received:', imageFiles.length);
       
-        const uploadsDir = path.join(process.cwd(),'public','uploads');
+      // Upload vers Supabase Storage
       const uploadedUrls: string[] = [];
       
       if(imageFiles.length > 0){
-        if(!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir,{ recursive:true });
-        for(const file of imageFiles){
-          try {
-            const arrayBuffer = await file.arrayBuffer();
-            const buf = Buffer.from(arrayBuffer);
-            const name = file.name || '';
-            const ext = (name.split('.').pop()||'jpg').toLowerCase();
-            const mime = file.type || '';
-            // Vérifier que c'est bien une image
-            const allowedExt = ['jpg','jpeg','png','webp','gif'];
-            if(!mime.startsWith('image/') && !allowedExt.includes(ext)){
-              console.warn('File rejected:', name, 'mime:', mime, 'ext:', ext);
-              continue;
-            }
-        const fname = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-        fs.writeFileSync(path.join(uploadsDir,fname), buf);
-            uploadedUrls.push(`/uploads/${fname}`);
-          } catch(e){
-            console.error('Error uploading file:', e, 'file:', file.name);
-      }
+        // Filtrer les fichiers valides (images uniquement)
+        const validImageFiles = imageFiles.filter(file => {
+          const name = file.name || '';
+          const ext = (name.split('.').pop()||'').toLowerCase();
+          const mime = file.type || '';
+          const allowedExt = ['jpg','jpeg','png','webp','gif'];
+          return mime.startsWith('image/') || allowedExt.includes(ext);
+        });
+        
+        if(validImageFiles.length > 0){
+          const urls = await uploadMultipleToSupabase(validImageFiles, 'experiences');
+          uploadedUrls.push(...urls);
         }
       }
       

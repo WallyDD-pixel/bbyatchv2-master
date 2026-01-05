@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { uploadMultipleToSupabase } from '@/lib/storage';
 
 export const runtime = 'nodejs';
 
@@ -25,16 +26,14 @@ export async function POST(req:Request){
     const file = data.get('imageFile') as File | null;
     if(file && file.size>0 && (file as any).arrayBuffer){
       try {
-        const fs = await import('fs');
-        const path = await import('path');
-        const uploadsDir = path.join(process.cwd(),'public','uploads');
-        if(!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir,{ recursive:true });
-        const buf = Buffer.from(await file.arrayBuffer());
-        const ext = (file.name.split('.').pop()||'jpg').toLowerCase();
-        const fname = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-        fs.writeFileSync(path.join(uploadsDir,fname), buf);
-        imageUrl = `/uploads/${fname}`;
-      } catch(e){ /* ignore upload error, keep null */ }
+        const result = await uploadMultipleToSupabase([file], 'info-cards');
+        if(result.length > 0){
+          imageUrl = result[0];
+        }
+      } catch(e){
+        console.error('Error uploading to Supabase Storage:', e);
+        // ignore upload error, keep null
+      }
     }
 
     const sortRaw = String(data.get('sort')||'0');
