@@ -204,7 +204,11 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
       });
       reservations.forEach(r => {
         if (!r.boatId) return;
-        const start = new Date(r.startDate); const end = new Date(r.endDate);
+        // Corriger les dates pour éviter les problèmes de fuseau horaire
+        const startDateStr = r.startDate.includes('T') ? r.startDate.split('T')[0] : r.startDate;
+        const endDateStr = r.endDate.includes('T') ? r.endDate.split('T')[0] : r.endDate;
+        const start = new Date(startDateStr + 'T00:00:00');
+        const end = new Date(endDateStr + 'T23:59:59');
         const boatName = r.boat?.name || boats.find(b=>b.id===r.boatId)?.name || '#';
         const price = r.totalPrice ? `${r.totalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}` : '';
         ev.push({ 
@@ -212,6 +216,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           title: `${boatName}${price ? ' - ' + price : ''}`, 
           start, 
           end, 
+          allDay: true, // Marquer comme événement journée entière pour un meilleur affichage
           type:'reservation', 
           resData:r 
         });
@@ -227,7 +232,21 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         else if (s.part==='PM') { start = new Date(base); start.setHours(13,30,0,0); }
         ev.push({ id: 'slot-'+s.id, title: s.part + (s.note? ' • '+s.note:''), start, end, allDay:false, type:'slot', slotData:s });
       });
-      reservations.filter(r=>r.boatId===selectedBoat).forEach(r => { const start = new Date(r.startDate); const end = new Date(r.endDate); ev.push({ id: 'res-'+r.id, title: (locale==='fr'?'Réservation':'Reservation'), start, end, type:'reservation', resData:r }); });
+      reservations.filter(r=>r.boatId===selectedBoat).forEach(r => { 
+        const startDateStr = r.startDate.includes('T') ? r.startDate.split('T')[0] : r.startDate;
+        const endDateStr = r.endDate.includes('T') ? r.endDate.split('T')[0] : r.endDate;
+        const start = new Date(startDateStr + 'T00:00:00');
+        const end = new Date(endDateStr + 'T23:59:59');
+        ev.push({ 
+          id: 'res-'+r.id, 
+          title: (locale==='fr'?'Réservation':'Reservation'), 
+          start, 
+          end, 
+          allDay: true,
+          type:'reservation', 
+          resData:r 
+        }); 
+      });
       return ev;
     }
     // Vue expérience seule
@@ -291,10 +310,20 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     const today = new Date();
     const isToday = date.toDateString() === today.toDateString();
     
-    // Compter les événements pour ce jour
+    // Compter les événements pour ce jour (corriger la comparaison de dates)
     const dayEvents = events.filter((ev: any) => {
+      if (!ev.start) return false;
       const evDate = new Date(ev.start);
-      return evDate.toDateString() === date.toDateString();
+      const cellDate = new Date(date);
+      // Normaliser les dates à minuit pour la comparaison
+      evDate.setHours(0, 0, 0, 0);
+      cellDate.setHours(0, 0, 0, 0);
+      // Vérifier si l'événement commence ce jour ou si c'est un événement multi-jours qui couvre ce jour
+      const evStart = evDate.getTime();
+      const evEnd = ev.end ? new Date(ev.end).setHours(23, 59, 59, 999) : evStart;
+      const cellStart = cellDate.getTime();
+      const cellEnd = cellDate.getTime() + 86400000 - 1; // Fin de la journée
+      return (evStart <= cellEnd && evEnd >= cellStart);
     });
     const eventCount = dayEvents.length;
     const hasMultipleEvents = eventCount > 3; // Afficher badge si plus de 3 événements
@@ -870,13 +899,22 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                   <div className="p-4 bg-blue-50 rounded-lg">
                     <div className="mb-2">
                       <strong className="text-gray-700">{locale==='fr'?'Période':'Period'}:</strong>
-                      <div className="text-base">{r.startDate.slice(0,10)} → {r.endDate.slice(0,10)}
-                        <span className='ml-2 text-xs text-gray-600'>({(() => {
-                          const d1 = new Date(r.startDate);
-                          const d2 = new Date(r.endDate);
+                      <div className="text-base">
+                        {(() => {
+                          const startDateStr = r.startDate.includes('T') ? r.startDate.split('T')[0] : r.startDate.slice(0,10);
+                          const endDateStr = r.endDate.includes('T') ? r.endDate.split('T')[0] : r.endDate.slice(0,10);
+                          const d1 = new Date(startDateStr + 'T00:00:00');
+                          const d2 = new Date(endDateStr + 'T00:00:00');
                           const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000*60*60*24)) + 1;
-                          return diff > 1 ? diff + (locale==='fr'?' jours':' days') : (locale==='fr'?'1 jour':'1 day');
-                        })()})</span>
+                          return (
+                            <>
+                              {startDateStr} → {endDateStr}
+                              <span className='ml-2 text-xs text-gray-600'>
+                                ({diff > 1 ? diff + (locale==='fr'?' jours':' days') : (locale==='fr'?'1 jour':'1 day')})
+                              </span>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div>
@@ -1007,20 +1045,28 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                     {ev.expSlotData?.note && <div className="text-xs text-black/60">Note : {ev.expSlotData.note}</div>}
                     {ev.resData && (
                       <div className="text-xs text-black/60">
-                        Période : {ev.resData.startDate.slice(0,10)} → {ev.resData.endDate.slice(0,10)}
-                        <span className='ml-2 text-xs text-black/60'>({(() => {
-                          const d1 = new Date(ev.resData.startDate);
-                          const d2 = new Date(ev.resData.endDate);
+                        Période : {(() => {
+                          const startDateStr = ev.resData.startDate.includes('T') ? ev.resData.startDate.split('T')[0] : ev.resData.startDate.slice(0,10);
+                          const endDateStr = ev.resData.endDate.includes('T') ? ev.resData.endDate.split('T')[0] : ev.resData.endDate.slice(0,10);
+                          const d1 = new Date(startDateStr + 'T00:00:00');
+                          const d2 = new Date(endDateStr + 'T00:00:00');
                           const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000*60*60*24)) + 1;
-                          return diff > 1 ? diff + ' jours' : '1 jour';
-                        })()})</span>
+                          return (
+                            <>
+                              {startDateStr} → {endDateStr}
+                              <span className='ml-2'>({diff > 1 ? diff + ' jours' : '1 jour'})</span>
+                            </>
+                          );
+                        })()}
                         <br />
                         Statut : {
                           ev.resData.status === 'pending' ? 'En attente' :
                           ev.resData.status === 'pending_deposit' ? 'Acompte payé, paiement complet en attente' :
+                          ev.resData.status === 'deposit_paid' ? 'Acompte payé' :
                           ev.resData.status === 'confirmed' ? 'Confirmée' :
                           ev.resData.status === 'cancelled' ? 'Annulée' :
                           ev.resData.status === 'paid' ? 'Payée' :
+                          ev.resData.status === 'completed' ? 'Terminée' :
                           ev.resData.status
                         }
                       </div>
