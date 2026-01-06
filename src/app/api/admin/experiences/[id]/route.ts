@@ -12,7 +12,7 @@ async function ensureAdmin(){
 }
 
 async function handleUpdate(req:Request, id:number, ctype:string){
-  let slug:string|undefined, titleFr:string|undefined, titleEn:string|undefined, descFr:string|undefined, descEn:string|undefined, timeFr:string|undefined, timeEn:string|undefined, imageUrl:string|undefined;
+  let slug:string|undefined, titleFr:string|undefined, titleEn:string|undefined, descFr:string|undefined, descEn:string|undefined, additionalTextFr:string|undefined, additionalTextEn:string|undefined, timeFr:string|undefined, timeEn:string|undefined, imageUrl:string|undefined;
   let fixedDepartureTime:string|undefined, fixedReturnTime:string|undefined, hasFixedTimes:boolean|undefined;
   if(ctype.includes('multipart/form-data')){
     const data = await req.formData();
@@ -21,6 +21,8 @@ async function handleUpdate(req:Request, id:number, ctype:string){
     titleEn = String(data.get('titleEn')||'').trim();
     descFr = String(data.get('descFr')||'').trim();
     descEn = String(data.get('descEn')||'').trim();
+    additionalTextFr = String(data.get('additionalTextFr')||'').trim()||undefined;
+    additionalTextEn = String(data.get('additionalTextEn')||'').trim()||undefined;
     timeFr = String(data.get('timeFr')||'').trim()||undefined;
     timeEn = String(data.get('timeEn')||'').trim()||undefined;
     imageUrl = String(data.get('imageUrl')||'').trim()||undefined;
@@ -36,7 +38,7 @@ async function handleUpdate(req:Request, id:number, ctype:string){
     }
   } else {
     const body = await req.json().catch(()=>null); if(!body) return { error:true, resp: NextResponse.json({ error:'bad_request' },{ status:400 }) };
-    ({ slug, titleFr, titleEn, descFr, descEn, timeFr, timeEn, imageUrl, fixedDepartureTime, fixedReturnTime, hasFixedTimes } = body);
+    ({ slug, titleFr, titleEn, descFr, descEn, additionalTextFr, additionalTextEn, timeFr, timeEn, imageUrl, fixedDepartureTime, fixedReturnTime, hasFixedTimes } = body);
   }
   if(!titleFr || !titleEn) return { error:true, resp: NextResponse.json({ error:'missing_fields' },{ status:400 }) };
   const existing = await (prisma as any).experience.findUnique({ where:{ id } });
@@ -51,6 +53,8 @@ async function handleUpdate(req:Request, id:number, ctype:string){
     titleEn,
     descFr: descFr??'',
     descEn: descEn??'',
+    additionalTextFr: additionalTextFr??null,
+    additionalTextEn: additionalTextEn??null,
     timeFr: timeFr??null,
     timeEn: timeEn??null,
     imageUrl: imageUrl??existing.imageUrl,
@@ -116,6 +120,8 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       let titleEn = String(data.get('titleEn')||'').trim();
       let descFr = String(data.get('descFr')||'').trim();
       let descEn = String(data.get('descEn')||'').trim();
+      let additionalTextFr = String(data.get('additionalTextFr')||'').trim()||undefined;
+      let additionalTextEn = String(data.get('additionalTextEn')||'').trim()||undefined;
       let timeFr = String(data.get('timeFr')||'').trim()||undefined;
       let timeEn = String(data.get('timeEn')||'').trim()||undefined;
       // Gestion des images multiples
@@ -217,6 +223,8 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
         titleEn,
         descFr: descFr??'',
         descEn: descEn??'',
+        additionalTextFr: additionalTextFr??null,
+        additionalTextEn: additionalTextEn??null,
         timeFr: timeFr??null,
         timeEn: timeEn??null,
         imageUrl: finalImageUrl

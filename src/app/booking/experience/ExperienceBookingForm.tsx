@@ -196,14 +196,29 @@ export default function ExperienceBookingForm({ locale, hasFixedTimes = false, f
           <label className="block text-xs font-semibold text-black/70 mb-1.5">
             {locale === 'fr' ? 'Horaire souhaité (optionnel)' : 'Preferred time (optional)'}
           </label>
-          <input
-            type="time"
+          <select
             value={preferredTime}
             onChange={(e) => setPreferredTime(e.target.value)}
             className="w-full h-10 px-3 rounded-lg border border-black/15 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
-          />
+          >
+            <option value="">{locale === 'fr' ? 'Sélectionner...' : 'Select...'}</option>
+            {(() => {
+              const times: string[] = [];
+              // Générer les horaires par pas de 15 minutes de 08:00 à 22:00
+              for (let h = 8; h <= 22; h++) {
+                for (let m = 0; m < 60; m += 15) {
+                  if (h === 22 && m > 0) break; // Arrêter à 22:00
+                  const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                  times.push(timeStr);
+                }
+              }
+              return times.map(time => (
+                <option key={time} value={time}>{time}</option>
+              ));
+            })()}
+          </select>
           <p className="mt-1 text-[10px] text-black/50">
-            {locale === 'fr' ? 'Si la formule est flexible, indiquez votre horaire préféré' : 'If the formula is flexible, indicate your preferred time'}
+            {locale === 'fr' ? 'Si la formule est flexible, indiquez votre horaire préféré (créneaux de 15 minutes)' : 'If the formula is flexible, indicate your preferred time (15-minute slots)'}
           </p>
         </div>
       )}

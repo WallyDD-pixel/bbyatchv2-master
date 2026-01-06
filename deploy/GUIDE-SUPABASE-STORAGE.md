@@ -137,3 +137,4 @@ Si vous avez déjà des fichiers dans `public/uploads/`, vous pouvez les migrer 
 - Vérifiez les politiques RLS dans Supabase Dashboard
 - Vérifiez que l'URL retournée est correcte dans la base de données
 
+

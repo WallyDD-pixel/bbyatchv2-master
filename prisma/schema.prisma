@@ -17,6 +17,8 @@ model Experience {
   titleEn   String
   descFr    String
   descEn    String
+  additionalTextFr String? // Texte supplémentaire affiché sur la page d'expérience (FR)
+  additionalTextEn String? // Texte supplémentaire affiché sur la page d'expérience (EN)
   timeFr    String?
   timeEn    String?
   imageUrl  String?
@@ -177,6 +179,11 @@ model InfoCard {
   titleEn   String
   descFr    String?
   descEn    String?
+  contentFr String?  // Texte détaillé pour la page dédiée (FR)
+  contentEn String?  // Texte détaillé pour la page dédiée (EN)
+  ctaUrl    String?  // URL du CTA (lien vers une page externe ou interne)
+  ctaLabelFr String? // Label du bouton CTA (FR)
+  ctaLabelEn String? // Label du bouton CTA (EN)
   sort      Int?     @default(0)
   createdAt DateTime @default(now())
 }

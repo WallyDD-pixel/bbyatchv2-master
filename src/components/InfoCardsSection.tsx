@@ -49,7 +49,7 @@ export default async function InfoCardsSection({ locale }: { locale: Locale }) {
   } catch {
     try {
       rows = await prisma.$queryRaw<InfoCard[]>`
-        SELECT id, imageUrl, titleFr, titleEn, descFr, descEn, sort
+        SELECT id, imageUrl, titleFr, titleEn, descFr, descEn, contentFr, contentEn, ctaUrl, ctaLabelFr, ctaLabelEn, sort
         FROM InfoCard
         ORDER BY COALESCE(sort, 0) ASC, id ASC
       `;
@@ -62,19 +62,36 @@ export default async function InfoCardsSection({ locale }: { locale: Locale }) {
 
   return (
     <section className="w-full max-w-6xl mx-auto mt-12">
+      <h2 className="text-2xl sm:text-3xl font-nakilla font-extrabold text-black/90 mb-6 text-center">
+        Les + BB services
+      </h2>
       <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
-        {data.map((c, i) => (
-          <article key={c.id ?? i} className="relative overflow-hidden rounded-2xl border border-black/10 bg-white h-40 sm:h-48">
-            <Image src={c.imageUrl} alt={locale === "fr" ? c.titleFr : c.titleEn} fill className="object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            <div className="absolute inset-0 p-4 flex flex-col justify-end text-left">
-              <h3 className="font-aviano font-bold text-lg text-white">{locale === "fr" ? c.titleFr : c.titleEn}</h3>
-              {(c.descFr || c.descEn) && (
-                <p className="mt-1 text-sm text-white/85">{locale === "fr" ? c.descFr : c.descEn}</p>
-              )}
-            </div>
-          </article>
-        ))}
+        {data.map((c, i) => {
+          const hasContent = (c as any).contentFr || (c as any).contentEn;
+          const CardWrapper = hasContent ? 'a' : 'article';
+          const href = hasContent ? `/info-cards/${c.id}` : undefined;
+          return (
+            <CardWrapper 
+              key={c.id ?? i} 
+              href={href}
+              className={`relative overflow-hidden rounded-2xl border border-black/10 bg-white h-40 sm:h-48 ${hasContent ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+            >
+              <Image src={c.imageUrl} alt={locale === "fr" ? c.titleFr : c.titleEn} fill className="object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+              <div className="absolute inset-0 p-4 flex flex-col justify-end text-left">
+                <h3 className="font-aviano font-bold text-lg text-white">{locale === "fr" ? c.titleFr : c.titleEn}</h3>
+                {(c.descFr || c.descEn) && (
+                  <p className="mt-1 text-sm text-white/85">{locale === "fr" ? c.descFr : c.descEn}</p>
+                )}
+                {hasContent && (
+                  <span className="mt-2 text-xs text-white/90 font-medium inline-flex items-center gap-1">
+                    {locale === 'fr' ? 'En savoir plus' : 'Learn more'} →
+                  </span>
+                )}
+              </div>
+            </CardWrapper>
+          );
+        })}
       </div>
     </section>
   );

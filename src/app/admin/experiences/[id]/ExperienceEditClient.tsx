@@ -388,6 +388,19 @@ export default function ExperienceEditClient({
           <textarea name='descEn' rows={4} defaultValue={experience.descEn || ''} className='rounded-lg border border-black/15 px-3 py-2' />
         </label>
       </div>
+      <div className='border-t border-black/10 pt-4 mt-2'>
+        <h3 className='text-sm font-semibold mb-3'>{locale === 'fr' ? 'Texte supplémentaire (affiché sur la page d\'expérience)' : 'Additional text (displayed on experience page)'}</h3>
+        <div className='grid sm:grid-cols-2 gap-4'>
+          <label className='grid gap-1 text-sm'>
+            <span>{locale === 'fr' ? 'Texte supplémentaire (FR)' : 'Additional text (FR)'}</span>
+            <textarea name='additionalTextFr' rows={6} defaultValue={(experience as any).additionalTextFr || ''} className='rounded-lg border border-black/15 px-3 py-2' placeholder={locale === 'fr' ? 'Texte affiché sous la description principale...' : 'Text displayed below main description...'} />
+          </label>
+          <label className='grid gap-1 text-sm'>
+            <span>{locale === 'fr' ? 'Texte supplémentaire (EN)' : 'Additional text (EN)'}</span>
+            <textarea name='additionalTextEn' rows={6} defaultValue={(experience as any).additionalTextEn || ''} className='rounded-lg border border-black/15 px-3 py-2' placeholder={locale === 'fr' ? 'Text displayed below main description...' : 'Text displayed below main description...'} />
+          </label>
+        </div>
+      </div>
       <div className='grid sm:grid-cols-2 gap-4'>
         <label className='grid gap-1 text-sm'>
           <span>Heure (FR)</span>

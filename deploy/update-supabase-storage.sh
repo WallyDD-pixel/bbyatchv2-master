@@ -99,3 +99,4 @@ echo "  pm2 logs $APP_NAME --lines 50"
 echo ""
 echo "Testez l'upload d'une image pour vérifier que les URLs Supabase sont générées."
 
+

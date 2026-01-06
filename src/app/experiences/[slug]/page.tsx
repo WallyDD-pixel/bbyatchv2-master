@@ -106,6 +106,14 @@ export default async function ExperienceDetailPage({ params, searchParams }: { p
                   </p>
                 </div>
               )}
+              {/* Texte supplémentaire */}
+              {((exp as any).additionalTextFr || (exp as any).additionalTextEn) && (
+                <div className="mt-6 pt-6 border-t border-black/10">
+                  <div className="text-sm sm:text-base leading-relaxed text-black/70 whitespace-pre-line">
+                    {locale==='fr'? (exp as any).additionalTextFr: (exp as any).additionalTextEn}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <aside className="lg:col-span-1 space-y-6">

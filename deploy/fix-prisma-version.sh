@@ -29,3 +29,4 @@ echo "  ou"
 echo "  npx prisma db push"
 
 
+

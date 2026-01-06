@@ -115,3 +115,4 @@ export function extractPathFromSupabaseUrl(url: string): string | null {
   }
 }
 
+

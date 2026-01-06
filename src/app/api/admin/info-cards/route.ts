@@ -22,6 +22,11 @@ export async function POST(req:Request){
     if(!titleFr || !titleEn) return NextResponse.json({ error:'missing_fields' },{ status:400 });
     const descFr = String(data.get('descFr')||'').trim()||null;
     const descEn = String(data.get('descEn')||'').trim()||null;
+    const contentFr = String(data.get('contentFr')||'').trim()||null;
+    const contentEn = String(data.get('contentEn')||'').trim()||null;
+    const ctaUrl = String(data.get('ctaUrl')||'').trim()||null;
+    const ctaLabelFr = String(data.get('ctaLabelFr')||'').trim()||null;
+    const ctaLabelEn = String(data.get('ctaLabelEn')||'').trim()||null;
 
     let imageUrl = String(data.get('imageUrl')||'').trim()||null; // hidden fallback
     const file = data.get('imageFile') as File | null;
@@ -39,7 +44,13 @@ export async function POST(req:Request){
 
     const sortRaw = String(data.get('sort')||'0');
     const sort = parseInt(sortRaw,10)||0;
-    const created = await (prisma as any).infoCard.create({ data:{ titleFr, titleEn, descFr, descEn, imageUrl, sort } });
+    const created = await (prisma as any).infoCard.create({ 
+      data:{ 
+        titleFr, titleEn, descFr, descEn, 
+        contentFr, contentEn, ctaUrl, ctaLabelFr, ctaLabelEn,
+        imageUrl, sort 
+      } 
+    });
     const redirectUrl = createRedirectUrl(`/admin/info-cards?created=${created.id}`, req);
     return NextResponse.redirect(redirectUrl,303);
   } catch(e:any){

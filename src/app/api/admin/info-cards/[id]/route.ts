@@ -26,9 +26,19 @@ export async function PUT(req:Request, { params }: { params:{ id:string } }){
   try {
     const body = await req.json().catch(()=>null);
     if(!body) return NextResponse.json({ error:'bad_request' },{ status:400 });
-    const { titleFr, titleEn, descFr, descEn, imageUrl, sort } = body;
+    const { titleFr, titleEn, descFr, descEn, contentFr, contentEn, ctaUrl, ctaLabelFr, ctaLabelEn, imageUrl, sort } = body;
     if(!titleFr || !titleEn) return NextResponse.json({ error:'missing_fields' },{ status:400 });
-    const updated = await (prisma as any).infoCard.update({ where:{ id }, data:{ titleFr, titleEn, descFr: descFr??null, descEn: descEn??null, imageUrl: imageUrl??null, sort: typeof sort==='number'? sort: 0 } });
+    const updated = await (prisma as any).infoCard.update({ 
+      where:{ id }, 
+      data:{ 
+        titleFr, titleEn, 
+        descFr: descFr??null, descEn: descEn??null,
+        contentFr: contentFr??null, contentEn: contentEn??null,
+        ctaUrl: ctaUrl??null, ctaLabelFr: ctaLabelFr??null, ctaLabelEn: ctaLabelEn??null,
+        imageUrl: imageUrl??null, 
+        sort: typeof sort==='number'? sort: 0 
+      } 
+    });
     return NextResponse.json({ ok:true, card: updated });
   } catch(e:any){
     return NextResponse.json({ error:'server_error', details:e?.message },{ status:500 });
@@ -60,6 +70,11 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
     if(!titleFr || !titleEn) return NextResponse.json({ error:'missing_fields' },{ status:400 });
     const descFr = String(data.get('descFr')||'').trim()||null;
     const descEn = String(data.get('descEn')||'').trim()||null;
+    const contentFr = String(data.get('contentFr')||'').trim()||null;
+    const contentEn = String(data.get('contentEn')||'').trim()||null;
+    const ctaUrl = String(data.get('ctaUrl')||'').trim()||null;
+    const ctaLabelFr = String(data.get('ctaLabelFr')||'').trim()||null;
+    const ctaLabelEn = String(data.get('ctaLabelEn')||'').trim()||null;
     let imageUrl = String(data.get('imageUrl')||'').trim()||null; // hidden current value
     const file = data.get('imageFile') as File | null;
     if(file && file.size>0 && (file as any).arrayBuffer){
@@ -76,7 +91,14 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       } catch(e){ /* ignore */ }
     }
     const sort = parseInt(String(data.get('sort')||'0'),10)||0;
-    await (prisma as any).infoCard.update({ where:{ id }, data:{ titleFr, titleEn, descFr, descEn, imageUrl, sort } });
+    await (prisma as any).infoCard.update({ 
+      where:{ id }, 
+      data:{ 
+        titleFr, titleEn, descFr, descEn, 
+        contentFr, contentEn, ctaUrl, ctaLabelFr, ctaLabelEn,
+        imageUrl, sort 
+      } 
+    });
     const redirectUrl = createRedirectUrl(`/admin/info-cards/${id}?updated=1`, req);
     return NextResponse.redirect(redirectUrl,303);
   } catch(e:any){

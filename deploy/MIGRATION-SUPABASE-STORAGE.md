@@ -62,3 +62,4 @@ Si vous voulez migrer les fichiers existants, vous pouvez créer un script de mi
 - Assurez-vous que le bucket est **public** dans Supabase Dashboard
 - La Service Role Key ne doit **JAMAIS** être exposée côté client
 
+

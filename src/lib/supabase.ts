@@ -23,3 +23,4 @@ export const supabase = createClient(
 // Nom du bucket pour les uploads (configurable via env)
 export const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'uploads';
 
+

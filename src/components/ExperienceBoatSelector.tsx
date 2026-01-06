@@ -11,6 +11,7 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
   const [selectedBoatId, setSelectedBoatId] = useState<number|undefined>();
   const [selectedOptions, setSelectedOptions] = useState<Record<number, boolean>>({});
   const [searchOpen, setSearchOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<{startDate: string, endDate: string} | null>(null);
 
   const selectedBoat = useMemo(()=> boats.find(b=>b.boatId===selectedBoatId), [boats, selectedBoatId]);
   const totalOptions = useMemo(()=> Object.entries(selectedOptions).reduce((sum,[id, on])=> on? sum + (selectedBoat?.options.find(o=>o.id===Number(id))?.price||0): sum,0), [selectedOptions, selectedBoat]);
@@ -67,49 +68,77 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
             <div className="flex justify-between text-sm font-extrabold pt-1 border-t border-black/10"><span>{locale==='fr'? 'Total':'Total'}</span><span>{total} €</span></div>
           </div>
           
-          {/* Formulaire d'informations de réservation */}
-          <div className="mt-4 border-t border-black/10 pt-4">
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60 mb-3">{locale==='fr'? 'Informations de réservation':'Booking information'}</h3>
-            <ExperienceBookingForm 
-              locale={locale}
-              hasFixedTimes={experience?.hasFixedTimes || false}
-              fixedDepartureTime={experience?.fixedDepartureTime || null}
-              fixedReturnTime={experience?.fixedReturnTime || null}
-              onSubmit={(data) => {
-                // Les données sont sauvegardées dans sessionStorage par le formulaire
-                // On peut maintenant ouvrir le modal de sélection de date
-                if (selectedBoat) {
-                  setSearchOpen(true);
-                }
-              }} 
-            />
-          </div>
+          {/* ÉTAPE 1: Sélection de la date EN PREMIER */}
+          {!selectedDate && (
+            <div className="mt-4 border-t border-black/10 pt-4">
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60 mb-3">{locale==='fr'? 'Étape 1 : Sélectionnez votre date':'Step 1: Select your date'}</h3>
+              <button 
+                type="button" 
+                onClick={() => setSearchOpen(true)} 
+                className="w-full h-11 rounded-full text-sm font-semibold shadow bg-[color:var(--primary)] text-white hover:brightness-110"
+              >
+                {locale==='fr'? 'Choisir la date':'Choose date'} →
+              </button>
+            </div>
+          )}
           
-          <div className="mt-4">
-            <button 
-              type="button" 
-              onClick={()=> {
-                // Vérifier que le formulaire est valide avant d'ouvrir le modal
-                const form = document.getElementById('experience-booking-form') as HTMLFormElement;
-                if (form && !form.checkValidity()) {
-                  form.reportValidity();
-                  return;
-                }
-                // Déclencher la soumission du formulaire pour sauvegarder les données
-                if (form) {
-                  const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-                  form.dispatchEvent(submitEvent);
-                }
-                // Puis ouvrir le modal de sélection de date
-                if (selectedBoat) {
-                  setSearchOpen(true);
-                }
-              }} 
-              className={`inline-flex items-center justify-center gap-2 w-full h-11 rounded-full text-sm font-semibold shadow ${selectedBoat? 'bg-[color:var(--primary)] text-white hover:brightness-110':'bg-black/10 text-black/40 cursor-not-allowed'}`}
-            >
-              {ctaLabel} <span className="text-base">→</span>
-            </button>
-          </div>
+          {/* ÉTAPE 2: Formulaire d'informations de réservation (après sélection de date) */}
+          {selectedDate && (
+            <div className="mt-4 border-t border-black/10 pt-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60">{locale==='fr'? 'Étape 2 : Informations de réservation':'Step 2: Booking information'}</h3>
+                <button 
+                  type="button"
+                  onClick={() => setSelectedDate(null)}
+                  className="text-[10px] text-black/50 hover:text-black/70"
+                >
+                  {locale==='fr'? 'Changer la date':'Change date'}
+                </button>
+              </div>
+              <div className="mb-3 p-2 rounded-lg bg-[color:var(--primary)]/5 border border-[color:var(--primary)]/20 text-[11px]">
+                <span className="font-semibold">{locale==='fr'? 'Date sélectionnée':'Selected date'}: </span>
+                <span>{selectedDate.startDate}</span>
+              </div>
+              <ExperienceBookingForm 
+                locale={locale}
+                hasFixedTimes={experience?.hasFixedTimes || false}
+                fixedDepartureTime={experience?.fixedDepartureTime || null}
+                fixedReturnTime={experience?.fixedReturnTime || null}
+                onSubmit={(data) => {
+                  // Les données sont sauvegardées dans sessionStorage par le formulaire
+                  // Rediriger vers le checkout avec la date déjà sélectionnée
+                  const params = new URLSearchParams();
+                  params.set('exp', experienceSlug);
+                  params.set('boat', String(selectedBoatId));
+                  params.set('part', 'FULL');
+                  params.set('start', selectedDate.startDate);
+                  params.set('end', selectedDate.endDate);
+                  window.location.href = `/booking/experience?${params.toString()}`;
+                }} 
+              />
+              <div className="mt-4">
+                <button 
+                  type="button" 
+                  onClick={()=> {
+                    // Vérifier que le formulaire est valide
+                    const form = document.getElementById('experience-booking-form') as HTMLFormElement;
+                    if (form && !form.checkValidity()) {
+                      form.reportValidity();
+                      return;
+                    }
+                    // Déclencher la soumission du formulaire pour sauvegarder les données
+                    if (form) {
+                      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                      form.dispatchEvent(submitEvent);
+                    }
+                  }} 
+                  className="inline-flex items-center justify-center gap-2 w-full h-11 rounded-full text-sm font-semibold shadow bg-[color:var(--primary)] text-white hover:brightness-110"
+                >
+                  {ctaLabel} <span className="text-base">→</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {searchOpen && (
@@ -139,13 +168,12 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
                   search_help_pick_half: locale==='fr'? 'Choisis la date':'Pick date'
                 }}
                 onSubmit={(v)=>{
-                  const params = new URLSearchParams();
-                  params.set('exp', experienceSlug);
-                  params.set('boat', String(selectedBoatId));
-                  params.set('part', 'FULL');
-                  params.set('start', v.startDate);
-                  params.set('end', v.startDate);
-                  window.location.href = `/booking/experience?${params.toString()}`;
+                  // Sauvegarder la date sélectionnée et fermer le modal
+                  setSelectedDate({
+                    startDate: v.startDate,
+                    endDate: v.endDate || v.startDate
+                  });
+                  setSearchOpen(false);
                 }}
                 mode="experience"
                 experienceSlug={experienceSlug}

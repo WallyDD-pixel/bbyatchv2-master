@@ -31,6 +31,17 @@ export default async function AdminInfoCardEditPage({ params, searchParams }: { 
           <label className='grid gap-1 text-sm'><span>{locale==='fr'? 'Titre (EN)':'Title (EN)'}</span><input name='titleEn' defaultValue={card.titleEn} required className='h-11 rounded-lg border border-black/15 px-3' /></label>
           <label className='grid gap-1 text-sm'><span>{locale==='fr'? 'Description (FR)':'Description (FR)'}</span><textarea name='descFr' rows={4} defaultValue={card.descFr||''} className='rounded-lg border border-black/15 px-3 py-2' /></label>
           <label className='grid gap-1 text-sm'><span>{locale==='fr'? 'Description (EN)':'Description (EN)'}</span><textarea name='descEn' rows={4} defaultValue={card.descEn||''} className='rounded-lg border border-black/15 px-3 py-2' /></label>
+          <div className='border-t border-black/10 pt-4 mt-2'>
+            <h3 className='text-sm font-semibold mb-3'>{locale==='fr'? 'Contenu détaillé (page dédiée)':'Detailed content (dedicated page)'}</h3>
+            <label className='grid gap-1 text-sm'><span>{locale==='fr'? 'Texte détaillé (FR)':'Detailed text (FR)'}</span><textarea name='contentFr' rows={6} defaultValue={card.contentFr||''} className='rounded-lg border border-black/15 px-3 py-2' placeholder={locale==='fr'? 'Texte complet affiché sur la page dédiée...':'Full text displayed on dedicated page...'} /></label>
+            <label className='grid gap-1 text-sm mt-3'><span>{locale==='fr'? 'Texte détaillé (EN)':'Detailed text (EN)'}</span><textarea name='contentEn' rows={6} defaultValue={card.contentEn||''} className='rounded-lg border border-black/15 px-3 py-2' placeholder={locale==='fr'? 'Full text displayed on dedicated page...':'Full text displayed on dedicated page...'} /></label>
+          </div>
+          <div className='border-t border-black/10 pt-4 mt-2'>
+            <h3 className='text-sm font-semibold mb-3'>{locale==='fr'? 'Bouton CTA (optionnel)':'CTA Button (optional)'}</h3>
+            <label className='grid gap-1 text-sm'><span>{locale==='fr'? 'URL du lien':'Link URL'}</span><input name='ctaUrl' type='url' defaultValue={card.ctaUrl||''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='https://...' /></label>
+            <label className='grid gap-1 text-sm mt-3'><span>{locale==='fr'? 'Label du bouton (FR)':'Button label (FR)'}</span><input name='ctaLabelFr' defaultValue={card.ctaLabelFr||''} className='h-11 rounded-lg border border-black/15 px-3' placeholder={locale==='fr'? 'En savoir plus':'Learn more'} /></label>
+            <label className='grid gap-1 text-sm mt-3'><span>{locale==='fr'? 'Label du bouton (EN)':'Button label (EN)'}</span><input name='ctaLabelEn' defaultValue={card.ctaLabelEn||''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='Learn more' /></label>
+          </div>
           <div className='grid gap-2 text-sm'>
             <span>{locale==='fr'? 'Image':'Image'}</span>
             <input type='hidden' name='imageUrl' defaultValue={card.imageUrl||''} />
