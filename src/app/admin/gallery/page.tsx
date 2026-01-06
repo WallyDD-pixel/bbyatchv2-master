@@ -6,8 +6,7 @@ import HeaderBar from "@/components/HeaderBar";
 import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from "next/link";
-import Image from "next/image";
-import DeleteButton from "./DeleteButton";
+import GalleryImageItem from "./GalleryImageItem";
 
 export default async function AdminGalleryPage({ searchParams }: { searchParams?: { lang?: string } }) {
   const session = (await getServerSession(auth as any)) as any;
@@ -33,11 +32,6 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
         filteredCount++;
         return false;
       }
-      // Temporairement, on affiche aussi les images avec /uploads/ pour voir ce qui se passe
-      // if (img.imageUrl.startsWith('/uploads/') || img.imageUrl.includes('/uploads/')) {
-      //   filteredCount++;
-      //   return false;
-      // }
       return true;
     });
     
@@ -45,8 +39,9 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
     filteredCount = allImages.filter((img: any) => 
       img.imageUrl && (img.imageUrl.startsWith('/uploads/') || img.imageUrl.includes('/uploads/'))
     ).length;
-  } catch (e) {
-    console.error('Error loading gallery images:', e);
+  } catch (e: any) {
+    // En cas d'erreur, retourner un tableau vide plutôt que de faire planter la page
+    images = [];
   }
 
   return (
@@ -85,48 +80,7 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
             </div>
           ) : (
             images.map((img) => (
-              <article key={img.id} className="group rounded-xl border border-black/10 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                <div className="relative aspect-square bg-black/5">
-                  {img.imageUrl ? (
-                    <>
-                      {img.imageUrl.includes('/uploads/') && (
-                        <div className="absolute top-2 left-2 z-10 bg-yellow-500 text-white text-[10px] px-2 py-1 rounded">
-                          {locale === "fr" ? "URL invalide" : "Invalid URL"}
-                        </div>
-                      )}
-                      <Image 
-                        src={img.imageUrl} 
-                        alt={img.titleFr || img.titleEn || "Gallery image"} 
-                        fill 
-                        className="object-cover group-hover:scale-105 transition-transform"
-                        unoptimized
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const parent = target.closest('.relative');
-                          if (parent) {
-                            parent.innerHTML = '<div class="flex items-center justify-center h-full text-black/40 text-xs">Image introuvable</div>';
-                          }
-                        }}
-                      />
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-black/40 text-xs">
-                      {locale === "fr" ? "Pas d'URL" : "No URL"}
-                    </div>
-                  )}
-                </div>
-                <div className="p-3">
-                  <div className="text-sm font-medium truncate text-black/90">
-                    {img.titleFr || img.titleEn || locale === "fr" ? "Sans titre" : "Untitled"}
-                  </div>
-                  <div className="text-xs text-black/50 truncate mt-1">{new Date(img.createdAt).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-US")}</div>
-                  <div className="mt-2">
-                    <DeleteButton imageId={img.id} locale={locale} />
-                  </div>
-                </div>
-              </article>
+              <GalleryImageItem key={img.id} img={img} locale={locale} />
             ))
           )}
         </div>
