@@ -5,12 +5,16 @@ import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 
-export default async function AdminLegalNew({ searchParams }: { searchParams?: { lang?: string } }){
+export default async function AdminLegalNew({ searchParams }: { searchParams?: { lang?: string; slug?: string; titleFr?: string; titleEn?: string } }){
   const session = await getServerSession(auth as any) as any;
   if(!session?.user) redirect('/signin');
   if((session.user as any).role !== 'admin') redirect('/dashboard');
   const locale: Locale = searchParams?.lang==='en'? 'en':'fr';
   const t = messages[locale];
+
+  const defaultSlug = searchParams?.slug || '';
+  const defaultTitleFr = searchParams?.titleFr || '';
+  const defaultTitleEn = searchParams?.titleEn || '';
 
   return (
     <div className='min-h-screen flex flex-col'>
@@ -22,9 +26,9 @@ export default async function AdminLegalNew({ searchParams }: { searchParams?: {
         </div>
         <div className='mt-6 rounded-2xl border border-black/10 bg-white p-5 shadow-sm'>
           <form action='/api/admin/legal-pages' method='post' className='grid gap-4'>
-            <label className='grid gap-1 text-sm'><span>Slug *</span><input name='slug' required className='h-11 rounded-lg border border-black/15 px-3' placeholder='conditions-paiement-location' /></label>
-            <label className='grid gap-1 text-sm'><span>Titre (FR) *</span><input name='titleFr' required className='h-11 rounded-lg border border-black/15 px-3' /></label>
-            <label className='grid gap-1 text-sm'><span>Titre (EN) *</span><input name='titleEn' required className='h-11 rounded-lg border border-black/15 px-3' /></label>
+            <label className='grid gap-1 text-sm'><span>Slug *</span><input name='slug' required defaultValue={defaultSlug} className='h-11 rounded-lg border border-black/15 px-3' placeholder='conditions-paiement-location' /></label>
+            <label className='grid gap-1 text-sm'><span>Titre (FR) *</span><input name='titleFr' required defaultValue={defaultTitleFr} className='h-11 rounded-lg border border-black/15 px-3' /></label>
+            <label className='grid gap-1 text-sm'><span>Titre (EN) *</span><input name='titleEn' required defaultValue={defaultTitleEn} className='h-11 rounded-lg border border-black/15 px-3' /></label>
             <label className='grid gap-1 text-sm'><span>Intro (FR)</span><textarea name='introFr' rows={3} className='rounded-lg border border-black/15 px-3 py-2' /></label>
             <label className='grid gap-1 text-sm'><span>Intro (EN)</span><textarea name='introEn' rows={3} className='rounded-lg border border-black/15 px-3 py-2' /></label>
             <label className='grid gap-1 text-sm'><span>Infos générales (FR)</span><textarea name='contentFr' rows={5} className='rounded-lg border border-black/15 px-3 py-2' /></label>
