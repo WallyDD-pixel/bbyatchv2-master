@@ -17,43 +17,97 @@ export default function GalleryFormClient({ locale }: { locale: "fr" | "en" }) {
       const form = e.currentTarget;
       const formData = new FormData(form);
 
-      const response = await fetch("/api/admin/gallery", {
-        method: "POST",
-        body: formData,
-        redirect: 'manual', // Ne pas suivre automatiquement les redirections
-      });
-
-      // Les redirections 303 sont gérées avec redirect: 'manual'
-      if (response.status === 303 || response.status === 302 || response.status === 301 || response.ok) {
-        const location = response.headers.get('location');
-        if (location) {
-          window.location.href = location;
-        } else {
-          window.location.href = "/admin/gallery?created=1";
-        }
-      } else {
-        // En cas d'erreur, essayer de lire la réponse JSON
-        let error: any = { error: "unknown_error" };
-        try {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            error = await response.json();
+      // Utiliser XMLHttpRequest pour mieux gérer les redirections
+      const xhr = new XMLHttpRequest();
+      
+      return new Promise<void>((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 400) {
+            // Succès - rediriger vers la page de galerie
+            window.location.href = "/admin/gallery?created=1";
+            resolve();
+          } else if (xhr.status >= 300 && xhr.status < 400) {
+            // Redirection
+            const location = xhr.getResponseHeader('location');
+            if (location) {
+              window.location.href = location;
+            } else {
+              window.location.href = "/admin/gallery?created=1";
+            }
+            resolve();
           } else {
-            const text = await response.text();
-            error = { error: "server_error", details: text || `HTTP ${response.status}` };
+            // Erreur
+            let error: any = { error: "unknown_error" };
+            try {
+              const contentType = xhr.getResponseHeader('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                error = JSON.parse(xhr.responseText);
+              } else {
+                error = { error: "server_error", details: xhr.responseText || `HTTP ${xhr.status}` };
+              }
+            } catch (e) {
+              error = { error: "unknown_error", details: `HTTP ${xhr.status}` };
+            }
+            
+            console.error('Upload error:', error);
+            alert(
+              locale === "fr"
+                ? `Erreur lors de l'enregistrement: ${error.error || error.details || "Erreur inconnue"}`
+                : `Error saving: ${error.error || error.details || "Unknown error"}`
+            );
+            setUploading(false);
+            reject(error);
           }
-        } catch (e) {
-          error = { error: "unknown_error", details: `HTTP ${response.status}` };
-        }
-        
-        console.error('Upload error:', error);
-        alert(
-          locale === "fr"
-            ? `Erreur lors de l'enregistrement: ${error.error || error.details || "Erreur inconnue"}`
-            : `Error saving: ${error.error || error.details || "Unknown error"}`
-        );
-        setUploading(false);
-      }
+        };
+
+        xhr.onerror = () => {
+          console.error('Network error during upload, status:', xhr.status);
+          // Si status est 0, la requête a été interrompue (peut-être par une redirection)
+          if (xhr.status === 0) {
+            // Attendre un peu pour voir si une redirection se produit
+            setTimeout(() => {
+              if (window.location.pathname !== '/admin/gallery/new') {
+                // La redirection a fonctionné, ne pas afficher d'erreur
+                return;
+              }
+              alert(
+                locale === "fr"
+                  ? "La requête a été interrompue. Vérifiez votre connexion."
+                  : "Request was interrupted. Check your connection."
+              );
+              setUploading(false);
+            }, 500);
+          } else {
+            alert(
+              locale === "fr"
+                ? "Erreur réseau lors de l'enregistrement"
+                : "Network error during save"
+            );
+            setUploading(false);
+          }
+          reject(new Error('Network error'));
+        };
+
+        xhr.ontimeout = () => {
+          console.error('Upload timeout');
+          alert(
+            locale === "fr"
+              ? "Timeout lors de l'enregistrement"
+              : "Timeout during save"
+          );
+          setUploading(false);
+          reject(new Error('Timeout'));
+        };
+
+        xhr.onabort = () => {
+          console.log('Upload aborted');
+          setUploading(false);
+        };
+
+        xhr.open("POST", "/api/admin/gallery");
+        xhr.timeout = 120000; // 120 secondes pour les gros fichiers
+        xhr.send(formData);
+      });
     } catch (error) {
       console.error("Error:", error);
       alert(

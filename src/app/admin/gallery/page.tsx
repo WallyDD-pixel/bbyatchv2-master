@@ -57,18 +57,28 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
             images.map((img) => (
               <article key={img.id} className="group rounded-xl border border-black/10 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <div className="relative aspect-square bg-black/5">
-                  <Image 
-                    src={img.imageUrl} 
-                    alt={img.titleFr || img.titleEn || "Gallery image"} 
-                    fill 
-                    className="object-cover group-hover:scale-105 transition-transform"
-                    unoptimized
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
-                  />
+                  {img.imageUrl && !img.imageUrl.includes('/uploads/') ? (
+                    <Image 
+                      src={img.imageUrl} 
+                      alt={img.titleFr || img.titleEn || "Gallery image"} 
+                      fill 
+                      className="object-cover group-hover:scale-105 transition-transform"
+                      unoptimized
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.closest('.relative');
+                        if (parent) {
+                          parent.innerHTML = '<div class="flex items-center justify-center h-full text-black/40 text-xs">Image introuvable</div>';
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-black/40 text-xs">
+                      {locale === "fr" ? "Image invalide" : "Invalid image"}
+                    </div>
+                  )}
                 </div>
                 <div className="p-3">
                   <div className="text-sm font-medium truncate text-black/90">
