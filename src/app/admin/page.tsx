@@ -155,6 +155,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { lan
               <Link href="/admin/gallery" className="inline-block bg-indigo-600 text-white text-xs px-3 py-1 rounded-full">Galerie</Link>
               <Link href="/admin/experiences" className="inline-block bg-emerald-600 text-white text-xs px-3 py-1 rounded-full">Expériences</Link>
               <Link href="/admin/legal-pages" className="inline-block bg-amber-600 text-white text-xs px-3 py-1 rounded-full">Pages légales</Link>
+              <Link href="/admin/social-media" className="inline-block bg-pink-600 text-white text-xs px-3 py-1 rounded-full">📱 Réseaux sociaux</Link>
             </div>
           </div>
           {/* Card Landing Pages */}

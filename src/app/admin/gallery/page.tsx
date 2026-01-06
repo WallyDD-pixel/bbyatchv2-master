@@ -6,6 +6,7 @@ import HeaderBar from "@/components/HeaderBar";
 import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from "next/link";
+import Image from "next/image";
 
 export default async function AdminGalleryPage({ searchParams }: { searchParams?: { lang?: string } }) {
   const session = (await getServerSession(auth as any)) as any;
@@ -42,9 +43,35 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
             <div className="col-span-full text-center text-black/60 py-8">{locale === "fr" ? "Aucune image." : "No images."}</div>
           ) : (
             images.map((img) => (
-              <article key={img.id} className="rounded-xl border border-black/10 bg-white p-3 shadow-sm">
-                <div className="text-sm font-medium truncate">{img.titleFr || img.titleEn || "-"}</div>
-                <div className="text-xs text-black/60 truncate mt-1">{img.imageUrl}</div>
+              <article key={img.id} className="group rounded-xl border border-black/10 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div className="relative aspect-square bg-black/5">
+                  <Image 
+                    src={img.imageUrl} 
+                    alt={img.titleFr || img.titleEn || "Gallery image"} 
+                    fill 
+                    className="object-cover group-hover:scale-105 transition-transform" 
+                  />
+                </div>
+                <div className="p-3">
+                  <div className="text-sm font-medium truncate text-black/90">
+                    {img.titleFr || img.titleEn || locale === "fr" ? "Sans titre" : "Untitled"}
+                  </div>
+                  <div className="text-xs text-black/50 truncate mt-1">{new Date(img.createdAt).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-US")}</div>
+                  <form action={`/api/admin/gallery/${img.id}`} method="post" className="mt-2">
+                    <input type="hidden" name="_method" value="DELETE" />
+                    <button 
+                      type="submit" 
+                      onClick={(e) => {
+                        if (!confirm(locale === "fr" ? "Supprimer cette image ?" : "Delete this image?")) {
+                          e.preventDefault();
+                        }
+                      }}
+                      className="text-xs px-3 py-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
+                    >
+                      {locale === "fr" ? "Supprimer" : "Delete"}
+                    </button>
+                  </form>
+                </div>
               </article>
             ))
           )}
