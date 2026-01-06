@@ -25,96 +25,126 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
           <h1 className="text-2xl font-bold">{locale === "fr" ? "Nouveau bateau" : "New boat"}</h1>
           <Link href="/admin/boats" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale === "fr" ? "Retour" : "Back"}</Link>
         </div>
-        <form id="boat-create" className="mt-6 rounded-2xl border border-black/10 bg-white p-5 shadow-sm grid gap-4" action="/api/admin/boats" method="post" encType="multipart/form-data">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Nom" : "Name"}</span>
-              <input name="name" id="boat-name" required className="h-11 rounded-lg border border-black/15 px-3" />
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span>Slug</span>
-              <input name="slug" id="boat-slug" required readOnly className="h-11 rounded-lg border border-black/15 px-3 bg-black/5" />
-            </label>
+        <form id="boat-create" className="mt-6 rounded-2xl border border-black/10 bg-white p-6 shadow-sm space-y-6" action="/api/admin/boats" method="post" encType="multipart/form-data">
+          {/* Informations de base */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Informations de base" : "Basic Information"}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Nom" : "Name"}</span>
+                <input name="name" id="boat-name" required className="h-11 rounded-lg border border-black/15 px-3" />
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span>Slug</span>
+                <input name="slug" id="boat-slug" required readOnly className="h-11 rounded-lg border border-black/15 px-3 bg-black/5" />
+              </label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Ville" : "City"}</span>
+                <select name="city" className="h-11 rounded-lg border border-black/15 px-3 bg-white">
+                  <option value="">{locale === 'fr' ? 'Choisir...' : 'Select...'}</option>
+                  <option value="Nice">Nice</option>
+                  <option value="Antibes">Antibes</option>
+                  <option value="Golfe-Juan">Golfe-Juan</option>
+                  <option value="Cannes">Cannes</option>
+                  <option value="Monaco">Monaco</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Prix/jour (€)" : "Price/day (€)"}</span>
+                <input name="pricePerDay" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+              </label>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Ville" : "City"}</span>
-              <select name="city" className="h-11 rounded-lg border border-black/15 px-3 bg-white">
-                <option value="">{locale === 'fr' ? 'Choisir...' : 'Select...'}</option>
-                <option value="Nice">Nice</option>
-                <option value="Antibes">Antibes</option>
-                <option value="Golfe-Juan">Golfe-Juan</option>
-                <option value="Cannes">Cannes</option>
-                <option value="Monaco">Monaco</option>
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Prix/jour (€)" : "Price/day (€)"}</span>
-              <input name="pricePerDay" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
-            </label>
+
+          {/* Caractéristiques techniques */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Caractéristiques techniques" : "Technical Specifications"}</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Places max" : "Max places"}</span>
+                <input name="capacity" type="number" min="0" required className="h-11 rounded-lg border border-black/15 px-3" />
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Vitesse (noeuds)" : "Speed (knots)"}</span>
+                <input name="speedKn" type="number" min="0" required defaultValue="0" className="h-11 rounded-lg border border-black/15 px-3" />
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Puissance (cv)" : "Power (hp)"}</span>
+                <input name="enginePower" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Taille (m)" : "Length (m)"}</span>
+                <input name="lengthM" type="number" step="0.1" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+              </label>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Nb de places maximum" : "Max places"}</span>
-              <input name="capacity" type="number" min="0" required className="h-11 rounded-lg border border-black/15 px-3" />
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Vitesse (noeuds)" : "Speed (knots)"}</span>
-              <input name="speedKn" type="number" min="0" required defaultValue="0" className="h-11 rounded-lg border border-black/15 px-3" />
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Puissance (cv)" : "Power (hp)"}</span>
-              <input name="enginePower" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Taille (m)" : "Length (m)"}</span>
-              <input name="lengthM" type="number" step="0.1" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
-            </label>
+
+          {/* Tarification */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Tarification" : "Pricing"}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Prix matin (AM) (€)" : "Morning price (AM) (€)"}</span>
+                <input name="priceAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" placeholder={locale === 'fr' ? 'Prix matin' : 'Morning price'} />
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span>{locale === 'fr' ? 'Prix après-midi (PM) (€)' : 'Afternoon price (PM) (€)'}</span>
+                <input name="pricePm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+              </label>
+            </div>
+            <p className="text-xs text-black/50">{locale === 'fr' ? 'Le prix affiché sera "À partir de" avec le prix de la demi-journée (AM ou PM).' : 'The displayed price will be "From" with the half-day price (AM or PM).'}</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Prix à partir de (demi-journée) (€)" : "Price from (half-day) (€)"}</span>
-              <input name="priceAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" placeholder={locale === 'fr' ? 'Prix matin' : 'Morning price'} />
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span>{locale === 'fr' ? 'Prix après-midi (PM) (€)' : 'Afternoon price (PM) (€)'}</span>
-              <input name="pricePm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
-            </label>
+
+          {/* Skipper */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Skipper" : "Skipper"}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <input id="skipperRequired" name="skipperRequired" type="checkbox" defaultChecked className="h-4 w-4" />
+                <label htmlFor="skipperRequired" className="text-sm font-semibold">{locale === "fr" ? "Skipper obligatoire (par défaut)" : "Skipper required (default)"}</label>
+              </div>
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Prix du skipper (€/jour)" : "Skipper price (€/day)"}</span>
+                <input id="skipperPrice" name="skipperPrice" type="number" defaultValue="350" className="h-11 rounded-lg border border-black/15 px-3" />
+              </label>
+            </div>
           </div>
-          <p className="text-xs text-black/50 -mt-2">{locale === 'fr' ? 'Le prix affiché sera "À partir de" avec le prix de la demi-journée (AM ou PM).' : 'The displayed price will be "From" with the half-day price (AM or PM).'}</p>
-          <div className="flex items-center gap-2 pt-2 border-t border-black/10">
-            <input id="skipperRequired" name="skipperRequired" type="checkbox" defaultChecked className="h-4 w-4" />
-            <label htmlFor="skipperRequired" className="text-sm font-semibold">{locale === "fr" ? "Skipper obligatoire (par défaut)" : "Skipper required (default)"}</label>
+          {/* Médias */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Médias" : "Media"}</h2>
+            <div className="grid gap-4">
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Images (une ou plusieurs)" : "Images (one or many)"}</span>
+                <input name="imageFiles" id="imageFiles" type="file" multiple accept="image/*" className="h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[color:var(--primary)] file:text-white file:cursor-pointer" />
+                <p className="text-xs text-black/60">{locale === "fr" ? "La première deviendra l'image principale." : "The first becomes the main image."}</p>
+              </label>
+              <div id="images-preview" className="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Vidéos (séparées par des virgules ou JSON)" : "Videos (comma or JSON array)"}</span>
+                <textarea name="videoUrls" className="min-h-[90px] rounded-lg border border-black/15 p-3 text-sm" placeholder="https://...mp4, https://...mp4" />
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Photos externes (URLs, virgules ou JSON)" : "External photos (URLs, comma or JSON)"}</span>
+                <textarea name="photoUrls" id="photoUrls" className="min-h-[90px] rounded-lg border border-black/15 p-3 text-sm" placeholder="https://...jpg, https://...png" />
+              </label>
+              <div id="photos-preview" className="grid grid-cols-2 gap-2"></div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input id="skipperPrice" name="skipperPrice" type="number" defaultValue="350" className="h-11 rounded-lg border border-black/15 px-3 w-32" />
-            <label htmlFor="skipperPrice" className="text-sm">{locale === "fr" ? "Prix du skipper (€/jour)" : "Skipper price (€/day)"}</label>
+
+          {/* Disponibilité */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Disponibilité" : "Availability"}</h2>
+            <div className="flex items-center gap-2">
+              <input id="available" name="available" type="checkbox" defaultChecked className="h-4 w-4" />
+              <label htmlFor="available" className="text-sm">{locale === "fr" ? "Disponible" : "Available"}</label>
+            </div>
           </div>
-          {/* Inputs fichiers images */}
-          <div className="grid gap-2">
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Images (une ou plusieurs)" : "Images (one or many)"}</span>
-              <input name="imageFiles" id="imageFiles" type="file" multiple accept="image/*" className="h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[color:var(--primary)] file:text-white file:cursor-pointer" />
-            </label>
-            <p className="text-xs text-black/60">{locale === "fr" ? "La première deviendra l'image principale." : "The first becomes the main image."}</p>
-          </div>
-          <div id="images-preview" className="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
-          <label className="grid gap-1 text-sm">
-            <span>{locale === "fr" ? "Vidéos (séparées par des virgules ou JSON)" : "Videos (comma or JSON array)"}</span>
-            <textarea name="videoUrls" className="min-h-[90px] rounded-lg border border-black/15 p-3 text-sm" placeholder="https://...mp4, https://...mp4" />
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span>{locale === "fr" ? "Photos externes (URLs, virgules ou JSON)" : "External photos (URLs, comma or JSON)"}</span>
-            <textarea name="photoUrls" id="photoUrls" className="min-h-[90px] rounded-lg border border-black/15 p-3 text-sm" placeholder="https://...jpg, https://...png" />
-          </label>
-          <div id="photos-preview" className="grid grid-cols-2 gap-2"></div>
-          <div className="flex items-center gap-2">
-            <input id="available" name="available" type="checkbox" defaultChecked className="h-4 w-4" />
-            <label htmlFor="available" className="text-sm">{locale === "fr" ? "Disponible" : "Available"}</label>
-          </div>
-          <div className="border-t border-black/10 pt-4 mt-2">
-            <h2 className="text-sm font-semibold mb-2">{locale==='fr'? 'Options':'Options'}</h2>
-            <p className="text-xs text-black/50 mb-3">{locale==='fr'? 'Ajoutez des options payantes (ex: Skipper, Carburant, Paddle).':'Add paid options (e.g. Skipper, Fuel, Paddle).'} </p>
+          {/* Options */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale==='fr'? 'Options':'Options'}</h2>
+            <p className="text-xs text-black/50">{locale==='fr'? 'Ajoutez des options payantes (ex: Skipper, Carburant, Paddle).':'Add paid options (e.g. Skipper, Fuel, Paddle).'} </p>
             <BoatNewClient locale={locale} />
           </div>
           <div className="flex justify-end gap-2">
