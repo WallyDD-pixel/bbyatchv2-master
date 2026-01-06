@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from "next/link";
 import Image from "next/image";
+import DeleteButton from "./DeleteButton";
 
 export default async function AdminGalleryPage({ searchParams }: { searchParams?: { lang?: string } }) {
   const session = (await getServerSession(auth as any)) as any;
@@ -49,7 +50,13 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
                     src={img.imageUrl} 
                     alt={img.titleFr || img.titleEn || "Gallery image"} 
                     fill 
-                    className="object-cover group-hover:scale-105 transition-transform" 
+                    className="object-cover group-hover:scale-105 transition-transform"
+                    unoptimized
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
                   />
                 </div>
                 <div className="p-3">
@@ -57,20 +64,9 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
                     {img.titleFr || img.titleEn || locale === "fr" ? "Sans titre" : "Untitled"}
                   </div>
                   <div className="text-xs text-black/50 truncate mt-1">{new Date(img.createdAt).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-US")}</div>
-                  <form action={`/api/admin/gallery/${img.id}`} method="post" className="mt-2">
-                    <input type="hidden" name="_method" value="DELETE" />
-                    <button 
-                      type="submit" 
-                      onClick={(e) => {
-                        if (!confirm(locale === "fr" ? "Supprimer cette image ?" : "Delete this image?")) {
-                          e.preventDefault();
-                        }
-                      }}
-                      className="text-xs px-3 py-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
-                    >
-                      {locale === "fr" ? "Supprimer" : "Delete"}
-                    </button>
-                  </form>
+                  <div className="mt-2">
+                    <DeleteButton imageId={img.id} locale={locale} />
+                  </div>
                 </div>
               </article>
             ))
