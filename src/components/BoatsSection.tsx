@@ -38,7 +38,7 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
 
   return (
     <section id="fleet" className="w-full max-w-6xl mx-auto mt-16">
-      <h2 className="text-center text-3xl sm:text-4xl font-nakilla font-extrabold text-black mb-8">{t.boats_available_title}</h2>
+      <h2 className="text-center text-3xl sm:text-4xl font-display font-extrabold text-black mb-8">{t.boats_available_title}</h2>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {boats.map(b => (
           <a href={`/boats/${b.slug}`} key={b.id} className="block rounded-2xl bg-white shadow-md hover:shadow-lg transition-shadow border border-black/10 overflow-hidden group">

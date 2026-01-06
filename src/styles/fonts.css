@@ -95,55 +95,55 @@
 }
 */
 
-/* Variables CSS pour les polices */
+/* Variables CSS pour les polices - Utilisation des polices Google Fonts */
 :root {
-  --font-nakilla: 'Nakilla', var(--font-display), 'Playfair Display', serif;
-  --font-aviano: 'Aviano', var(--font-montserrat), 'Montserrat', sans-serif;
+  --font-nakilla: var(--font-display), 'Playfair Display', serif;
+  --font-aviano: var(--font-montserrat), 'Montserrat', sans-serif;
   --font-body: var(--font-sans), 'Manrope', system-ui, sans-serif;
 }
 
-/* Classes utilitaires pour Tailwind */
+/* Classes utilitaires pour Tailwind - Utilisation des polices standard */
 .font-nakilla {
-  font-family: var(--font-nakilla);
+  font-family: var(--font-display), 'Playfair Display', serif;
 }
 
 .font-aviano {
-  font-family: var(--font-aviano);
+  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
 }
 
 /* Application automatique aux éléments HTML */
 h1 {
-  font-family: var(--font-nakilla);
+  font-family: var(--font-display), 'Playfair Display', serif;
   font-weight: bold;
 }
 
 h2, h3 {
-  font-family: var(--font-aviano);
+  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
   font-weight: 600;
 }
 
 h4, h5, h6 {
-  font-family: var(--font-aviano);
+  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
   font-weight: 500;
 }
 
 /* Classes spécifiques pour le design */
 .title-main {
-  font-family: var(--font-nakilla);
+  font-family: var(--font-display), 'Playfair Display', serif;
   font-weight: bold;
 }
 
 .title-section {
-  font-family: var(--font-nakilla);
+  font-family: var(--font-display), 'Playfair Display', serif;
   font-weight: 700;
 }
 
 .subtitle {
-  font-family: var(--font-aviano);
+  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
   font-weight: 600;
 }
 
 .subtitle-light {
-  font-family: var(--font-aviano);
+  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
   font-weight: 400;
 }

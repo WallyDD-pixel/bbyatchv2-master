@@ -44,8 +44,8 @@ export default async function ExperiencesSection({ locale, t }: { locale: Locale
   return (
     <section id="experiences" className="w-full max-w-6xl mx-auto mt-12 sm:mt-16 px-2 sm:px-0">
       <div className="text-center">
-        <h2 className="text-2xl sm:text-4xl font-nakilla font-extrabold text-black/90">{headline}</h2>
-        <h3 className="mt-2 sm:mt-3 text-xl sm:text-2xl font-aviano font-bold text-black/80">{sectionTitle}</h3>
+        <h2 className="text-2xl sm:text-4xl font-display font-extrabold text-black/90">{headline}</h2>
+        <h3 className="mt-2 sm:mt-3 text-xl sm:text-2xl font-montserrat font-bold text-black/80">{sectionTitle}</h3>
       </div>
 
       <div className="mt-6 sm:mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">

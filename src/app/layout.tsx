@@ -22,11 +22,11 @@ const montserrat = Montserrat({
   weight: ["400", "500", "600", "700"],
 });
 
-// Variables pour les polices personnalisées (Nakilla et Aviano)
-// Ces polices seront chargées via CSS @font-face
+// Variables pour les polices personnalisées (remplacées par Playfair Display et Montserrat)
+// Les polices sont maintenant directement Playfair Display et Montserrat via Google Fonts
 const customFonts = {
-  nakilla: "--font-nakilla",
-  aviano: "--font-aviano",
+  nakilla: "--font-display", // Utilise Playfair Display
+  aviano: "--font-montserrat", // Utilise Montserrat
 };
 
 export const metadata: Metadata = {

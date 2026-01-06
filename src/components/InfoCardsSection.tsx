@@ -62,7 +62,7 @@ export default async function InfoCardsSection({ locale }: { locale: Locale }) {
 
   return (
     <section className="w-full max-w-6xl mx-auto mt-12">
-      <h2 className="text-2xl sm:text-3xl font-nakilla font-extrabold text-black/90 mb-6 text-center">
+      <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-black/90 mb-6 text-center">
         Les + BB services
       </h2>
       <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
@@ -79,7 +79,7 @@ export default async function InfoCardsSection({ locale }: { locale: Locale }) {
               <Image src={c.imageUrl} alt={locale === "fr" ? c.titleFr : c.titleEn} fill className="object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
               <div className="absolute inset-0 p-4 flex flex-col justify-end text-left">
-                <h3 className="font-aviano font-bold text-lg text-white">{locale === "fr" ? c.titleFr : c.titleEn}</h3>
+                <h3 className="font-montserrat font-bold text-lg text-white">{locale === "fr" ? c.titleFr : c.titleEn}</h3>
                 {(c.descFr || c.descEn) && (
                   <p className="mt-1 text-sm text-white/85">{locale === "fr" ? c.descFr : c.descEn}</p>
                 )}
