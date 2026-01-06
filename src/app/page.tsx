@@ -6,7 +6,6 @@ import ExperiencesSection from "@/components/ExperiencesSection";
 import HeaderBar from "@/components/HeaderBar";
 import BoatsSection from "@/components/BoatsSection";
 import GallerySection from "@/components/GallerySection";
-import InfoCardsSection from "@/components/InfoCardsSection";
 import Footer from "@/components/Footer";
 import AboutUsSection from "@/components/AboutUsSection";
 import WhyChooseSection from "@/components/WhyChooseSection";
@@ -76,7 +75,6 @@ export default async function Home({
 
         {/* Sections réordonnées: Bateaux d'abord, puis expériences */}
         <BoatsSection locale={locale} t={t} />
-        <InfoCardsSection locale={locale} />
         <ExperiencesSection locale={locale} t={t} />
   {/* Section "Pourquoi choisir BB Service" retirée */}
   <AboutUsSection settings={settings} locale={locale} />
