@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import HeaderBar from "@/components/HeaderBar";
 import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
@@ -20,8 +20,9 @@ const FacebookIcon = () => (
 );
 
 
-export default function AdminSocialMediaPage() {
+function AdminSocialMediaContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [locale, setLocale] = useState<Locale>("fr");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,8 +33,7 @@ export default function AdminSocialMediaPage() {
   });
 
   useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const lang = sp.get("lang");
+    const lang = searchParams.get("lang");
     setLocale(lang === "en" ? "en" : "fr");
 
     // Charger les paramètres
@@ -48,7 +48,7 @@ export default function AdminSocialMediaPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,6 +186,22 @@ export default function AdminSocialMediaPage() {
       </main>
       <Footer locale={locale} t={t} />
     </div>
+  );
+}
+
+export default function AdminSocialMediaPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col">
+        <HeaderBar initialLocale="fr" />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center text-black/60">Chargement...</div>
+        </main>
+        <Footer locale="fr" t={messages.fr} />
+      </div>
+    }>
+      <AdminSocialMediaContent />
+    </Suspense>
   );
 }
 
