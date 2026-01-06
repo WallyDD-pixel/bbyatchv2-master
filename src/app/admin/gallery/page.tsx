@@ -20,17 +20,31 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
   const t = messages[locale];
 
   let images: any[] = [];
+  let totalCount = 0;
+  let filteredCount = 0;
   try {
-    images = await (prisma as any).galleryImage.findMany({ orderBy: { id: "desc" }, take: 50 });
-    // Filtrer les images avec des URLs invalides (qui pointent vers /uploads/ au lieu de Supabase)
-    images = images.filter((img: any) => {
-      if (!img.imageUrl) return false;
-      // Si l'URL pointe vers /uploads/, c'est une ancienne URL qui n'existe plus
-      if (img.imageUrl.startsWith('/uploads/') || img.imageUrl.includes('/uploads/')) {
+    const allImages = await (prisma as any).galleryImage.findMany({ orderBy: { id: "desc" }, take: 50 });
+    totalCount = allImages.length;
+    
+    // Pour le moment, afficher toutes les images même celles avec /uploads/ pour déboguer
+    // TODO: Réactiver le filtre une fois que toutes les images sont migrées vers Supabase
+    images = allImages.filter((img: any) => {
+      if (!img.imageUrl) {
+        filteredCount++;
         return false;
       }
+      // Temporairement, on affiche aussi les images avec /uploads/ pour voir ce qui se passe
+      // if (img.imageUrl.startsWith('/uploads/') || img.imageUrl.includes('/uploads/')) {
+      //   filteredCount++;
+      //   return false;
+      // }
       return true;
     });
+    
+    // Compter les images avec URLs invalides pour affichage
+    filteredCount = allImages.filter((img: any) => 
+      img.imageUrl && (img.imageUrl.startsWith('/uploads/') || img.imageUrl.includes('/uploads/'))
+    ).length;
   } catch (e) {
     console.error('Error loading gallery images:', e);
   }
@@ -50,33 +64,56 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
             </Link>
           </div>
         </div>
+        {totalCount > 0 && filteredCount > 0 && (
+          <div className="mt-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
+            {locale === "fr" 
+              ? `${filteredCount} image(s) filtrée(s) sur ${totalCount} (URLs invalides pointant vers /uploads/)`
+              : `${filteredCount} image(s) filtered out of ${totalCount} (invalid URLs pointing to /uploads/)`
+            }
+          </div>
+        )}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {images.length === 0 ? (
-            <div className="col-span-full text-center text-black/60 py-8">{locale === "fr" ? "Aucune image." : "No images."}</div>
+            <div className="col-span-full text-center text-black/60 py-8">
+              {totalCount === 0 
+                ? (locale === "fr" ? "Aucune image dans la galerie." : "No images in gallery.")
+                : (locale === "fr" 
+                    ? `Aucune image valide. ${totalCount} image(s) trouvée(s) mais toutes ont des URLs invalides.`
+                    : `No valid images. ${totalCount} image(s) found but all have invalid URLs.`
+                  )
+              }
+            </div>
           ) : (
             images.map((img) => (
               <article key={img.id} className="group rounded-xl border border-black/10 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <div className="relative aspect-square bg-black/5">
-                  {img.imageUrl && !img.imageUrl.includes('/uploads/') ? (
-                    <Image 
-                      src={img.imageUrl} 
-                      alt={img.titleFr || img.titleEn || "Gallery image"} 
-                      fill 
-                      className="object-cover group-hover:scale-105 transition-transform"
-                      unoptimized
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.closest('.relative');
-                        if (parent) {
-                          parent.innerHTML = '<div class="flex items-center justify-center h-full text-black/40 text-xs">Image introuvable</div>';
-                        }
-                      }}
-                    />
+                  {img.imageUrl ? (
+                    <>
+                      {img.imageUrl.includes('/uploads/') && (
+                        <div className="absolute top-2 left-2 z-10 bg-yellow-500 text-white text-[10px] px-2 py-1 rounded">
+                          {locale === "fr" ? "URL invalide" : "Invalid URL"}
+                        </div>
+                      )}
+                      <Image 
+                        src={img.imageUrl} 
+                        alt={img.titleFr || img.titleEn || "Gallery image"} 
+                        fill 
+                        className="object-cover group-hover:scale-105 transition-transform"
+                        unoptimized
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.closest('.relative');
+                          if (parent) {
+                            parent.innerHTML = '<div class="flex items-center justify-center h-full text-black/40 text-xs">Image introuvable</div>';
+                          }
+                        }}
+                      />
+                    </>
                   ) : (
                     <div className="flex items-center justify-center h-full text-black/40 text-xs">
-                      {locale === "fr" ? "Image invalide" : "Invalid image"}
+                      {locale === "fr" ? "Pas d'URL" : "No URL"}
                     </div>
                   )}
                 </div>
