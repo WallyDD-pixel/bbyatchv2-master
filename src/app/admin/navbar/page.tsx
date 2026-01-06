@@ -55,16 +55,24 @@ export default function AdminNavbarPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingItem) return;
+    
     setSaving(true);
 
     try {
-      const method = editingItem ? 'PUT' : 'POST';
-      const body = editingItem 
-        ? { ...formData, id: editingItem.id }
-        : formData;
+      // Ne mettre à jour que les titres, conserver le reste
+      const body = {
+        id: editingItem.id,
+        labelFr: formData.labelFr,
+        labelEn: formData.labelEn,
+        href: editingItem.href, // Conserver l'URL originale
+        icon: editingItem.icon, // Conserver l'icône originale
+        visible: editingItem.visible, // Conserver la visibilité
+        target: editingItem.target // Conserver la cible
+      };
 
       const res = await fetch('/api/admin/navbar', {
-        method,
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
@@ -72,7 +80,7 @@ export default function AdminNavbarPage() {
       if (res.ok) {
         await fetchNavbarItems();
         resetForm();
-        alert(editingItem ? 'Élément mis à jour !' : 'Élément créé !');
+        alert('Titre mis à jour !');
       } else {
         const error = await res.json();
         alert(`Erreur: ${error.error}`);
@@ -96,6 +104,42 @@ export default function AdminNavbarPage() {
       target: item.target
     });
     setShowAddForm(true);
+  };
+
+  const restoreDefaults = async () => {
+    if (!confirm('Restaurer les éléments de navigation par défaut ? Cela remplacera tous les éléments existants.')) return;
+    
+    setSaving(true);
+    try {
+      const defaultItems = [
+        { labelFr: 'Bateaux disponibles', labelEn: 'Available boats', href: '/?lang=fr#fleet', icon: '⛵', visible: true, target: '_self' },
+        { labelFr: 'Nos expériences', labelEn: 'Our experiences', href: '/?lang=fr#experiences', icon: '🌊', visible: true, target: '_self' },
+        { labelFr: 'Vente d\'occasion', labelEn: 'Used sale', href: '/used-sale?lang=fr', icon: '💼', visible: true, target: '_self' },
+        { labelFr: 'À propos', labelEn: 'About', href: '/about', icon: 'ℹ️', visible: true, target: '_self' }
+      ];
+
+      // Supprimer tous les éléments existants
+      for (const item of items) {
+        await fetch(`/api/admin/navbar?id=${item.id}`, { method: 'DELETE' });
+      }
+
+      // Créer les éléments par défaut
+      for (let i = 0; i < defaultItems.length; i++) {
+        await fetch('/api/admin/navbar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...defaultItems[i], order: i })
+        });
+      }
+
+      await fetchNavbarItems();
+      alert('Éléments par défaut restaurés !');
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('Erreur lors de la restauration');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -225,14 +269,17 @@ export default function AdminNavbarPage() {
           </p>
         </div>
 
-        {/* Bouton d'ajout */}
-        <div className="mb-6">
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="px-6 py-2.5 bg-[var(--primary)] text-white rounded-lg font-medium hover:brightness-110 transition"
-          >
-            + Ajouter un élément
-          </button>
+        {/* Boutons d'action */}
+        <div className="mb-6 flex gap-3">
+          {items.length === 0 && (
+            <button
+              onClick={restoreDefaults}
+              disabled={saving}
+              className="px-6 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 transition"
+            >
+              {saving ? 'Restauration...' : '🔄 Restaurer les boutons par défaut'}
+            </button>
+          )}
         </div>
 
         {/* Liste des éléments */}
@@ -247,8 +294,8 @@ export default function AdminNavbarPage() {
           {items.length === 0 ? (
             <div className="p-8 text-center text-black/60">
               <div className="text-4xl mb-4">🧭</div>
-              <p>Aucun élément de navigation configuré</p>
-              <p className="text-sm mt-2">Ajoutez votre premier élément pour commencer</p>
+              <p className="font-medium mb-2">Aucun élément de navigation configuré</p>
+              <p className="text-sm">Cliquez sur "Restaurer les boutons par défaut" pour ajouter les éléments de base</p>
             </div>
           ) : (
             <div className="divide-y divide-black/10">
@@ -319,17 +366,17 @@ export default function AdminNavbarPage() {
           )}
         </div>
 
-        {/* Modal d'ajout/édition */}
-        {showAddForm && (
+        {/* Modal d'édition simplifié */}
+        {showAddForm && editingItem && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl p-6 w-full max-w-md">
               <h3 className="text-lg font-semibold mb-4">
-                {editingItem ? 'Modifier l\'élément' : 'Ajouter un élément'}
+                Modifier le titre
               </h3>
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Label français</label>
+                  <label className="block text-sm font-medium mb-1">Titre français</label>
                   <input
                     type="text"
                     value={formData.labelFr}
@@ -341,7 +388,7 @@ export default function AdminNavbarPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Label anglais</label>
+                  <label className="block text-sm font-medium mb-1">Titre anglais</label>
                   <input
                     type="text"
                     value={formData.labelEn}
@@ -352,59 +399,13 @@ export default function AdminNavbarPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">URL</label>
-                  <input
-                    type="text"
-                    value={formData.href}
-                    onChange={(e) => setFormData({...formData, href: e.target.value})}
-                    className="w-full px-3 py-2 border border-black/15 rounded-lg text-sm"
-                    placeholder="Ex: /?lang=fr#fleet"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Icône (emoji)</label>
-                  <input
-                    type="text"
-                    value={formData.icon}
-                    onChange={(e) => setFormData({...formData, icon: e.target.value})}
-                    className="w-full px-3 py-2 border border-black/15 rounded-lg text-sm"
-                    placeholder="Ex: ⛵"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Cible</label>
-                  <select
-                    value={formData.target}
-                    onChange={(e) => setFormData({...formData, target: e.target.value})}
-                    className="w-full px-3 py-2 border border-black/15 rounded-lg text-sm"
-                  >
-                    <option value="_self">Même onglet</option>
-                    <option value="_blank">Nouvel onglet</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="visible"
-                    checked={formData.visible}
-                    onChange={(e) => setFormData({...formData, visible: e.target.checked})}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="visible" className="text-sm">Visible</label>
-                </div>
-
                 <div className="flex gap-3 pt-4">
                   <button
                     type="submit"
                     disabled={saving}
                     className="flex-1 px-4 py-2 bg-[var(--primary)] text-white rounded-lg font-medium hover:brightness-110 disabled:opacity-50 transition"
                   >
-                    {saving ? 'Enregistrement...' : (editingItem ? 'Modifier' : 'Ajouter')}
+                    {saving ? 'Enregistrement...' : 'Enregistrer'}
                   </button>
                   <button
                     type="button"
