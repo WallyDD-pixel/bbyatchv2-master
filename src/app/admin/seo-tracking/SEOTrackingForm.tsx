@@ -127,7 +127,7 @@ export default function SEOTrackingForm({ settings, locale }: { settings: any; l
                 type='text'
                 value={formData.metaTitle}
                 onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
-                placeholder='BB SERVICES CHARTER - Location de yachts sur la Côte d\'Azur'
+                placeholder="BB SERVICES CHARTER - Location de yachts sur la Côte d'Azur"
                 className='w-full h-11 rounded-lg border border-black/15 px-3'
               />
               <p className='text-xs text-black/50 mt-1'>
@@ -143,7 +143,7 @@ export default function SEOTrackingForm({ settings, locale }: { settings: any; l
               <textarea
                 value={formData.metaDescription}
                 onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
-                placeholder='Réservez votre yacht de luxe pour une expérience inoubliable sur la Côte d\'Azur...'
+                placeholder="Réservez votre yacht de luxe pour une expérience inoubliable sur la Côte d'Azur..."
                 rows={3}
                 className='w-full rounded-lg border border-black/15 px-3 py-2'
               />
@@ -161,7 +161,7 @@ export default function SEOTrackingForm({ settings, locale }: { settings: any; l
                 type='text'
                 value={formData.metaKeywords}
                 onChange={(e) => setFormData({ ...formData, metaKeywords: e.target.value })}
-                placeholder='location yacht, location bateau, côte d\'azur, riviera italienne'
+                placeholder="location yacht, location bateau, côte d'azur, riviera italienne"
                 className='w-full h-11 rounded-lg border border-black/15 px-3'
               />
               <p className='text-xs text-black/50 mt-1'>
