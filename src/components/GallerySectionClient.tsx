@@ -133,16 +133,12 @@ export default function GallerySectionClient({
             </div>
 
             {/* Image */}
-            <div className="relative flex-1 min-h-0 bg-black/5">
-              <div className="relative w-full h-full max-h-[70vh]">
-                <Image
+            <div className="relative flex-1 min-h-[400px] bg-black/5 flex items-center justify-center p-4">
+              <div className="relative w-full max-w-full max-h-[70vh] aspect-auto">
+                <img
                   src={currentImage.imageUrl}
                   alt={currentImage.titleFr || currentImage.titleEn || "Gallery"}
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 1024px) 100vw, 896px"
-                  unoptimized
-                  priority
+                  className="max-w-full max-h-[70vh] w-auto h-auto object-contain"
                 />
               </div>
             </div>
