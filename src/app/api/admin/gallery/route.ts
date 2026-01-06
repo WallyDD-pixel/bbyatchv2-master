@@ -32,6 +32,11 @@ export async function POST(req: Request) {
       const result = await uploadMultipleToSupabase([file], 'gallery');
       if (result.length > 0) {
         imageUrl = result[0];
+        // Vérifier que l'URL est valide (doit pointer vers Supabase, pas /uploads/)
+        if (imageUrl && (imageUrl.startsWith('/uploads/') || !imageUrl.includes('supabase.co'))) {
+          console.error('Invalid image URL returned:', imageUrl);
+          return NextResponse.json({ error: 'upload_failed', details: 'Invalid URL returned from storage' }, { status: 500 });
+        }
       }
     } catch (e) {
       console.error('Error uploading to Supabase Storage:', e);
@@ -39,8 +44,10 @@ export async function POST(req: Request) {
     }
 
     if (!imageUrl) {
-      return NextResponse.json({ error: 'upload_failed' }, { status: 500 });
+      return NextResponse.json({ error: 'upload_failed', details: 'No URL returned from upload' }, { status: 500 });
     }
+    
+    console.log('Image uploaded successfully to:', imageUrl);
 
     // Créer l'image dans la base de données
     const created = await (prisma as any).galleryImage.create({

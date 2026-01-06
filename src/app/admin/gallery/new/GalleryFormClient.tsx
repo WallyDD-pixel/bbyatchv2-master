@@ -20,17 +20,37 @@ export default function GalleryFormClient({ locale }: { locale: "fr" | "en" }) {
       const response = await fetch("/api/admin/gallery", {
         method: "POST",
         body: formData,
+        redirect: 'manual', // Ne pas suivre automatiquement les redirections
       });
 
-      if (response.ok) {
-        // Utiliser window.location pour éviter les problèmes de redirection Next.js
-        window.location.href = "/admin/gallery?created=1";
+      // Les redirections 303 sont gérées avec redirect: 'manual'
+      if (response.status === 303 || response.status === 302 || response.status === 301 || response.ok) {
+        const location = response.headers.get('location');
+        if (location) {
+          window.location.href = location;
+        } else {
+          window.location.href = "/admin/gallery?created=1";
+        }
       } else {
-        const error = await response.json().catch(() => ({ error: "unknown_error" }));
+        // En cas d'erreur, essayer de lire la réponse JSON
+        let error: any = { error: "unknown_error" };
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            error = await response.json();
+          } else {
+            const text = await response.text();
+            error = { error: "server_error", details: text || `HTTP ${response.status}` };
+          }
+        } catch (e) {
+          error = { error: "unknown_error", details: `HTTP ${response.status}` };
+        }
+        
+        console.error('Upload error:', error);
         alert(
           locale === "fr"
-            ? `Erreur lors de l'enregistrement: ${error.error || "Erreur inconnue"}`
-            : `Error saving: ${error.error || "Unknown error"}`
+            ? `Erreur lors de l'enregistrement: ${error.error || error.details || "Erreur inconnue"}`
+            : `Error saving: ${error.error || error.details || "Unknown error"}`
         );
         setUploading(false);
       }

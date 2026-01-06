@@ -22,7 +22,18 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
   let images: any[] = [];
   try {
     images = await (prisma as any).galleryImage.findMany({ orderBy: { id: "desc" }, take: 50 });
-  } catch {}
+    // Filtrer les images avec des URLs invalides (qui pointent vers /uploads/ au lieu de Supabase)
+    images = images.filter((img: any) => {
+      if (!img.imageUrl) return false;
+      // Si l'URL pointe vers /uploads/, c'est une ancienne URL qui n'existe plus
+      if (img.imageUrl.startsWith('/uploads/') || img.imageUrl.includes('/uploads/')) {
+        return false;
+      }
+      return true;
+    });
+  } catch (e) {
+    console.error('Error loading gallery images:', e);
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
