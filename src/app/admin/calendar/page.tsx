@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
-import CalendarClient from './CalendarClient';
+import CalendarClientSimplified from './CalendarClientSimplified';
 
 export default async function CalendarPage({ searchParams }: { searchParams?: { lang?: string } }) {
   const session = (await getServerSession(auth as any)) as any;
@@ -18,7 +18,7 @@ export default async function CalendarPage({ searchParams }: { searchParams?: { 
       <HeaderBar initialLocale={locale} />
       <main className='flex-1 max-w-7xl mx-auto w-full px-4 py-8'>
         <h1 className='text-2xl font-bold mb-6'>{locale==='fr'?'Calendrier disponibilité':'Availability calendar'}</h1>
-        <CalendarClient locale={locale} />
+        <CalendarClientSimplified locale={locale} />
       </main>
       <Footer locale={locale} t={t} />
     </div>
