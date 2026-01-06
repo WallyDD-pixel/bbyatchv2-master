@@ -85,7 +85,21 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
           {/* Logo avec animation sophistiquée */}
           <a href={homeBase} className="flex items-center gap-3 group hover:scale-[1.02] transition-all duration-300 ease-out" aria-label={t.app_name}>
             <div className="relative">
-              <Image src={logoUrl} alt="BB YACHTS" width={150} height={50} priority className="h-12 w-auto object-contain drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300" />
+              <Image 
+                src={logoUrl} 
+                alt="BB YACHTS" 
+                width={150} 
+                height={50} 
+                priority 
+                className="h-12 w-auto object-contain drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300" 
+                onError={(e) => {
+                  // Fallback vers le logo par défaut en cas d'erreur
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== "/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png") {
+                    target.src = "/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png";
+                  }
+                }}
+              />
               <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--primary)]/0 via-[color:var(--primary)]/5 to-[color:var(--primary)]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
             </div>
             <span className="hidden sm:inline text-base font-bold tracking-wide bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 dark:from-slate-100 dark:via-slate-200 dark:to-slate-100 bg-clip-text text-transparent group-hover:from-[color:var(--primary)] group-hover:via-[color:var(--primary)]/80 group-hover:to-[color:var(--primary)] transition-all duration-500">{t.app_name}</span>

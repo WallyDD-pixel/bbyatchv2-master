@@ -50,6 +50,27 @@ export default function RootLayout({
         <AppProviders>
           {children}
         </AppProviders>
+        <script dangerouslySetInnerHTML={{__html:`
+          (function() {
+            // Gestion globale des erreurs CSS pour éviter les crashes
+            window.addEventListener('error', function(e) {
+              if (e.message && e.message.includes('cssRules')) {
+                console.warn('Erreur CSS ignorée (probablement due à une extension de navigateur):', e.message);
+                e.preventDefault();
+                return true;
+              }
+            }, true);
+            
+            // Gestion des erreurs de promesses non capturées
+            window.addEventListener('unhandledrejection', function(e) {
+              if (e.reason && e.reason.message && e.reason.message.includes('cssRules')) {
+                console.warn('Erreur CSS promise ignorée:', e.reason.message);
+                e.preventDefault();
+                return true;
+              }
+            });
+          })();
+        `}} />
       </body>
     </html>
   );
