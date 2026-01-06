@@ -1,10 +1,8 @@
-"use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense } from "react";
 import HeaderBar from "@/components/HeaderBar";
 import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
-import Link from "next/link";
+import AdminSocialMediaContent from "./AdminSocialMediaContent";
 
 // Icônes SVG officielles des réseaux sociaux (uniformisées)
 const InstagramIcon = () => (
@@ -20,179 +18,26 @@ const FacebookIcon = () => (
 );
 
 
-function AdminSocialMediaContent() {
-  const router = useRouter();
-  const [locale, setLocale] = useState<Locale>("fr");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    footerInstagram: "",
-    footerFacebook: "",
-  });
-
-  useEffect(() => {
-    // Lire la langue depuis l'URL sans useSearchParams pour éviter les problèmes de pré-rendu
-    if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      const lang = sp.get("lang");
-      setLocale(lang === "en" ? "en" : "fr");
-    }
-
-    // Charger les paramètres
-    fetch("/api/admin/homepage-settings")
-      .then((res) => res.json())
-      .then((data) => {
-        setSettings(data);
-        setFormData({
-          footerInstagram: data?.footerInstagram || "",
-          footerFacebook: data?.footerFacebook || "",
-        });
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-
-    const formDataToSend = new FormData();
-    formDataToSend.append("footerInstagram", formData.footerInstagram);
-    formDataToSend.append("footerFacebook", formData.footerFacebook);
-
-    try {
-      const response = await fetch("/api/admin/homepage-settings", {
-        method: "POST",
-        body: formDataToSend,
-      });
-
-      if (response.ok) {
-        router.push("/admin/social-media?success=1");
-        router.refresh();
-      } else {
-        alert(locale === "fr" ? "Erreur lors de l'enregistrement" : "Error saving");
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert(locale === "fr" ? "Erreur lors de l'enregistrement" : "Error saving");
-    } finally {
-      setSaving(false);
-    }
-  };
-
+export default async function AdminSocialMediaPage({ 
+  searchParams 
+}: { 
+  searchParams?: { lang?: string } 
+}) {
+  const locale: Locale = searchParams?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <HeaderBar initialLocale={locale} />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center text-black/60">{locale === "fr" ? "Chargement..." : "Loading..."}</div>
-        </main>
-        <Footer locale={locale} t={t} />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <HeaderBar initialLocale={locale} />
-      <main className="flex-1 max-w-3xl mx-auto px-4 py-10 w-full">
-        <Link href="/admin" className="mb-6 inline-block text-sm rounded-full border border-blue-400/30 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700">
-          ← {locale === "fr" ? "Retour page d'accueil" : "Back to admin"}
-        </Link>
-        
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">{locale === "fr" ? "Réseaux sociaux" : "Social Media"}</h1>
-        </div>
-
-        <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-xl shadow p-6 border border-blue-100">
-          <h2 className="text-lg font-bold mb-2 text-blue-700">
-            {locale === "fr" ? "Liens des réseaux sociaux" : "Social Media Links"}
-          </h2>
-          <p className="text-sm text-black/60 mb-6">
-            {locale === "fr" 
-              ? "Configurez les liens vers vos réseaux sociaux. Les icônes s'afficheront automatiquement dans le footer si un lien est renseigné."
-              : "Configure links to your social media. Icons will automatically appear in the footer if a link is provided."}
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Instagram */}
-            <div className="bg-white rounded-lg p-4 border border-black/10">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 flex items-center justify-center text-[#E4405F]">
-                  <InstagramIcon />
-                </div>
-                <div>
-                  <label className="block font-semibold text-sm">Instagram</label>
-                  <p className="text-xs text-black/50">@votrepage</p>
-                </div>
-              </div>
-              <input
-                type="url"
-                value={formData.footerInstagram}
-                onChange={(e) => setFormData({ ...formData, footerInstagram: e.target.value })}
-                placeholder="https://instagram.com/votrepage"
-                className="w-full h-11 rounded-lg border border-black/15 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-              />
-            </div>
-
-            {/* Facebook */}
-            <div className="bg-white rounded-lg p-4 border border-black/10">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 flex items-center justify-center text-[#1877F2]">
-                  <FacebookIcon />
-                </div>
-                <div>
-                  <label className="block font-semibold text-sm">Facebook</label>
-                  <p className="text-xs text-black/50">facebook.com/votrepage</p>
-                </div>
-              </div>
-              <input
-                type="url"
-                value={formData.footerFacebook}
-                onChange={(e) => setFormData({ ...formData, footerFacebook: e.target.value })}
-                placeholder="https://facebook.com/votrepage"
-                className="w-full h-11 rounded-lg border border-black/15 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-              />
-            </div>
-
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Link
-                href="/admin"
-                className="rounded-full h-11 px-6 border border-black/15 bg-white hover:bg-black/5 inline-flex items-center"
-              >
-                {locale === "fr" ? "Annuler" : "Cancel"}
-              </Link>
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-full h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-50 inline-flex items-center gap-2"
-              >
-                {saving ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    {locale === "fr" ? "Enregistrement..." : "Saving..."}
-                  </>
-                ) : (
-                  locale === "fr" ? "Enregistrer" : "Save"
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </main>
+      <Suspense fallback={
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center text-black/60">{locale === "fr" ? "Chargement..." : "Loading..."}</div>
+        </main>
+      }>
+        <AdminSocialMediaContent initialLocale={locale} />
+      </Suspense>
       <Footer locale={locale} t={t} />
     </div>
   );
-}
-
-export default function AdminSocialMediaPage() {
-  return <AdminSocialMediaContent />;
 }
 
