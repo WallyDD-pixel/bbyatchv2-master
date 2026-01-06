@@ -53,10 +53,14 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
               <input name="pricePerDay" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
             </label>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <label className="grid gap-1 text-sm">
               <span>{locale === "fr" ? "Nb de places maximum" : "Max places"}</span>
               <input name="capacity" type="number" min="0" required className="h-11 rounded-lg border border-black/15 px-3" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span>{locale === "fr" ? "Vitesse (noeuds)" : "Speed (knots)"}</span>
+              <input name="speedKn" type="number" min="0" required defaultValue="0" className="h-11 rounded-lg border border-black/15 px-3" />
             </label>
             <label className="grid gap-1 text-sm">
               <span>{locale === "fr" ? "Puissance (cv)" : "Power (hp)"}</span>

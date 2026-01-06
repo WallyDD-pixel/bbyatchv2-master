@@ -101,6 +101,15 @@ model Settings {
   usedSaleTextEn        String?
   // Paramètres généraux
   defaultSkipperPrice   Int?     @default(350) // Prix par défaut du skipper/jour
+  // SEO & Tracking
+  facebookPixelId       String?  // ID du Facebook Pixel / Meta Pixel
+  googleAnalyticsId     String?  // ID Google Analytics (GA4)
+  googleTagManagerId    String?  // ID Google Tag Manager
+  metaTitle             String?  // Titre meta par défaut
+  metaDescription       String?  // Description meta par défaut
+  metaKeywords          String?  // Mots-clés meta
+  ogImage               String?  // Image Open Graph
+  siteUrl               String?  // URL de base du site
 }
 
 model NavbarItem {

@@ -151,6 +151,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { lan
             <div className="flex flex-wrap gap-2 mt-2">
               <Link href="/admin/homepage-settings" className="inline-block bg-blue-600 text-white text-xs px-3 py-1 rounded-full">Paramètres accueil</Link>
               <Link href="/admin/navbar" className="inline-block bg-slate-600 text-white text-xs px-3 py-1 rounded-full">🧭 Navigation</Link>
+              <Link href="/admin/seo-tracking" className="inline-block bg-purple-600 text-white text-xs px-3 py-1 rounded-full">📊 SEO & Tracking</Link>
               <Link href="/admin/info-cards" className="inline-block bg-cyan-600 text-white text-xs px-3 py-1 rounded-full">Cartes d'info</Link>
               <Link href="/admin/gallery" className="inline-block bg-indigo-600 text-white text-xs px-3 py-1 rounded-full">Galerie</Link>
               <Link href="/admin/experiences" className="inline-block bg-emerald-600 text-white text-xs px-3 py-1 rounded-full">Expériences</Link>

@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   }
   if (!payload) return NextResponse.json({ error: "bad_request" }, { status: 400 });
 
-  let { slug, name, city, capacity, enginePower, lengthM, pricePerDay, priceAm, pricePm, imageUrl, available, videoUrls, photoUrls, skipperRequired, skipperPrice } = payload || {};
+  let { slug, name, city, capacity, speedKn, enginePower, lengthM, pricePerDay, priceAm, pricePm, imageUrl, available, videoUrls, photoUrls, skipperRequired, skipperPrice } = payload || {};
   if (!name) return NextResponse.json({ error: "missing_fields" }, { status: 400 });
 
   const slugify = (str: string) => str.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-');
@@ -159,6 +159,7 @@ export async function POST(req: Request) {
         name,
         cityId: cityId,
         capacity: capacity != null && capacity !== "" ? Number(capacity) : 0,
+        speedKn: speedKn != null && speedKn !== "" ? Number(speedKn) : 0, // Champ requis
         enginePower: enginePower != null && enginePower !== "" ? Number(enginePower) : null,
         lengthM: lengthM != null && lengthM !== "" ? Number(lengthM) : null,
         pricePerDay: dayNum,
@@ -195,7 +196,8 @@ export async function POST(req: Request) {
       videoUrls: videoArray,
     });
   } catch (e: any) {
+    console.error('Error creating boat:', e);
     if (e?.code === "P2002") return NextResponse.json({ error: "slug_unique" }, { status: 409 });
-    return NextResponse.json({ error: "server_error" }, { status: 500 });
+    return NextResponse.json({ error: "server_error", details: e?.message || String(e) }, { status: 500 });
   }
 }
