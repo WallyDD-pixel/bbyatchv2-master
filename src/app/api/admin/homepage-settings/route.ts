@@ -114,9 +114,10 @@ export async function POST(req: Request) {
 
     await prisma.settings.update({ where: { id: 1 }, data: dataUpdate as any });
 
-    // Invalider le cache de la page d'accueil
+    // Invalider le cache de la page d'accueil et de la page admin
     revalidatePath('/', 'page');
     revalidatePath('/');
+    revalidatePath('/admin/homepage-settings', 'page');
 
     // Redirection avec URL correcte (évite localhost)
     const redirectUrl = createRedirectUrl('/admin/homepage-settings?success=1', req);

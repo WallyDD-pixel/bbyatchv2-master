@@ -1,7 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function AdminHomepageSettingsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [settings, setSettings] = useState<any>(null);
   const [whyChooseList, setWhyChooseList] = useState<string[]>([]);
   const [whyChooseImagePreview, setWhyChooseImagePreview] = useState<string | null>(null);
@@ -13,41 +16,58 @@ export default function AdminHomepageSettingsPage() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [orderDirty, setOrderDirty] = useState(false);
 
-  useEffect(() => {
-    async function fetchSettings() {
-      const res = await fetch("/api/admin/homepage-settings");
-      const s = await res.json();
-      setSettings(s);
-      // Précharger les images multiples existantes si présentes
-      if (s?.mainSliderImageUrls) {
-        try {
-          const arr = JSON.parse(s.mainSliderImageUrls);
-          if (Array.isArray(arr)) setMainSliderImagesPreview(arr);
-        } catch {}
-      }
-      if (s?.whyChooseList && s.whyChooseList !== "") {
-        try {
-          setWhyChooseList(JSON.parse(s.whyChooseList));
-        } catch {
-          setWhyChooseList([]);
-        }
-      } else {
+  const fetchSettings = async () => {
+    const res = await fetch("/api/admin/homepage-settings", { cache: 'no-store' });
+    const s = await res.json();
+    setSettings(s);
+    // Précharger les images multiples existantes si présentes
+    if (s?.mainSliderImageUrls) {
+      try {
+        const arr = JSON.parse(s.mainSliderImageUrls);
+        if (Array.isArray(arr)) setMainSliderImagesPreview(arr);
+      } catch {}
+    }
+    if (s?.whyChooseList && s.whyChooseList !== "") {
+      try {
+        setWhyChooseList(JSON.parse(s.whyChooseList));
+      } catch {
         setWhyChooseList([]);
       }
-      // Charger images enregistrées
-      if (s?.mainSliderImageUrls) {
-        try {
-          const arr = JSON.parse(s.mainSliderImageUrls);
-          if (Array.isArray(arr)) setSavedImages(arr);
-        } catch {}
-      } else if (s?.mainSliderImageUrl) {
-        setSavedImages([s.mainSliderImageUrl]);
-      } else {
-        setSavedImages([]);
-      }
+    } else {
+      setWhyChooseList([]);
     }
+    // Charger images enregistrées
+    if (s?.mainSliderImageUrls) {
+      try {
+        const arr = JSON.parse(s.mainSliderImageUrls);
+        if (Array.isArray(arr)) setSavedImages(arr);
+      } catch {}
+    } else if (s?.mainSliderImageUrl) {
+      setSavedImages([s.mainSliderImageUrl]);
+    } else {
+      setSavedImages([]);
+    }
+  };
+
+  useEffect(() => {
     fetchSettings();
   }, []);
+
+  // Recharger les données après une soumission réussie
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    if (success === '1' || error === '1') {
+      // Recharger les données après la soumission
+      fetchSettings().then(() => {
+        // Nettoyer les paramètres de l'URL après le rechargement
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('success');
+        newUrl.searchParams.delete('error');
+        router.replace(newUrl.pathname + newUrl.search);
+      });
+    }
+  }, [searchParams, router]);
 
   if (!settings) return <div>Chargement…</div>;
 
