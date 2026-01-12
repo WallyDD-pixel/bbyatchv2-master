@@ -175,12 +175,15 @@ export default function SearchBar({
         const days = Object.values(map);
         setMonthCache(prev=>{ const n = new Map(prev); n.set(key, days); return n; });
       } else {
-        const res = await fetch(`/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}`);
+        const url = boatSlug 
+          ? `/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}&boat=${encodeURIComponent(boatSlug)}`
+          : `/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}`;
+        const res = await fetch(url);
         const data = await res.json();
         setMonthCache(prev=>{ const n = new Map(prev); n.set(key, data.days||[]); return n; });
       }
     } catch { /* ignore */ } finally { setLoadingMonth(false); }
-  },[monthCache, mode, experienceSlug]);
+  },[monthCache, mode, experienceSlug, boatSlug]);
 
   useEffect(()=>{ ensureMonth(calMonth.y, calMonth.m); },[calMonth, ensureMonth]);
 

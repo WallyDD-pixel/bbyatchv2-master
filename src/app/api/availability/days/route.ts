@@ -1,24 +1,46 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// GET /api/availability/days?from=YYYY-MM-DD&to=YYYY-MM-DD
+// GET /api/availability/days?from=YYYY-MM-DD&to=YYYY-MM-DD&boat=slug (optionnel)
 // Retourne pour chaque jour :
 //  - any: nb de bateaux ayant au moins un slot (AM/PM/FULL)
 //  - full: nb de bateaux réservable journée (slot FULL ou AM+PM)
 //  - amOnly: nb de bateaux uniquement matin (AM sans PM ni FULL)
 //  - pmOnly: nb de bateaux uniquement après-midi (PM sans AM ni FULL)
+// Si boat est fourni, filtre les résultats pour ce bateau uniquement
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get('from');
   const to = searchParams.get('to');
+  const boatSlug = searchParams.get('boat');
   if (!from || !to) return NextResponse.json({ error: 'missing_range' }, { status: 400 });
   const start = new Date(from + 'T00:00:00');
   const end = new Date(to + 'T23:59:59');
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return NextResponse.json({ error: 'bad_range' }, { status: 400 });
+  
+  // Récupérer le boatId si boatSlug est fourni
+  let boatId: number | null = null;
+  if (boatSlug) {
+    try {
+      const boat = await (prisma as any).boat.findUnique({
+        where: { slug: boatSlug },
+        select: { id: true }
+      });
+      if (boat) boatId = boat.id;
+    } catch (e) {
+      console.error('Error finding boat:', e);
+    }
+  }
+  
   try {
+    const slotWhere: any = { date: { gte: start, lte: end }, status: 'available' };
+    if (boatId !== null) {
+      slotWhere.boatId = boatId;
+    }
+    
     const [slots, reservations] = await Promise.all([
       (prisma as any).availabilitySlot.findMany({
-        where: { date: { gte: start, lte: end }, status: 'available' },
+        where: slotWhere,
         select: { date: true, boatId: true, part: true }
       }),
       (prisma as any).reservation.findMany({
