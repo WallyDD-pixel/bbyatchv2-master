@@ -13,7 +13,13 @@ export default async function AdminExperienceEditPage({ params, searchParams }: 
   const role = (session.user as any)?.role||'user';
   if(role!=='admin') redirect('/dashboard');
   const id = parseInt(params.id,10); if(isNaN(id)) notFound();
-  const exp = await (prisma as any).experience.findUnique({ where:{ id } });
+  let exp: any = null;
+  try {
+    exp = await (prisma as any).experience.findUnique({ where:{ id } });
+  } catch (error) {
+    console.error('Error loading experience:', error);
+    notFound();
+  }
   if(!exp) notFound();
   const sp = searchParams || {};
   const locale = sp.lang==='en'? 'en':'fr';

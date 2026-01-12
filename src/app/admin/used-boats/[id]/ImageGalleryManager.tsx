@@ -1,10 +1,11 @@
 "use client";
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 
 interface ImageItem {
   url: string;
   isMain: boolean;
   isTemp?: boolean; // Pour les nouvelles images ajoutées
+  file?: File; // Fichier original pour les nouvelles images
 }
 
 interface ImageGalleryManagerProps {
@@ -13,11 +14,17 @@ interface ImageGalleryManagerProps {
   locale: 'fr' | 'en';
 }
 
-export default function ImageGalleryManager({ 
+export interface ImageGalleryManagerHandle {
+  getNewFiles: () => File[];
+  getKeepPhotos: () => string[];
+  getMainImageChoice: () => string;
+}
+
+const ImageGalleryManager = forwardRef<ImageGalleryManagerHandle, ImageGalleryManagerProps>(({ 
   initialMainImage, 
   initialPhotos, 
   locale 
-}: ImageGalleryManagerProps) {
+}, ref) => {
   console.log('🖼️ ImageGalleryManager - initialMainImage:', initialMainImage);
   console.log('🖼️ ImageGalleryManager - initialPhotos:', initialPhotos);
   
@@ -47,6 +54,34 @@ export default function ImageGalleryManager({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const keepPhotosInputRef = useRef<HTMLInputElement>(null);
   const mainImageInputRef = useRef<HTMLInputElement>(null);
+
+  // Exposer les méthodes via ref
+  useImperativeHandle(ref, () => ({
+    getNewFiles: () => {
+      const mainImage = images.find(img => img.isMain);
+      const newImages = images.filter(img => img.isTemp && img.file);
+      
+      // Si l'image principale est une nouvelle image, la mettre en premier
+      if (mainImage?.isTemp && mainImage.file) {
+        const mainFile = newImages.find(img => img.url === mainImage.url)?.file;
+        const otherFiles = newImages.filter(img => img.url !== mainImage.url).map(img => img.file!);
+        if (mainFile) {
+          return [mainFile, ...otherFiles];
+        }
+      }
+      
+      return newImages.map(img => img.file!);
+    },
+    getKeepPhotos: () => {
+      const mainImage = images.find(img => img.isMain);
+      const otherImages = images.filter(img => !img.isMain && !img.isTemp);
+      return otherImages.map(img => img.url);
+    },
+    getMainImageChoice: () => {
+      const mainImage = images.find(img => img.isMain);
+      return mainImage?.url || '';
+    }
+  }));
 
   // Mettre à jour les champs cachés quand les images changent
   useEffect(() => {
@@ -85,7 +120,7 @@ export default function ImageGalleryManager({
         if (url) {
           console.log('📷 Image convertie en Data URL, longueur:', url.length);
           setImages(prev => {
-            const newImages = [...prev, { url, isMain: false, isTemp: true }];
+            const newImages = [...prev, { url, isMain: false, isTemp: true, file }];
             console.log('📊 Nouvelles images dans l\'état:', newImages.length);
             return newImages;
           });
@@ -129,7 +164,7 @@ export default function ImageGalleryManager({
       reader.onload = (event) => {
         const url = event.target?.result as string;
         if (url) {
-          setImages(prev => [...prev, { url, isMain: false, isTemp: true }]);
+          setImages(prev => [...prev, { url, isMain: false, isTemp: true, file }]);
         }
       };
       reader.readAsDataURL(file);
@@ -443,4 +478,8 @@ export default function ImageGalleryManager({
       />
     </div>
   );
-}
+});
+
+ImageGalleryManager.displayName = 'ImageGalleryManager';
+
+export default ImageGalleryManager;
