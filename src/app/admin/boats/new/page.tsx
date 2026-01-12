@@ -84,7 +84,7 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
           {/* Tarification */}
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Tarification" : "Pricing"}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <label className="grid gap-1 text-sm">
                 <span>{locale === "fr" ? "Prix matin (AM) (€)" : "Morning price (AM) (€)"}</span>
                 <input name="priceAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" placeholder={locale === 'fr' ? 'Prix matin' : 'Morning price'} />
@@ -93,8 +93,82 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
                 <span>{locale === 'fr' ? 'Prix après-midi (PM) (€)' : 'Afternoon price (PM) (€)'}</span>
                 <input name="pricePm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
               </label>
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Prix Sunset (€)" : "Sunset price (€)"}</span>
+                <input name="priceSunset" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+              </label>
             </div>
-            <p className="text-xs text-black/50">{locale === 'fr' ? 'Le prix affiché sera "À partir de" avec le prix de la demi-journée (AM ou PM).' : 'The displayed price will be "From" with the half-day price (AM or PM).'}</p>
+            <p className="text-xs text-black/50">{locale === 'fr' ? 'Optionnel: si laissés vides on dérive automatiquement à partir du prix/jour.' : 'Optional: if empty they are derived from day price.'}</p>
+            
+            {/* Prix Agence */}
+            <div className="space-y-4 pt-4 border-t border-black/10">
+              <h3 className="text-sm font-semibold">{locale === "fr" ? "Prix Agence (optionnel)" : "Agency Prices (optional)"}</h3>
+              <p className="text-xs text-black/50">
+                {locale === "fr" 
+                  ? "Si les prix agence sont différents des prix publics, renseignez-les ici. Sinon, les prix publics seront utilisés."
+                  : "If agency prices differ from public prices, fill them here. Otherwise, public prices will be used."}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <label className="grid gap-1 text-sm">
+                  <span>{locale === "fr" ? "Prix Agence/jour (€)" : "Agency price/day (€)"}</span>
+                  <input name="priceAgencyPerDay" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+                </label>
+                <label className="grid gap-1 text-sm">
+                  <span>{locale === "fr" ? "Prix Agence matin (€)" : "Agency morning price (€)"}</span>
+                  <input name="priceAgencyAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+                </label>
+                <label className="grid gap-1 text-sm">
+                  <span>{locale === "fr" ? "Prix Agence après-midi (€)" : "Agency afternoon price (€)"}</span>
+                  <input name="priceAgencyPm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+                </label>
+                <label className="grid gap-1 text-sm">
+                  <span>{locale === "fr" ? "Prix Agence Sunset (€)" : "Agency sunset price (€)"}</span>
+                  <input name="priceAgencySunset" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Avantages du bateau */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Avantages du bateau" : "Boat Advantages"}</h2>
+            <label className="grid gap-1 text-sm">
+              <span>{locale === "fr" ? "Avantages (FR)" : "Advantages (FR)"}</span>
+              <textarea 
+                name="avantagesFr" 
+                className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
+                placeholder={locale === "fr" ? "Équipements, confort, espace disponible, bain de soleil avant/arrière, cabine, douche, coin détente, etc." : "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc."}
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span>{locale === "fr" ? "Avantages (EN)" : "Advantages (EN)"}</span>
+              <textarea 
+                name="avantagesEn" 
+                className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
+                placeholder={locale === "fr" ? "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc." : "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc."}
+              />
+            </label>
+          </div>
+
+          {/* Options incluses */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Options incluses" : "Included Options"}</h2>
+            <label className="grid gap-1 text-sm">
+              <span>{locale === "fr" ? "Options incluses (FR)" : "Included Options (FR)"}</span>
+              <textarea 
+                name="optionsInclusesFr" 
+                className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
+                placeholder={locale === "fr" ? "Prêt de serviettes, boissons non alcoolisées offertes, etc." : "Towel rental, non-alcoholic drinks included, etc."}
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span>{locale === "fr" ? "Options incluses (EN)" : "Included Options (EN)"}</span>
+              <textarea 
+                name="optionsInclusesEn" 
+                className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
+                placeholder={locale === "fr" ? "Towel rental, non-alcoholic drinks included, etc." : "Towel rental, non-alcoholic drinks included, etc."}
+              />
+            </label>
           </div>
 
           {/* Skipper */}
@@ -122,8 +196,9 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
               </label>
               <div id="images-preview" className="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
               <label className="grid gap-1 text-sm">
-                <span>{locale === "fr" ? "Vidéos (séparées par des virgules ou JSON)" : "Videos (comma or JSON array)"}</span>
-                <textarea name="videoUrls" className="min-h-[90px] rounded-lg border border-black/15 p-3 text-sm" placeholder="https://...mp4, https://...mp4" />
+                <span>{locale === "fr" ? "Vidéos" : "Videos"}</span>
+                <input name="videoFiles" type="file" multiple accept="video/*" className="h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[color:var(--primary)] file:text-white file:cursor-pointer" />
+                <p className="text-xs text-black/60">{locale === "fr" ? "Formats acceptés: MP4, WebM, OGG (max 100MB par fichier)" : "Accepted formats: MP4, WebM, OGG (max 100MB per file)"}</p>
               </label>
               <label className="grid gap-1 text-sm">
                 <span>{locale === "fr" ? "Photos externes (URLs, virgules ou JSON)" : "External photos (URLs, comma or JSON)"}</span>

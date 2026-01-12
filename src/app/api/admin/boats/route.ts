@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   }
   if (!payload) return NextResponse.json({ error: "bad_request" }, { status: 400 });
 
-  let { slug, name, city, capacity, speedKn, enginePower, lengthM, pricePerDay, priceAm, pricePm, imageUrl, available, videoUrls, photoUrls, skipperRequired, skipperPrice } = payload || {};
+  let { slug, name, city, capacity, speedKn, enginePower, lengthM, pricePerDay, priceAm, pricePm, priceSunset, priceAgencyPerDay, priceAgencyAm, priceAgencyPm, priceAgencySunset, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice } = payload || {};
   if (!name) return NextResponse.json({ error: "missing_fields" }, { status: 400 });
 
   const slugify = (str: string) => str.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-');
@@ -165,12 +165,21 @@ export async function POST(req: Request) {
         pricePerDay: dayNum,
         priceAm: priceAm != null && priceAm !== "" ? Number(priceAm) : null,
         pricePm: pricePm != null && pricePm !== "" ? Number(pricePm) : null,
+        priceSunset: priceSunset != null && priceSunset !== "" ? Number(priceSunset) : null,
+        priceAgencyPerDay: priceAgencyPerDay != null && priceAgencyPerDay !== "" ? Number(priceAgencyPerDay) : null,
+        priceAgencyAm: priceAgencyAm != null && priceAgencyAm !== "" ? Number(priceAgencyAm) : null,
+        priceAgencyPm: priceAgencyPm != null && priceAgencyPm !== "" ? Number(priceAgencyPm) : null,
+        priceAgencySunset: priceAgencySunset != null && priceAgencySunset !== "" ? Number(priceAgencySunset) : null,
         skipperRequired: skipperRequired != null ? toBool(skipperRequired) : true, // Par défaut true
         skipperPrice: skipperPrice != null && skipperPrice !== "" ? Number(skipperPrice) : 350,
         imageUrl: finalImageUrl,
         available: available != null ? toBool(available) : true,
         videoUrls: videoArray.length ? JSON.stringify(videoArray) : null,
         photoUrls: photoArray.length ? JSON.stringify(photoArray) : null,
+        avantagesFr: avantagesFr != null && avantagesFr !== "" ? String(avantagesFr).trim() : null,
+        avantagesEn: avantagesEn != null && avantagesEn !== "" ? String(avantagesEn).trim() : null,
+        optionsInclusesFr: optionsInclusesFr != null && optionsInclusesFr !== "" ? String(optionsInclusesFr).trim() : null,
+        optionsInclusesEn: optionsInclusesEn != null && optionsInclusesEn !== "" ? String(optionsInclusesEn).trim() : null,
         options: {
           create: (() => { const labels = payload['optionLabel[]'] || payload['optionLabel']; const prices = payload['optionPrice[]'] || payload['optionPrice']; const lblArr = Array.isArray(labels)? labels: labels? [labels]: []; const prArr = Array.isArray(prices)? prices: prices? [prices]: []; return lblArr.map((l:any,i:number)=> ({ label: String(l).trim(), price: prArr[i]!=null && prArr[i]!=='' ? Number(prArr[i]) : null })).filter((o:any)=> o.label); })()
         }
