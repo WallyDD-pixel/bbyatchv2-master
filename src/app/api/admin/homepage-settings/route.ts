@@ -169,6 +169,10 @@ export async function DELETE(req: Request) {
     }
   } catch {}
 
+  // Invalider le cache de la page d'accueil
+  revalidatePath('/', 'page');
+  revalidatePath('/');
+
   return NextResponse.json({ ok: true, urls: newList });
 }
 
@@ -186,6 +190,11 @@ export async function PATCH(req: Request) {
         mainSliderImageUrl: urls[0] || null,
       } as any,
     });
+    
+    // Invalider le cache de la page d'accueil
+    revalidatePath('/', 'page');
+    revalidatePath('/');
+    
     return NextResponse.json({ ok: true, urls });
   } catch (e) {
     return NextResponse.json({ error: 'Bad request' }, { status: 400 });

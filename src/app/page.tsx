@@ -12,6 +12,8 @@ import WhyChooseSection from "@/components/WhyChooseSection";
 import { prisma } from '@/lib/prisma';
 import { getLabelsWithSettings } from '@/lib/settings';
 
+export const dynamic = 'force-dynamic'; // Force dynamic rendering to avoid cache issues
+
 export default async function Home({
   searchParams,
 }: {
