@@ -39,7 +39,7 @@ export default function UsedBoatEditFormClient({
 
       console.log('📤 Soumission du formulaire:');
       console.log('  - Nouveaux fichiers:', newFiles.length);
-      console.log('  - Photos à conserver:', keepPhotos.length);
+      console.log('  - Photos à conserver:', keepPhotos);
       console.log('  - Image principale choisie:', mainImageChoice);
 
       // Si l'image principale est une nouvelle image (Data URL), on ne la passe pas dans mainImageChoice

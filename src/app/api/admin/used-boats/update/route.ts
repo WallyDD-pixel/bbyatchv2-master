@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createRedirectUrl } from '@/lib/redirect';
 import { uploadMultipleToSupabase } from '@/lib/storage';
+import { revalidatePath } from 'next/cache';
 
 export async function POST(req: Request){
   const session = await getServerSession(auth as any) as any;
@@ -26,7 +27,12 @@ export async function POST(req: Request){
     if(keepPhotosRaw){
       try { const parsed = JSON.parse(keepPhotosRaw); if(Array.isArray(parsed)) kept = parsed.filter(p=> typeof p==='string'); } catch {}
     }
+    // Si keepPhotos est envoyé (même vide), on utilise cette liste, sinon on garde toutes les photos existantes
     let basePhotos = kept !== null ? kept.filter(p=> existingPhotos.includes(p)) : existingPhotos;
+    console.log('📋 API - keepPhotos reçu:', keepPhotosRaw);
+    console.log('📋 API - kept parsé:', kept);
+    console.log('📋 API - existingPhotos:', existingPhotos);
+    console.log('📋 API - basePhotos final:', basePhotos);
 
     // mainImageChoice éventuel
     const mainChoice = String(data.get('mainImageChoice')||'').trim();
@@ -127,6 +133,11 @@ export async function POST(req: Request){
     };
 
     await (prisma as any).usedBoat.update({ where:{ id }, data: update });
+    
+    // Invalider le cache pour cette page et la liste
+    revalidatePath(`/admin/used-boats/${id}`);
+    revalidatePath('/admin/used-boats');
+    
     const redirectUrl = createRedirectUrl(`/admin/used-boats/${id}?updated=1`, req);
     return NextResponse.redirect(redirectUrl, 303);
   } catch(e:any){
