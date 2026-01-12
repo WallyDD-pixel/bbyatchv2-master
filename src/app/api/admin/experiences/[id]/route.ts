@@ -92,8 +92,12 @@ export async function DELETE(_:Request, { params }: { params:{ id:string } }){
   const id = parseInt(params.id,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
   try {
     await (prisma as any).experience.delete({ where:{ id } });
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/admin/experiences');
+    revalidatePath('/');
     return NextResponse.json({ ok:true });
   } catch(e:any){
+    console.error('Error deleting experience:', e);
     return NextResponse.json({ error:'server_error', details:e?.message },{ status:500 });
   }
 }
@@ -104,14 +108,29 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
   const id = parseInt(params.id,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
   try {
     const ctype = req.headers.get('content-type')||'';
-    if(ctype.includes('multipart/form-data')){
+    
+    // Gestion des formulaires (multipart ou urlencoded)
+    if(ctype.includes('multipart/form-data') || ctype.includes('application/x-www-form-urlencoded')){
       const data = await req.formData();
       const method = String(data.get('_method')||'').toUpperCase();
+      
+      // Gestion DELETE
       if(method==='DELETE'){
-        await (prisma as any).experience.delete({ where:{ id } });
-        const redirectUrl = createRedirectUrl('/admin/experiences?deleted=1', req);
-        return NextResponse.redirect(redirectUrl, 303);
+        try {
+          await (prisma as any).experience.delete({ where:{ id } });
+          const { revalidatePath } = await import('next/cache');
+          revalidatePath('/admin/experiences');
+          revalidatePath('/');
+          const redirectUrl = createRedirectUrl('/admin/experiences?deleted=1', req);
+          return NextResponse.redirect(redirectUrl, 303);
+        } catch(e:any){
+          console.error('Error deleting experience:', e);
+          return NextResponse.json({ error:'server_error', details:e?.message },{ status:500 });
+        }
       }
+      
+      // Gestion des mises à jour (multipart seulement pour les uploads)
+      if(ctype.includes('multipart/form-data')){
       // Repasser req (pas réutilisable) -> recréer formData lecture: on a déjà data
       // Simpler: reconstruire update en utilisant data déjà lue
       // On recrée un faux Request si nécessaire mais ici on peut dupliquer logique
