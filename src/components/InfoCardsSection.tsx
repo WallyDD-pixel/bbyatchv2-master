@@ -5,7 +5,7 @@ import { type Locale } from "@/i18n/messages";
 // Type local tant que les types Prisma ne sont pas rafraîchis
 type InfoCard = {
   id?: number;
-  imageUrl: string;
+  imageUrl: string | null;
   titleFr: string;
   titleEn: string;
   descFr?: string | null;
@@ -59,6 +59,8 @@ export default async function InfoCardsSection({ locale }: { locale: Locale }) {
   }
 
   const data = rows && rows.length > 0 ? rows : fallback;
+  // Filtrer les cartes sans image (les cartes doivent avoir une image pour être affichées)
+  const cardsWithImage = data.filter(c => c.imageUrl);
 
   return (
     <section className="w-full max-w-6xl mx-auto mt-12">
@@ -66,7 +68,7 @@ export default async function InfoCardsSection({ locale }: { locale: Locale }) {
         Les + BB services
       </h2>
       <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
-        {data.map((c, i) => {
+        {cardsWithImage.map((c, i) => {
           const hasContent = (c as any).contentFr || (c as any).contentEn;
           const CardWrapper = hasContent ? 'a' : 'article';
           const href = hasContent ? `/info-cards/${c.id}` : undefined;
@@ -76,7 +78,9 @@ export default async function InfoCardsSection({ locale }: { locale: Locale }) {
               href={href}
               className={`relative overflow-hidden rounded-2xl border border-black/10 bg-white h-40 sm:h-48 ${hasContent ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
             >
-              <Image src={c.imageUrl} alt={locale === "fr" ? c.titleFr : c.titleEn} fill className="object-cover" />
+              {c.imageUrl && (
+                <Image src={c.imageUrl} alt={locale === "fr" ? c.titleFr : c.titleEn} fill className="object-cover" />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
               <div className="absolute inset-0 p-4 flex flex-col justify-end text-left">
                 <h3 className="font-montserrat font-bold text-lg text-white">{locale === "fr" ? c.titleFr : c.titleEn}</h3>

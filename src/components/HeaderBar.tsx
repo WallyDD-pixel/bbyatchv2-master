@@ -102,7 +102,6 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
               />
               <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--primary)]/0 via-[color:var(--primary)]/5 to-[color:var(--primary)]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
             </div>
-            <span className="hidden sm:inline text-base font-bold tracking-wide bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 dark:from-slate-100 dark:via-slate-200 dark:to-slate-100 bg-clip-text text-transparent group-hover:from-[color:var(--primary)] group-hover:via-[color:var(--primary)]/80 group-hover:to-[color:var(--primary)] transition-all duration-500">{t.app_name}</span>
           </a>
 
           {/* Navigation desktop améliorée */}

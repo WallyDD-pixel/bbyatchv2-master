@@ -183,7 +183,7 @@ model GalleryImage {
 
 model InfoCard {
   id        Int      @id @default(autoincrement())
-  imageUrl  String
+  imageUrl  String?
   titleFr   String
   titleEn   String
   descFr    String?

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { uploadMultipleToSupabase } from '@/lib/storage';
 import { createRedirectUrl } from '@/lib/redirect';
+import { revalidatePath } from 'next/cache';
 
 export const runtime = 'nodejs';
 
@@ -112,6 +113,10 @@ export async function POST(req: Request) {
   }
 
     await prisma.settings.update({ where: { id: 1 }, data: dataUpdate as any });
+
+    // Invalider le cache de la page d'accueil
+    revalidatePath('/', 'page');
+    revalidatePath('/');
 
     // Redirection avec URL correcte (évite localhost)
     const redirectUrl = createRedirectUrl('/admin/homepage-settings?success=1', req);

@@ -98,3 +98,6 @@ export default async function InfoCardDetailPage({ params, searchParams }: { par
   );
 }
 
+
+
+

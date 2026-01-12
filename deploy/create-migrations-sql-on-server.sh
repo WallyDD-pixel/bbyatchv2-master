@@ -57,3 +57,6 @@ echo "  5. Déployez l'application: bash deploy/deploy-sans-migrations.sh"
 
 
 
+
+
+

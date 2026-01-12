@@ -72,3 +72,6 @@ echo "  4. Vérifiez que toutes les tables sont créées"
 
 
 
+
+
+

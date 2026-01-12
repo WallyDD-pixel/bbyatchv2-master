@@ -100,3 +100,6 @@ echo ""
 echo "Testez l'upload d'une image pour vérifier que les URLs Supabase sont générées."
 
 
+
+
+

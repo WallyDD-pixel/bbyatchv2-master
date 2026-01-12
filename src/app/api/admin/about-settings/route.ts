@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createRedirectUrl } from '@/lib/redirect';
+import { revalidatePath } from 'next/cache';
 import fs from 'fs';
 import path from 'path';
 
@@ -104,6 +105,10 @@ export async function POST(req: Request) {
       aboutImageUrls,
     } as any,
   });
+
+  // Invalider le cache de la page d'accueil
+  revalidatePath('/', 'page');
+  revalidatePath('/');
 
   const redirectUrl = createRedirectUrl('/admin/about-settings?success=1', req);
   return NextResponse.redirect(redirectUrl, 303);

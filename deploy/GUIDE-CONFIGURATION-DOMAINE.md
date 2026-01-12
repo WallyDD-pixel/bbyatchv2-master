@@ -208,3 +208,6 @@ curl -I https://preprod.bbservicescharter.com
 Une fois tout configuré, votre site sera accessible sur `https://preprod.bbservicescharter.com` ! 🎉
 
 
+
+
+

@@ -124,6 +124,9 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       let additionalTextEn = String(data.get('additionalTextEn')||'').trim()||undefined;
       let timeFr = String(data.get('timeFr')||'').trim()||undefined;
       let timeEn = String(data.get('timeEn')||'').trim()||undefined;
+      let fixedDepartureTime = String(data.get('fixedDepartureTime')||'').trim()||undefined;
+      let fixedReturnTime = String(data.get('fixedReturnTime')||'').trim()||undefined;
+      let hasFixedTimes = data.get('hasFixedTimes') === 'on' || data.get('hasFixedTimes') === 'true';
       // Gestion des images multiples
       const imageUrlParam = data.get('imageUrl');
       let imageUrl: string | null | undefined;
@@ -223,12 +226,17 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
         titleEn,
         descFr: descFr??'',
         descEn: descEn??'',
-        additionalTextFr: additionalTextFr??null,
-        additionalTextEn: additionalTextEn??null,
         timeFr: timeFr??null,
         timeEn: timeEn??null,
         imageUrl: finalImageUrl
       };
+      
+      // Ajouter les champs optionnels seulement s'ils sont définis (pour éviter les erreurs si les colonnes n'existent pas encore)
+      if (additionalTextFr !== undefined) updateData.additionalTextFr = additionalTextFr || null;
+      if (additionalTextEn !== undefined) updateData.additionalTextEn = additionalTextEn || null;
+      if (fixedDepartureTime !== undefined) updateData.fixedDepartureTime = fixedDepartureTime || null;
+      if (fixedReturnTime !== undefined) updateData.fixedReturnTime = fixedReturnTime || null;
+      if (hasFixedTimes !== undefined) updateData.hasFixedTimes = hasFixedTimes ?? false;
       
       // Ajouter photoUrls si on a des photos ou si c'était dans le formData
       // Utiliser undefined au lieu de null pour ne pas mettre à jour si non fourni
@@ -244,14 +252,44 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       
       let updated: any;
       try {
-        updated = await (prisma as any).experience.update({ where:{ id }, data: updateData });
+        // Filtrer les champs qui pourraient ne pas exister dans la base de données
+        const safeUpdateData: any = {};
+        const allowedFields = ['slug', 'titleFr', 'titleEn', 'descFr', 'descEn', 'timeFr', 'timeEn', 'imageUrl', 'photoUrls', 'additionalTextFr', 'additionalTextEn', 'fixedDepartureTime', 'fixedReturnTime', 'hasFixedTimes'];
+        for (const key in updateData) {
+          if (allowedFields.includes(key) && updateData[key] !== undefined) {
+            safeUpdateData[key] = updateData[key];
+          }
+        }
+        
+        updated = await (prisma as any).experience.update({ where:{ id }, data: safeUpdateData });
         console.log('Experience updated successfully');
       } catch (updateError: any) {
         console.error('Error updating experience:', updateError);
         console.error('Update error code:', updateError?.code);
         console.error('Update error message:', updateError?.message);
         console.error('Update error stack:', updateError?.stack);
-        throw updateError;
+        
+        // Si l'erreur est due à des champs manquants, essayer sans ces champs
+        if (updateError?.message?.includes('Unknown argument') || updateError?.message?.includes('Available options')) {
+          console.warn('Retrying without optional fields that may not exist in DB');
+          const fallbackData: any = {
+            slug: slug||existing.slug,
+            titleFr,
+            titleEn,
+            descFr: descFr??'',
+            descEn: descEn??'',
+            timeFr: timeFr??null,
+            timeEn: timeEn??null,
+            imageUrl: finalImageUrl
+          };
+          if(photoUrlsParam !== null || allPhotoUrls.length > 0){
+            fallbackData.photoUrls = finalPhotoUrls;
+          }
+          updated = await (prisma as any).experience.update({ where:{ id }, data: fallbackData });
+          console.log('Experience updated successfully (fallback without optional fields)');
+        } else {
+          throw updateError;
+        }
       }
       
       // Retourner les photoUrls pour mise à jour de l'interface
