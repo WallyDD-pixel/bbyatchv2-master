@@ -3,8 +3,7 @@ import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createRedirectUrl } from '@/lib/redirect';
-import fs from 'fs';
-import path from 'path';
+import { uploadMultipleToSupabase } from '@/lib/storage';
 
 async function ensureAdmin() {
   const session = (await getServerSession(auth as any)) as any;
@@ -31,21 +30,22 @@ export async function POST(req: Request) {
   try {
     const data = await req.formData();
 
-    // Gestion upload logo
+    // Gestion upload logo vers Supabase Storage
     let logoUrl: string | undefined;
     const logoFile = data.get('logoFile') as File | null;
-    if (logoFile && (logoFile as any).size > 0) {
+    if (logoFile && (logoFile as any).size > 0 && (logoFile as any).arrayBuffer) {
       const allowedExt = new Set(['jpg', 'jpeg', 'png', 'svg', 'webp']);
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
       const name = (logoFile as any).name || '';
       const ext = name.split('.').pop()?.toLowerCase() || '';
       if (allowedExt.has(ext)) {
-        const fname = `logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const buf = Buffer.from(await logoFile.arrayBuffer());
-        fs.writeFileSync(path.join(uploadsDir, fname), buf);
-        logoUrl = `/uploads/${fname}`;
+        try {
+          const urls = await uploadMultipleToSupabase([logoFile], 'logos');
+          if (urls.length > 0) {
+            logoUrl = urls[0];
+          }
+        } catch (e) {
+          console.error('Error uploading logo to Supabase Storage:', e);
+        }
       }
     } else {
       // Conserver l'URL existante si pas de nouveau fichier
