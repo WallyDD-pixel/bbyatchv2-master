@@ -568,17 +568,46 @@ export default function SearchBar({
               {(() => {
                 const partDef = PARTS.find(p => p.key === part);
                 if (!partDef) return null;
-                const startHour = parseInt(partDef.start.split(':')[0]);
-                const endHour = parseInt(partDef.end.split(':')[0]);
-                const times: string[] = [];
-                // Générer les horaires par pas de 15 minutes
-                for (let h = startHour; h <= endHour; h++) {
-                  for (let m = 0; m < 60; m += 15) {
-                    if (h === endHour && m > parseInt(partDef.end.split(':')[1])) break;
-                    const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    times.push(timeStr);
-                  }
+                
+                // Récupérer l'heure de début sélectionnée (ou la valeur par défaut)
+                const selectedStartTime = customStartTime || partDef.start;
+                const [startH, startM] = selectedStartTime.split(':').map(Number);
+                const startMinutes = startH * 60 + startM;
+                
+                // Calculer la durée attendue en minutes selon le créneau
+                let expectedDurationMinutes = 480; // 8h par défaut (FULL)
+                if (partDef.key === 'AM' || partDef.key === 'PM') {
+                  expectedDurationMinutes = 240; // 4h
+                } else if (partDef.key === 'SUNSET') {
+                  expectedDurationMinutes = 120; // 2h
                 }
+                
+                // Calculer l'heure de fin attendue
+                const expectedEndMinutes = startMinutes + expectedDurationMinutes;
+                const expectedEndH = Math.floor(expectedEndMinutes / 60);
+                const expectedEndM = expectedEndMinutes % 60;
+                const expectedEndTime = `${String(expectedEndH).padStart(2, '0')}:${String(expectedEndM).padStart(2, '0')}`;
+                
+                // Générer les options autour de l'heure de fin attendue (± 30 minutes pour permettre une petite flexibilité)
+                const times: string[] = [];
+                const minEndMinutes = expectedEndMinutes - 30; // -30min
+                const maxEndMinutes = expectedEndMinutes + 30; // +30min
+                
+                for (let minutes = minEndMinutes; minutes <= maxEndMinutes; minutes += 15) {
+                  if (minutes <= startMinutes) continue; // L'heure de fin doit être après l'heure de début
+                  const h = Math.floor(minutes / 60);
+                  const m = minutes % 60;
+                  if (h > 23) break; // Ne pas dépasser 23:59
+                  const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                  times.push(timeStr);
+                }
+                
+                // Si l'heure de fin attendue n'est pas dans la liste, l'ajouter
+                if (!times.includes(expectedEndTime)) {
+                  times.push(expectedEndTime);
+                  times.sort();
+                }
+                
                 return times.map(time => (
                   <option key={time} value={time}>{time}</option>
                 ));
