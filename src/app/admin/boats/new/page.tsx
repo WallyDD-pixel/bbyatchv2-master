@@ -111,19 +111,19 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <label className="grid gap-1 text-sm">
                   <span>{locale === "fr" ? "Prix Agence/jour (€)" : "Agency price/day (€)"}</span>
-                  <input name="priceAgencyPerDay" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+                  <input name="priceAgencyPerDay" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span>{locale === "fr" ? "Prix Agence matin (€)" : "Agency morning price (€)"}</span>
-                  <input name="priceAgencyAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+                  <input name="priceAgencyAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span>{locale === "fr" ? "Prix Agence après-midi (€)" : "Agency afternoon price (€)"}</span>
-                  <input name="priceAgencyPm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+                  <input name="priceAgencyPm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span>{locale === "fr" ? "Prix Agence Sunset (€)" : "Agency sunset price (€)"}</span>
-                  <input name="priceAgencySunset" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+                  <input name="priceAgencySunset" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
                 </label>
               </div>
             </div>
