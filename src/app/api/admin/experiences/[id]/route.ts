@@ -349,6 +349,7 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       const redirectUrl = createRedirectUrl(`/admin/experiences/${id}?updated=1`, req);
       return NextResponse.redirect(redirectUrl, 303);
     }
+    }
     return NextResponse.json({ error:'unsupported' },{ status:400 });
   } catch(e:any){
     console.error('Server error in experience update:', e);
