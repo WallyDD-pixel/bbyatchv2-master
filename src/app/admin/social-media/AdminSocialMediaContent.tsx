@@ -236,7 +236,11 @@ export default function AdminSocialMediaContent({ initialLocale }: { initialLoca
             <button
               type="submit"
               disabled={saving}
-              className="rounded-full h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-50 inline-flex items-center gap-2"
+              className={`rounded-full h-11 px-6 text-white font-semibold disabled:cursor-not-allowed inline-flex items-center gap-2 transition-all duration-200 ${
+                saving 
+                  ? 'bg-blue-400 opacity-75' 
+                  : 'bg-blue-600 hover:bg-blue-700 opacity-100'
+              }`}
             >
               {saving ? (
                 <>
