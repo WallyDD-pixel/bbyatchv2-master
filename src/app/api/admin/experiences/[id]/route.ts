@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadMultipleToSupabase } from '@/lib/storage';
+import { createRedirectUrl } from '@/lib/redirect';
 
 async function ensureAdmin(){
   const session = await getServerSession(auth as any) as any;
@@ -281,8 +282,8 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
       }
       
       // Sinon, rediriger après sauvegarde normale
-      const url = new URL(`/admin/experiences/${id}?updated=1`, req.url);
-      return NextResponse.redirect(url,303);
+      const redirectUrl = createRedirectUrl(`/admin/experiences/${id}?updated=1`, req);
+      return NextResponse.redirect(redirectUrl, 303);
     }
     return NextResponse.json({ error:'unsupported' },{ status:400 });
   } catch(e:any){

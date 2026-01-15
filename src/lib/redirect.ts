@@ -7,8 +7,24 @@ export function getBaseUrl(req: Request): string {
   const envUrl = (process.env as any).APP_BASE_URL || (process.env as any).NEXTAUTH_URL;
   if (envUrl) return envUrl;
   
+  // Vérifier les headers HTTP pour obtenir le vrai domaine (derrière proxy/nginx)
+  const host = req.headers.get('host') || req.headers.get('x-forwarded-host');
+  const protocol = req.headers.get('x-forwarded-proto') || (req.url.startsWith('https') ? 'https' : 'http');
+  
+  if (host) {
+    // Ne pas utiliser localhost en production
+    if (!host.includes('localhost') && !host.includes('127.0.0.1')) {
+      return `${protocol}://${host}`;
+    }
+  }
+  
   try {
     const url = new URL(req.url);
+    // Si l'URL contient localhost, essayer d'utiliser NEXTAUTH_URL en fallback
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+      const fallbackUrl = (process.env as any).NEXTAUTH_URL;
+      if (fallbackUrl) return fallbackUrl;
+    }
     return url.origin;
   } catch {
     // Fallback pour les cas où on ne peut pas parser l'URL
@@ -21,17 +37,19 @@ export function getBaseUrl(req: Request): string {
  * Utilise une redirection relative si possible pour éviter les problèmes de domaine
  */
 export function createRedirectUrl(path: string, req: Request): string {
-  // Utiliser une redirection relative si le path commence déjà par /
+  // Toujours utiliser une redirection relative pour Next.js
+  // Next.js gère automatiquement la construction de l'URL correcte
   if (path.startsWith('/')) {
-    // En développement, on peut utiliser l'URL absolue
-    // En production, on peut aussi utiliser une redirection relative
-    const baseUrl = getBaseUrl(req);
-    // Si on a une baseUrl valide et qu'on n'est pas en localhost, utiliser l'URL absolue
-    if (baseUrl && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
-      return `${baseUrl}${path}`;
-    }
+    return path;
   }
-  // Sinon, retourner le path tel quel (redirection relative)
+  
+  // Si le path n'est pas relatif, essayer de construire une URL absolue
+  const baseUrl = getBaseUrl(req);
+  if (baseUrl && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
+    return `${baseUrl}${path.startsWith('/') ? path : '/' + path}`;
+  }
+  
+  // Fallback: retourner le path tel quel
   return path;
 }
 
