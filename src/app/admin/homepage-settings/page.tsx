@@ -222,7 +222,7 @@ export default function AdminHomepageSettingsPage() {
               <span className="font-semibold text-gray-700">Texte sous le slider principal</span>
               <textarea
                 name="mainSliderText"
-                defaultValue={settings?.mainSliderText ?? 'Découvrez nos expériences et réservez votre aventure sur la Côte d'Azur.'}
+                defaultValue={settings?.mainSliderText ?? "Découvrez nos expériences et réservez votre aventure sur la Côte d'Azur."}
                 placeholder="Découvrez nos expériences et réservez votre aventure sur la Côte d'Azur."
                 className="w-full mt-2 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 rows={3}
