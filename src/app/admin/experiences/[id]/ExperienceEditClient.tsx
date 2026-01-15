@@ -543,7 +543,7 @@ export default function ExperienceEditClient({
         <div className='flex items-center justify-between'>
           <h2 className='text-lg font-semibold'>{locale === 'fr' ? 'Images' : 'Images'}</h2>
           <label className='text-sm inline-flex items-center gap-2 cursor-pointer'>
-            <span className='rounded-full bg-[color:var(--primary)] text-white px-4 h-9 inline-flex items-center'>
+            <span className='rounded-full bg-blue-600 text-white px-4 h-9 inline-flex items-center font-medium'>
               {uploading ? (locale === 'fr' ? 'Téléversement…' : 'Uploading…') : (locale === 'fr' ? 'Ajouter des images' : 'Add images')}
             </span>
             <input 
@@ -661,25 +661,26 @@ export default function ExperienceEditClient({
         )}
       </div>
 
-      <div className='flex justify-between items-center pt-2'>
+      <div className='flex justify-between items-center pt-2 border-t border-black/10 mt-6'>
         <div className='flex gap-2 ml-auto'>
           <Link 
             href='/admin/experiences' 
-            className='rounded-full h-10 px-4 border border-black/15 bg-white hover:bg-black/5'
+            className='rounded-full h-11 px-6 border-2 border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium inline-flex items-center transition-colors duration-200'
           >
             {locale === 'fr' ? 'Annuler' : 'Cancel'}
           </Link>
           <button 
             type='submit' 
             disabled={saving}
-            className='rounded-full h-10 px-4 bg-[color:var(--primary)] text-white hover:opacity-90 disabled:opacity-50'
+            className='rounded-full h-11 px-6 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 transition-all duration-200 shadow-sm hover:shadow'
+            style={{ backgroundColor: saving ? '#60a5fa' : '#2563eb' }}
           >
             {saving ? (locale === 'fr' ? 'Enregistrement...' : 'Saving...') : (locale === 'fr' ? 'Enregistrer' : 'Save')}
           </button>
           <button 
             type='button'
             onClick={handleDelete}
-            className='rounded-full h-10 px-4 bg-red-600 text-white hover:brightness-110'
+            className='rounded-full h-11 px-6 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold inline-flex items-center transition-all duration-200 shadow-sm hover:shadow'
           >
             {locale === 'fr' ? 'Supprimer' : 'Delete'}
           </button>
