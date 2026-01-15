@@ -6,13 +6,87 @@ import ExperienceBoatSelector from "@/components/ExperienceBoatSelector";
 import BoatMediaCarousel from "@/components/BoatMediaCarousel";
 
 export default async function ExperienceDetailPage({ params, searchParams }: { params: { slug: string }; searchParams?: { lang?: string } }) {
-  const { slug } = params;
+  // Décoder le slug de l'URL (Next.js le décode déjà, mais on s'assure)
+  let { slug } = params;
+  try {
+    // Décoder au cas où il y aurait un double encodage
+    slug = decodeURIComponent(slug);
+  } catch {
+    // Si le décodage échoue, utiliser le slug tel quel
+  }
+  
   const sp = searchParams || {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
 
-  const exp = await (prisma as any).experience.findUnique({ where: { slug } }).catch(()=>null) as any;
-  if(!exp){ return <div className="min-h-screen flex flex-col"><HeaderBar initialLocale={locale} /><main className="flex-1 flex items-center justify-center"><div className="text-center text-sm text-black/60">{locale==='fr'? 'Expérience introuvable':'Experience not found'}</div></main><Footer locale={locale} t={t} /></div>; }
+  // Normaliser le slug : remplacer les espaces multiples par un seul espace, trim
+  slug = slug.trim().replace(/\s+/g, ' ');
+  
+  // Chercher l'expérience avec le slug exact
+  let exp = await (prisma as any).experience.findUnique({ where: { slug } }).catch(()=>null) as any;
+  
+  // Si pas trouvé, essayer des variations
+  if(!exp){
+    // Essayer avec l'apostrophe droite (') au lieu de l'apostrophe typographique (')
+    const slugVariation1 = slug.replace(/'/g, "'");
+    if(slugVariation1 !== slug){
+      exp = await (prisma as any).experience.findUnique({ where: { slug: slugVariation1 } }).catch(()=>null) as any;
+    }
+    
+    // Essayer avec l'apostrophe typographique (') au lieu de l'apostrophe droite (')
+    if(!exp){
+      const slugVariation2 = slug.replace(/'/g, "'");
+      if(slugVariation2 !== slug){
+        exp = await (prisma as any).experience.findUnique({ where: { slug: slugVariation2 } }).catch(()=>null) as any;
+      }
+    }
+    
+    // Essayer avec des espaces remplacés par des tirets
+    if(!exp){
+      const slugVariation3 = slug.replace(/\s+/g, '-');
+      if(slugVariation3 !== slug){
+        exp = await (prisma as any).experience.findUnique({ where: { slug: slugVariation3 } }).catch(()=>null) as any;
+      }
+    }
+    
+    // En dernier recours, essayer une recherche par titre (si le slug ne correspond pas exactement)
+    if(!exp){
+      // Normaliser pour la recherche : mettre en minuscules et remplacer les accents
+      const normalizedSlug = slug.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const allExperiences = await (prisma as any).experience.findMany({ 
+        select: { id: true, slug: true, titleFr: true, titleEn: true }
+      }).catch(()=>[]) as any[];
+      
+      // Chercher une expérience dont le titre correspond au slug
+      exp = allExperiences.find(e => {
+        const titleFrNorm = (e.titleFr || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const titleEnNorm = (e.titleEn || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const slugNorm = (e.slug || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return titleFrNorm.includes(normalizedSlug) || titleEnNorm.includes(normalizedSlug) || slugNorm.includes(normalizedSlug);
+      });
+      
+      // Si trouvé par titre, récupérer l'expérience complète
+      if(exp){
+        exp = await (prisma as any).experience.findUnique({ where: { id: exp.id } }).catch(()=>null) as any;
+      }
+    }
+  }
+  
+  if(!exp){ 
+    return (
+      <div className="min-h-screen flex flex-col">
+        <HeaderBar initialLocale={locale} />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center text-sm text-black/60">
+            {locale==='fr'? 'Expérience introuvable':'Experience not found'}
+            <br />
+            <span className="text-xs text-black/40 mt-2 block">Slug recherché: {slug}</span>
+          </div>
+        </main>
+        <Footer locale={locale} t={t} />
+      </div>
+    ); 
+  }
 
   // Parser photoUrls depuis JSON ou array
   const parsePhotoUrls = (val: any): string[] => {
