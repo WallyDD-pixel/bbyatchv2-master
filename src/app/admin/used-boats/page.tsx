@@ -2,8 +2,6 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import HeaderBar from '@/components/HeaderBar';
-import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 import Link from 'next/link';
 import DeleteUsedBoatButton from './DeleteUsedBoatButton';
@@ -21,14 +19,12 @@ export default async function AdminUsedBoatsPage({ searchParams }: { searchParam
   } catch{}
   const money = (v:number)=> (v/1).toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €';
   return (
-    <div className="min-h-screen flex flex-col">
-      <HeaderBar initialLocale={locale} />
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
-        <div className="flex items-center justify-between">
+    <div className="p-6 md:p-8 lg:p-10">
+      <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">{locale==='fr'? 'Bateaux d\'occasion':'Used boats'}</h1>
           <div className="flex items-center gap-2">
             <Link href="/admin" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale==='fr'? 'Retour':'Back'}</Link>
-            <Link href="/admin/used-boats/new" className="text-sm rounded-full bg-[color:var(--primary)] text-white px-3 h-9 inline-flex items-center hover:opacity-90">{locale==='fr'? 'Nouveau':'New'}</Link>
+            <Link href="/admin/used-boats/new" className="text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 h-9 inline-flex items-center font-semibold shadow-sm transition-colors" style={{ backgroundColor: '#2563eb' }}>{locale==='fr'? 'Nouveau':'New'}</Link>
           </div>
         </div>
         <div className="mt-6 rounded-2xl border border-black/10 bg-white p-5 shadow-sm overflow-x-auto">
@@ -65,8 +61,6 @@ export default async function AdminUsedBoatsPage({ searchParams }: { searchParam
             </tbody>
           </table>
         </div>
-      </main>
-      <Footer locale={locale} t={t} />
     </div>
   );
 }

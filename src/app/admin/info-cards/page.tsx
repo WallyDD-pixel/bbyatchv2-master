@@ -2,8 +2,6 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import HeaderBar from "@/components/HeaderBar";
-import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import DeleteInfoCardButton from './DeleteInfoCardButton';
 import Link from 'next/link';
@@ -24,17 +22,14 @@ export default async function AdminInfoCardsPage({ searchParams }: { searchParam
   } catch {}
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <HeaderBar initialLocale={locale} />
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-10 w-full">
-        <Link href="/admin" className="mb-6 inline-block text-sm rounded-full border border-blue-400/30 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700">← Retour page d'accueil complète</Link>
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{locale === "fr" ? "Cartes d'info" : "Info cards"}</h1>
-          <div className="flex items-center gap-2">
-            <Link href="/admin" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale === "fr" ? "Retour" : "Back"}</Link>
-            <Link href="/admin/info-cards/new" className="text-sm rounded-full bg-[color:var(--primary)] text-white px-3 h-9 inline-flex items-center hover:opacity-90">{locale === "fr" ? "Créer" : "Create"}</Link>
-          </div>
+    <div className="p-6 md:p-8 lg:p-10">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">{locale === "fr" ? "Cartes d'info" : "Info cards"}</h1>
+        <div className="flex items-center gap-2">
+          <Link href="/admin" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale === "fr" ? "Retour" : "Back"}</Link>
+          <Link href="/admin/info-cards/new" className="text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 h-9 inline-flex items-center font-semibold shadow-sm transition-colors" style={{ backgroundColor: '#2563eb' }}>{locale === "fr" ? "Créer" : "Create"}</Link>
         </div>
+      </div>
         <div className="mt-6 rounded-2xl border border-black/10 bg-white p-5 shadow-sm overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
@@ -66,8 +61,6 @@ export default async function AdminInfoCardsPage({ searchParams }: { searchParam
             </tbody>
           </table>
         </div>
-      </main>
-      <Footer locale={locale} t={t} />
     </div>
   );
 }
