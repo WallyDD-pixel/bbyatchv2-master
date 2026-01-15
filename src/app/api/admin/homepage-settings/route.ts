@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { uploadMultipleToSupabase } from '@/lib/storage';
+import { uploadMultipleToSupabase, uploadToSupabase } from '@/lib/storage';
 import { createRedirectUrl } from '@/lib/redirect';
 import { revalidatePath } from 'next/cache';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 export async function GET() {
   const settings = await prisma.settings.findFirst();
@@ -22,14 +23,27 @@ export async function POST(req: Request) {
     const aboutUsTitle = data.get('aboutUsTitle') as string;
     const aboutUsSubtitle = data.get('aboutUsSubtitle') as string;
     const aboutUsText = data.get('aboutUsText') as string;
-    const bbServiceText = data.get('bbServiceText') as string;
-    const footerInstagram = data.get('footerInstagram') as string;
-    const footerFacebook = data.get('footerFacebook') as string;
-    const footerLinkedIn = data.get('footerLinkedIn') as string;
-    const footerYouTube = data.get('footerYouTube') as string;
-    const footerTikTok = data.get('footerTikTok') as string;
+    const whyChooseImageFile = data.get('whyChooseImageFile') as File | null;
 
-  // Récupère dynamiquement la liste d’avantages
+  // Gestion upload image "Pourquoi choisir" vers Supabase Storage
+  let whyChooseImageUrl: string | undefined;
+  if (whyChooseImageFile && (whyChooseImageFile as any).arrayBuffer) {
+    try {
+      const name = (whyChooseImageFile as any).name || '';
+      const ext = name.split('.').pop()?.toLowerCase() || '';
+      const mime = (whyChooseImageFile as any).type || '';
+      const allowedExt = new Set(['jpg','jpeg','png','webp','gif','avif']);
+      if (allowedExt.has(ext) || mime.startsWith('image/')) {
+        const result = await uploadToSupabase(whyChooseImageFile, 'homepage');
+        if (result) {
+          whyChooseImageUrl = result.url;
+        }
+      }
+    } catch (e) {
+      console.error('Error uploading whyChoose image to Supabase Storage:', e);
+      // on ignore l'erreur d'upload, pas bloquant
+    }
+  }
 
   // Gestion upload images slider vers Supabase Storage (multi + legacy)
   let mainSliderImageUrl: string | undefined;
@@ -81,13 +95,12 @@ export async function POST(req: Request) {
     aboutUsTitle,
     aboutUsSubtitle,
     aboutUsText,
-    bbServiceText,
-    footerInstagram,
-    footerFacebook,
-    footerLinkedIn,
-    footerYouTube,
-    footerTikTok,
   };
+
+  // Ajouter l'URL de l'image "Pourquoi choisir" si uploadée
+  if (whyChooseImageUrl) {
+    dataUpdate.whyChooseImageUrl = whyChooseImageUrl;
+  }
 
   if (uploadedUrls.length > 0) {
     const current: any = await prisma.settings.findFirst();
@@ -112,7 +125,11 @@ export async function POST(req: Request) {
     dataUpdate.mainSliderImageUrl = mainSliderImageUrl;
   }
 
-    await prisma.settings.update({ where: { id: 1 }, data: dataUpdate as any });
+    await prisma.settings.upsert({
+      where: { id: 1 },
+      update: dataUpdate as any,
+      create: { id: 1, ...dataUpdate as any },
+    });
 
     // Invalider le cache de la page d'accueil et de la page admin
     revalidatePath('/', 'page');
@@ -161,13 +178,7 @@ export async function DELETE(req: Request) {
     } as any,
   });
 
-  // Supprimer le fichier physiquement si dans /public/uploads
-  try {
-    if (urlToDelete.startsWith('/uploads/')) {
-      const p = path.join(process.cwd(), 'public', urlToDelete.replace(/^\//, ''));
-      if (fs.existsSync(p)) fs.unlinkSync(p);
-    }
-  } catch {}
+  // Note: Les fichiers Supabase Storage sont gérés par Supabase, pas besoin de suppression locale
 
   // Invalider le cache de la page d'accueil
   revalidatePath('/', 'page');
@@ -183,9 +194,14 @@ export async function PATCH(req: Request) {
     const urls = Array.isArray(body?.urls) ? body.urls.filter((u: any) => typeof u === 'string') : null;
     if (!urls) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
 
-    await prisma.settings.update({
+    await prisma.settings.upsert({
       where: { id: 1 },
-      data: {
+      update: {
+        mainSliderImageUrls: JSON.stringify(urls),
+        mainSliderImageUrl: urls[0] || null,
+      } as any,
+      create: {
+        id: 1,
         mainSliderImageUrls: JSON.stringify(urls),
         mainSliderImageUrl: urls[0] || null,
       } as any,
