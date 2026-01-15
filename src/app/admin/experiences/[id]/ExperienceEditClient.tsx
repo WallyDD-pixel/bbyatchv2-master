@@ -78,6 +78,47 @@ export default function ExperienceEditClient({
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !files.length) return;
+    
+    // Vérifier la taille des fichiers avant upload
+    const maxFileSize = 10 * 1024 * 1024; // 10MB par fichier
+    const maxTotalSize = 45 * 1024 * 1024; // 45MB total
+    
+    const fileArray = Array.from(files);
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+    let totalSize = 0;
+    
+    fileArray.forEach((file) => {
+      if (file.size > maxFileSize) {
+        invalidFiles.push(`${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+      } else {
+        validFiles.push(file);
+        totalSize += file.size;
+      }
+    });
+    
+    if (invalidFiles.length > 0) {
+      alert(locale === 'fr' 
+        ? `Certains fichiers sont trop volumineux (max 10MB par fichier): ${invalidFiles.join(', ')}`
+        : `Some files are too large (max 10MB per file): ${invalidFiles.join(', ')}`
+      );
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+    
+    if (totalSize > maxTotalSize) {
+      alert(locale === 'fr'
+        ? `Taille totale trop importante: ${(totalSize / 1024 / 1024).toFixed(2)}MB (max: ${(maxTotalSize / 1024 / 1024).toFixed(2)}MB). Uploadez moins d'images à la fois.`
+        : `Total size too large: ${(totalSize / 1024 / 1024).toFixed(2)}MB (max: ${(maxTotalSize / 1024 / 1024).toFixed(2)}MB). Upload fewer images at once.`
+      );
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+    
     setUploading(true);
     
     try {
@@ -97,9 +138,9 @@ export default function ExperienceEditClient({
       }
       if (imageUrl) formData.append('imageUrl', imageUrl);
       
-      // Ajouter les nouveaux fichiers
-      Array.from(files).forEach((f, i) => {
-        console.log(`Adding file ${i + 1}:`, f.name, f.type, f.size, 'bytes');
+      // Ajouter uniquement les fichiers valides
+      validFiles.forEach((f, i) => {
+        console.log(`Adding file ${i + 1}:`, f.name, f.type, `${(f.size / 1024 / 1024).toFixed(2)}MB`);
         formData.append('imageFiles', f);
       });
       formData.append('_method', 'PUT');

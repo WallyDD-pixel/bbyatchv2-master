@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: "20mb", // augmentation limite upload (images formulaire)
+      bodySizeLimit: "50mb", // augmentation limite upload (images formulaire)
     },
   },
   typescript: {

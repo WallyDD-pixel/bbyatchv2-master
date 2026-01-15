@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import fs from 'fs';
-import path from 'path';
+import { uploadMultipleToSupabase } from '@/lib/storage';
+import { createRedirectUrl } from '@/lib/redirect';
+
+// Configuration pour permettre les gros uploads
+export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 async function ensureAdmin() {
   const session = (await getServerSession(auth as any)) as any;
@@ -51,31 +55,28 @@ export async function POST(req: Request) {
   const existingImages: string[] = Array.isArray(existingImagesRaw) 
     ? existingImagesRaw.map((img: any) => img.toString()).filter((url: string) => url && !url.startsWith('data:'))
     : [];
-  const allowedExt = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif']);
+  
   const uploadedUrls: string[] = [];
 
-  try {
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+  // Upload vers Supabase Storage (comme pour les expériences et bateaux)
+  if (imageFiles.length > 0) {
+    try {
+      const validFiles = imageFiles.filter(f => {
+        if (!f || f.size === 0) return false;
+        const mime = (f as any).type;
+        const allowedImages = ['image/jpeg','image/png','image/webp','image/gif','image/avif'];
+        return allowedImages.includes(mime);
+      });
+      
+      if (validFiles.length > 0) {
+        const urls = await uploadMultipleToSupabase(validFiles, 'about');
+        uploadedUrls.push(...urls);
+        console.log('Uploaded', uploadedUrls.length, 'image(s) to Supabase for about page');
+      }
+    } catch (e) {
+      console.error('Error uploading to Supabase Storage:', e);
+      // Continuer même si l'upload échoue
     }
-
-    for (const file of imageFiles) {
-      if (!file || file.size === 0) continue;
-      const ext = file.name.split('.').pop()?.toLowerCase() || '';
-      if (!allowedExt.has(ext)) continue;
-
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 8);
-      const filename = `${timestamp}-${random}.${ext}`;
-      const filepath = path.join(uploadsDir, filename);
-
-      const bytes = await file.arrayBuffer();
-      fs.writeFileSync(filepath, Buffer.from(bytes));
-      uploadedUrls.push(`/uploads/${filename}`);
-    }
-  } catch (e) {
-    console.error('Error uploading images:', e);
   }
 
   // Combiner les images existantes et les nouvelles
@@ -83,27 +84,73 @@ export async function POST(req: Request) {
   const aboutImageUrls = allImages.length > 0 ? JSON.stringify(allImages) : null;
 
   // Mettre à jour les settings
-  await prisma.settings.update({
-    where: { id: 1 },
-    data: {
-      aboutHistoryFr,
-      aboutHistoryEn,
-      aboutMissionFr,
-      aboutMissionEn,
-      aboutTeamFr,
-      aboutTeamEn,
-      aboutValuesSafetyFr,
-      aboutValuesSafetyEn,
-      aboutValuesComfortFr,
-      aboutValuesComfortEn,
-      aboutValuesAuthFr,
-      aboutValuesAuthEn,
-      aboutValuesPleasureFr,
-      aboutValuesPleasureEn,
-      aboutImageUrls,
-    } as any,
-  });
+  try {
+    await prisma.settings.update({
+      where: { id: 1 },
+      data: {
+        aboutHistoryFr,
+        aboutHistoryEn,
+        aboutMissionFr,
+        aboutMissionEn,
+        aboutTeamFr,
+        aboutTeamEn,
+        aboutValuesSafetyFr,
+        aboutValuesSafetyEn,
+        aboutValuesComfortFr,
+        aboutValuesComfortEn,
+        aboutValuesAuthFr,
+        aboutValuesAuthEn,
+        aboutValuesPleasureFr,
+        aboutValuesPleasureEn,
+        aboutImageUrls,
+      } as any,
+    });
+  } catch (updateError: any) {
+    console.error('Error updating settings:', updateError);
+    // Si Settings n'existe pas, créer l'enregistrement
+    if (updateError?.code === 'P2025' || updateError?.code === 'P2018') {
+      try {
+        await prisma.settings.create({
+          data: {
+            id: 1,
+            aboutHistoryFr,
+            aboutHistoryEn,
+            aboutMissionFr,
+            aboutMissionEn,
+            aboutTeamFr,
+            aboutTeamEn,
+            aboutValuesSafetyFr,
+            aboutValuesSafetyEn,
+            aboutValuesComfortFr,
+            aboutValuesComfortEn,
+            aboutValuesAuthFr,
+            aboutValuesAuthEn,
+            aboutValuesPleasureFr,
+            aboutValuesPleasureEn,
+            aboutImageUrls,
+          } as any,
+        });
+      } catch (createError) {
+        console.error('Error creating settings:', createError);
+        return NextResponse.json({ error: 'server_error', details: createError }, { status: 500 });
+      }
+    } else {
+      return NextResponse.json({ error: 'server_error', details: updateError?.message }, { status: 500 });
+    }
+  }
 
-  return NextResponse.redirect(new URL('/admin/about-settings?success=1', req.url));
+  // Vérifier si c'est une requête AJAX (fetch) ou un formulaire HTML classique
+  const acceptHeader = req.headers.get('accept') || '';
+  const isAjaxRequest = acceptHeader.includes('application/json') || 
+                        req.headers.get('x-requested-with') === 'XMLHttpRequest';
+  
+  // Si c'est une requête AJAX, retourner JSON pour éviter les problèmes de redirection
+  if (isAjaxRequest || !req.headers.get('content-type')?.includes('multipart/form-data')) {
+    return NextResponse.json({ ok: true, message: 'Settings updated successfully' });
+  }
+  
+  // Sinon, rediriger après sauvegarde normale
+  const redirectUrl = createRedirectUrl('/admin/about-settings?success=1', req);
+  return NextResponse.redirect(redirectUrl, 303);
 }
 

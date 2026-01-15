@@ -18,6 +18,24 @@ const FacebookIcon = () => (
   </svg>
 );
 
+const LinkedInIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+  </svg>
+);
+
+const YouTubeIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+);
+
+const TikTokIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+  </svg>
+);
+
 export default function AdminSocialMediaContent({ initialLocale }: { initialLocale: Locale }) {
   const router = useRouter();
   const [locale] = useState<Locale>(initialLocale);
@@ -26,6 +44,9 @@ export default function AdminSocialMediaContent({ initialLocale }: { initialLoca
   const [formData, setFormData] = useState({
     footerInstagram: "",
     footerFacebook: "",
+    footerLinkedIn: "",
+    footerYouTube: "",
+    footerTikTok: "",
   });
 
   useEffect(() => {
@@ -36,6 +57,9 @@ export default function AdminSocialMediaContent({ initialLocale }: { initialLoca
         setFormData({
           footerInstagram: data?.footerInstagram || "",
           footerFacebook: data?.footerFacebook || "",
+          footerLinkedIn: data?.footerLinkedIn || "",
+          footerYouTube: data?.footerYouTube || "",
+          footerTikTok: data?.footerTikTok || "",
         });
         setLoading(false);
       })
@@ -49,6 +73,9 @@ export default function AdminSocialMediaContent({ initialLocale }: { initialLoca
     const formDataToSend = new FormData();
     formDataToSend.append("footerInstagram", formData.footerInstagram);
     formDataToSend.append("footerFacebook", formData.footerFacebook);
+    formDataToSend.append("footerLinkedIn", formData.footerLinkedIn);
+    formDataToSend.append("footerYouTube", formData.footerYouTube);
+    formDataToSend.append("footerTikTok", formData.footerTikTok);
 
     try {
       const response = await fetch("/api/admin/homepage-settings", {
@@ -135,6 +162,66 @@ export default function AdminSocialMediaContent({ initialLocale }: { initialLoca
               value={formData.footerFacebook}
               onChange={(e) => setFormData({ ...formData, footerFacebook: e.target.value })}
               placeholder="https://facebook.com/votrepage"
+              className="w-full h-11 rounded-lg border border-black/15 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            />
+          </div>
+
+          {/* LinkedIn */}
+          <div className="bg-white rounded-lg p-4 border border-black/10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 flex items-center justify-center text-[#0A66C2]">
+                <LinkedInIcon />
+              </div>
+              <div>
+                <label className="block font-semibold text-sm">LinkedIn</label>
+                <p className="text-xs text-black/50">linkedin.com/company/votrepage</p>
+              </div>
+            </div>
+            <input
+              type="url"
+              value={formData.footerLinkedIn}
+              onChange={(e) => setFormData({ ...formData, footerLinkedIn: e.target.value })}
+              placeholder="https://linkedin.com/company/votrepage"
+              className="w-full h-11 rounded-lg border border-black/15 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            />
+          </div>
+
+          {/* YouTube */}
+          <div className="bg-white rounded-lg p-4 border border-black/10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 flex items-center justify-center text-[#FF0000]">
+                <YouTubeIcon />
+              </div>
+              <div>
+                <label className="block font-semibold text-sm">YouTube</label>
+                <p className="text-xs text-black/50">youtube.com/@votrepage</p>
+              </div>
+            </div>
+            <input
+              type="url"
+              value={formData.footerYouTube}
+              onChange={(e) => setFormData({ ...formData, footerYouTube: e.target.value })}
+              placeholder="https://youtube.com/@votrepage"
+              className="w-full h-11 rounded-lg border border-black/15 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            />
+          </div>
+
+          {/* TikTok */}
+          <div className="bg-white rounded-lg p-4 border border-black/10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 flex items-center justify-center text-black">
+                <TikTokIcon />
+              </div>
+              <div>
+                <label className="block font-semibold text-sm">TikTok</label>
+                <p className="text-xs text-black/50">tiktok.com/@votrepage</p>
+              </div>
+            </div>
+            <input
+              type="url"
+              value={formData.footerTikTok}
+              onChange={(e) => setFormData({ ...formData, footerTikTok: e.target.value })}
+              placeholder="https://tiktok.com/@votrepage"
               className="w-full h-11 rounded-lg border border-black/15 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
             />
           </div>

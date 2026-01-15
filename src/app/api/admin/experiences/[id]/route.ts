@@ -5,6 +5,10 @@ import { prisma } from '@/lib/prisma';
 import { uploadMultipleToSupabase } from '@/lib/storage';
 import { createRedirectUrl } from '@/lib/redirect';
 
+// Configuration pour permettre les gros uploads
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 async function ensureAdmin(){
   const session = await getServerSession(auth as any) as any;
   if(!session?.user || (session.user as any)?.role !== 'admin') return null;
@@ -159,21 +163,63 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
           // Filtrer les fichiers valides (images seulement)
           const allowedImages = ['image/jpeg','image/png','image/webp','image/gif'];
           const validFiles = imageFiles.filter(f => {
+            if (!f || f.size === 0) return false;
             const mime = (f as any).type;
+            if (!mime || !mime.startsWith('image/')) return false;
             return allowedImages.includes(mime);
           });
           
-          if(validFiles.length > 0){
+          // Vérifier la taille totale et individuelle des fichiers
+          const totalSize = validFiles.reduce((sum, f) => sum + f.size, 0);
+          const maxTotalSize = 45 * 1024 * 1024; // 45MB total
+          const maxFileSize = 10 * 1024 * 1024; // 10MB par fichier
+          
+          // Filtrer les fichiers qui dépassent la taille individuelle
+          const filesWithinLimit = validFiles.filter(f => {
+            if (f.size > maxFileSize) {
+              console.warn(`File ${f.name} is too large: ${(f.size / 1024 / 1024).toFixed(2)}MB`);
+              return false;
+            }
+            return true;
+          });
+          
+          if (filesWithinLimit.length === 0 && validFiles.length > 0) {
+            return NextResponse.json({ 
+              error: "upload_failed", 
+              details: "Les images sont trop volumineuses (max 10MB par image)",
+              suggestion: "Réduisez la taille des images avant de les uploader"
+            }, { status: 413 });
+          }
+          
+          if (totalSize > maxTotalSize) {
+            return NextResponse.json({ 
+              error: "upload_failed", 
+              details: `Taille totale trop importante: ${(totalSize / 1024 / 1024).toFixed(2)}MB (max: ${(maxTotalSize / 1024 / 1024).toFixed(2)}MB)`,
+              suggestion: "Uploadez moins d'images à la fois"
+            }, { status: 413 });
+          }
+          
+          if(filesWithinLimit.length > 0){
+            console.log(`Uploading ${filesWithinLimit.length} image(s) to Supabase (total size: ${(totalSize / 1024 / 1024).toFixed(2)}MB)`);
             // Upload vers Supabase Storage (comme pour les bateaux)
-            const urls = await uploadMultipleToSupabase(validFiles, 'experiences');
+            const urls = await uploadMultipleToSupabase(filesWithinLimit, 'experiences');
             uploadedUrls.push(...urls);
             console.log('Uploaded', uploadedUrls.length, 'image(s) to Supabase');
           } else {
             console.warn('No valid image files found');
           }
-        } catch(e){
+        } catch(e: any){
           console.error('Error uploading to Supabase Storage:', e);
-          // Ne pas retourner d'erreur ici, on continue avec les URLs existantes
+          // Retourner une erreur appropriée selon le type
+          if (e?.message?.includes('413') || e?.message?.includes('too large')) {
+            return NextResponse.json({ 
+              error: "upload_failed", 
+              details: "Les fichiers sont trop volumineux",
+              suggestion: "Réduisez la taille des images (max 10MB par image)"
+            }, { status: 413 });
+          }
+          // Pour les autres erreurs, continuer avec les URLs existantes mais logger l'erreur
+          console.error('Upload failed but continuing with existing URLs:', e);
         }
       }
       

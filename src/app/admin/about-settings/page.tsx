@@ -1,13 +1,28 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Toast from "@/components/Toast";
+import { submitForm } from "@/lib/form-utils";
 
 export default function AdminAboutSettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [settings, setSettings] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [fileInputKeys, setFileInputKeys] = useState<number[]>([0]);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  
+  // Afficher un message de succès si présent dans l'URL
+  useEffect(() => {
+    if (searchParams.get('success') === '1') {
+      setToast({ message: "Paramètres sauvegardés avec succès", type: "success" });
+      // Nettoyer l'URL après affichage du message
+      const url = new URL(window.location.href);
+      url.searchParams.delete('success');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function fetchSettings() {
@@ -61,7 +76,12 @@ export default function AdminAboutSettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // Empêcher la double soumission
+    if (saving) return;
+    
     setSaving(true);
+    setToast(null);
     
     const formData = new FormData(e.currentTarget);
     
@@ -82,29 +102,51 @@ export default function AdminAboutSettingsPage() {
       }
     });
 
-    try {
-      const res = await fetch("/api/admin/about-settings", {
-        method: "POST",
-        body: formData,
-      });
-      if (res.ok) {
-        router.push("/admin/about-settings?success=1");
-        router.refresh();
+    const result = await submitForm("/api/admin/about-settings", formData, {
+      successMessage: "Paramètres sauvegardés avec succès",
+      errorMessage: "Erreur lors de la sauvegarde",
+      redirectUrl: "/admin/about-settings?success=1",
+    });
+
+    if (result.success) {
+      // Si redirection demandée
+      if (result.data?.redirect) {
+        // Attendre un peu pour que l'utilisateur voie le feedback
+        setTimeout(() => {
+          router.push(result.data.url);
+          router.refresh();
+        }, 500);
       } else {
-        alert("Erreur lors de la sauvegarde");
+        // Afficher le message de succès
+        setToast({ message: "Paramètres sauvegardés avec succès", type: "success" });
+        // Recharger les données après un court délai
+        setTimeout(() => {
+          router.refresh();
+        }, 1000);
       }
-    } catch (error) {
-      console.error(error);
-      alert("Erreur lors de la sauvegarde");
-    } finally {
-      setSaving(false);
+    } else {
+      // Afficher l'erreur
+      setToast({ 
+        message: result.error || "Erreur lors de la sauvegarde", 
+        type: "error" 
+      });
     }
+    
+    setSaving(false);
   };
 
   if (!settings) return <div className="max-w-3xl mx-auto py-8">Chargement…</div>;
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Paramètres de la page "À propos"</h1>
         <p className="text-sm text-black/60 mt-1">Gérez le contenu de la page À propos</p>
@@ -340,8 +382,14 @@ export default function AdminAboutSettingsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 h-11 rounded-full bg-[color:var(--primary)] text-white font-semibold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 h-11 rounded-full bg-[color:var(--primary)] text-white font-semibold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
+            {saving && (
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
             {saving ? "Enregistrement..." : "Enregistrer"}
           </button>
         </div>

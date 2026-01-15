@@ -28,9 +28,9 @@ export async function uploadToSupabase(
     const buffer = Buffer.from(arrayBuffer);
 
     // Vérifier la taille du fichier
-    const maxSize = file.type.startsWith('video/') ? 100 * 1024 * 1024 : 5 * 1024 * 1024; // 100MB vidéo, 5MB image
+    const maxSize = file.type.startsWith('video/') ? 100 * 1024 * 1024 : 10 * 1024 * 1024; // 100MB vidéo, 10MB image (augmenté de 5MB à 10MB)
     if (buffer.length > maxSize) {
-      console.error(`File too large: ${buffer.length} bytes (max: ${maxSize})`);
+      console.error(`File too large: ${(buffer.length / 1024 / 1024).toFixed(2)}MB (max: ${(maxSize / 1024 / 1024).toFixed(2)}MB)`);
       return null;
     }
 
@@ -64,6 +64,7 @@ export async function uploadToSupabase(
 
 /**
  * Upload plusieurs fichiers vers Supabase Storage
+ * Upload séquentiel pour éviter les problèmes de mémoire et de timeout
  * @param files - Tableau de fichiers à uploader
  * @param folder - Dossier dans le bucket (optionnel)
  * @returns Tableau des URLs publiques des fichiers uploadés
@@ -72,9 +73,24 @@ export async function uploadMultipleToSupabase(
   files: File[],
   folder: string = 'images'
 ): Promise<string[]> {
-  const uploadPromises = files.map(file => uploadToSupabase(file, folder));
-  const results = await Promise.all(uploadPromises);
-  return results.filter((r): r is UploadResult => r !== null).map(r => r.url);
+  // Upload séquentiel pour éviter les problèmes de mémoire avec de gros fichiers
+  const results: UploadResult[] = [];
+  
+  for (const file of files) {
+    try {
+      const result = await uploadToSupabase(file, folder);
+      if (result) {
+        results.push(result);
+      } else {
+        console.warn(`Failed to upload file: ${file.name}`);
+      }
+    } catch (error) {
+      console.error(`Error uploading file ${file.name}:`, error);
+      // Continue avec les autres fichiers même si un échoue
+    }
+  }
+  
+  return results.map(r => r.url);
 }
 
 /**
