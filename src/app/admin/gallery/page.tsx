@@ -45,14 +45,13 @@ export default async function AdminGalleryPage({ searchParams }: { searchParams?
   return (
     <div className="p-6 md:p-8 lg:p-10">
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{locale === "fr" ? "Galerie" : "Gallery"}</h1>
-          <div className="flex items-center gap-2">
-            <Link href="/admin/gallery/new" className="text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 h-9 inline-flex items-center font-semibold shadow-sm transition-colors" style={{ backgroundColor: '#2563eb' }}>
-              {locale === "fr" ? "Ajouter" : "Add"}
-            </Link>
-          </div>
+        <h1 className="text-2xl font-bold">{locale === "fr" ? "Galerie" : "Gallery"}</h1>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/gallery/new" className="text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 h-9 inline-flex items-center font-semibold shadow-sm transition-colors" style={{ backgroundColor: '#2563eb' }}>
+            {locale === "fr" ? "Ajouter" : "Add"}
+          </Link>
         </div>
+      </div>
         {totalCount > 0 && filteredCount > 0 && (
           <div className="mt-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
             {locale === "fr" 
