@@ -408,7 +408,8 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
         <button
           type="submit"
           disabled={saving}
-          className="h-11 px-6 rounded-full bg-[color:var(--primary)] text-white text-sm font-semibold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-11 px-6 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow"
+          style={{ backgroundColor: saving ? '#60a5fa' : '#2563eb' }}
         >
           {saving ? (locale === 'fr' ? 'Création...' : 'Creating...') : (locale === 'fr' ? 'Créer la réservation' : 'Create reservation')}
         </button>

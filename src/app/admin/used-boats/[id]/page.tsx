@@ -74,9 +74,9 @@ export default async function EditUsedBoatPage({ params, searchParams }: { param
             <label className='grid gap-1 text-sm'><span>Ordre (sort)</span><input name='sort' type='number' defaultValue={boat.sort??0} className='h-11 rounded-lg border border-black/15 px-3' /></label>
           </div>
 
-          <div className='flex justify-end gap-3 pt-2'>
-            <Link href='/admin/used-boats' className='h-11 px-6 rounded-full border border-black/15 text-sm inline-flex items-center hover:bg-black/5'>Annuler</Link>
-            <button type='submit' className='h-11 px-6 rounded-full bg-[color:var(--primary)] text-white text-sm font-semibold hover:brightness-110'>Enregistrer</button>
+          <div className='flex justify-end gap-3 pt-4 border-t border-black/10 mt-4'>
+            <Link href='/admin/used-boats' className='h-11 px-6 rounded-full border-2 border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium inline-flex items-center transition-colors duration-200'>Annuler</Link>
+            <button type='submit' className='h-11 px-6 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold inline-flex items-center transition-all duration-200 shadow-sm hover:shadow' style={{ backgroundColor: '#2563eb' }}>Enregistrer</button>
           </div>
         </form>
       </main>

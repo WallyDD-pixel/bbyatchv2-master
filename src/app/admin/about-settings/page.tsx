@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Toast from "@/components/Toast";
 import { submitForm } from "@/lib/form-utils";
 
@@ -146,6 +147,13 @@ export default function AdminAboutSettingsPage() {
           onClose={() => setToast(null)}
         />
       )}
+      
+      <Link 
+        href="/admin" 
+        className="mb-6 inline-block text-sm rounded-full border-2 border-blue-400 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium"
+      >
+        ← Retour au tableau de bord
+      </Link>
       
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Paramètres de la page "À propos"</h1>

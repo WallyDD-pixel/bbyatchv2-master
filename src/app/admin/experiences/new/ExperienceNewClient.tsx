@@ -422,7 +422,8 @@ export default function ExperienceNewClient({ locale }: ExperienceNewClientProps
           <button
             type='submit'
             disabled={saving}
-            className='px-6 h-11 rounded-full bg-[color:var(--primary)] text-white font-semibold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2'
+            className='px-6 h-11 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-200 shadow-sm hover:shadow'
+            style={{ backgroundColor: saving ? '#60a5fa' : '#2563eb' }}
           >
             {saving && (
               <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

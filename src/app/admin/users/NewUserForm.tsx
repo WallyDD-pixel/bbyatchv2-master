@@ -43,7 +43,7 @@ export default function NewUserForm({ locale }: { locale: 'fr' | 'en' }){
           <option value='admin'>Admin</option>
         </select>
       </div>
-      <button disabled={loading} className='w-full h-10 rounded-full bg-[color:var(--primary)] text-white text-sm font-semibold hover:brightness-110 disabled:opacity-50'>{loading? t('Création...','Creating...'): t('Créer','Create')}</button>
+      <button disabled={loading} className='w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow' style={{ backgroundColor: loading ? '#60a5fa' : '#2563eb' }}>{loading? t('Création...','Creating...'): t('Créer','Create')}</button>
       {done && <div className='text-xs text-emerald-600'>{t('Utilisateur créé','User created')}</div>}
     </form>
   );

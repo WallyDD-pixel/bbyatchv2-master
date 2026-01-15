@@ -208,7 +208,8 @@ export default function SEOTrackingForm({ settings, locale }: { settings: any; l
             <button
               type='submit'
               disabled={saving}
-              className='rounded-full h-10 px-6 bg-[color:var(--primary)] text-white font-semibold hover:opacity-90 disabled:opacity-50'
+              className='rounded-full h-11 px-6 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow'
+              style={{ backgroundColor: saving ? '#60a5fa' : '#2563eb' }}
             >
               {saving ? (locale === 'fr' ? 'Enregistrement...' : 'Saving...') : (locale === 'fr' ? 'Enregistrer' : 'Save')}
             </button>

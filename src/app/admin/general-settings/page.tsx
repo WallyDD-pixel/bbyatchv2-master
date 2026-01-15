@@ -176,20 +176,21 @@ export default function AdminGeneralSettingsPage() {
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-2.5 bg-[var(--primary)] text-white rounded-lg font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {saving ? "Enregistrement…" : "Enregistrer"}
-            </button>
+          <div className="flex gap-3 pt-4 border-t border-black/10 mt-6">
             <button
               type="button"
               onClick={() => router.push("/admin")}
-              className="px-6 py-2.5 bg-black/5 text-black rounded-lg font-medium hover:bg-black/10 transition"
+              className="px-6 py-2.5 border-2 border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors duration-200"
             >
               Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
+              style={{ backgroundColor: saving ? '#60a5fa' : '#2563eb' }}
+            >
+              {saving ? "Enregistrement…" : "Enregistrer"}
             </button>
           </div>
         </form>

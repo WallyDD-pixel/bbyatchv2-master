@@ -57,7 +57,7 @@ export default async function StripeSettingsPage(){
             <input name='liveSk' defaultValue={settings?.stripeLiveSk||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='sk_live_...' />
           </div>
         </div>
-        <button type='submit' className='h-11 px-6 rounded-full bg-[var(--primary)] text-white text-sm font-semibold hover:brightness-110'>Enregistrer</button>
+        <button type='submit' className='h-11 px-6 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold inline-flex items-center transition-all duration-200 shadow-sm hover:shadow' style={{ backgroundColor: '#2563eb' }}>Enregistrer</button>
       </form>
       <p className='mt-8 text-[11px] text-black/40'>Les clés sont stockées chiffrées côté base (TODO: implémenter chiffrement si nécessaire). Limiter l'accès à cette page.</p>
     </div>

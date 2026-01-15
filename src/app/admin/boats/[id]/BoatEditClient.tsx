@@ -806,8 +806,8 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       </div>
 
       {/* Actions */}
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={saving} className="inline-flex items-center rounded-full bg-[color:var(--primary)] text-white h-10 px-5 font-medium disabled:opacity-60">
+      <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-black/10 mt-4">
+        <button type="submit" disabled={saving} className="inline-flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white h-11 px-6 font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow" style={{ backgroundColor: saving ? '#60a5fa' : '#2563eb' }}>
           {saving ? t.saving : t.save}
         </button>
         <button type="button" onClick={onDelete} disabled={saving} className="inline-flex items-center rounded-full bg-red-600 text-white h-10 px-5 font-medium disabled:opacity-60">

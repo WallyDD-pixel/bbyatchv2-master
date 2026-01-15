@@ -153,7 +153,7 @@ export default function UserEditClient({ user, locale }: { user: User; locale: "
       </div>
 
       <div className="flex items-center gap-2">
-        <button type="submit" disabled={loading} className="inline-flex items-center rounded-full bg-[color:var(--primary)] text-white h-10 px-4">
+        <button type="submit" disabled={loading} className="inline-flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white h-11 px-6 font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow" style={{ backgroundColor: loading ? '#60a5fa' : '#2563eb' }}>
           {loading ? t.saving : t.save}
         </button>
         <button type="button" onClick={onDelete} disabled={loading} className="inline-flex items-center rounded-full bg-red-600 text-white h-10 px-4">

@@ -198,7 +198,8 @@ export default function GalleryFormClient({ locale }: { locale: "fr" | "en" }) {
         <button
           type="submit"
           disabled={uploading}
-          className="rounded-full h-10 px-6 bg-[color:var(--primary)] text-white font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+          className="rounded-full h-11 px-6 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 transition-all duration-200 shadow-sm hover:shadow"
+          style={{ backgroundColor: uploading ? '#60a5fa' : '#2563eb' }}
         >
           {uploading ? (
             <>

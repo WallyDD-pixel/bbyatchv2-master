@@ -58,9 +58,9 @@ export default async function AdminInfoCardEditPage({ params, searchParams }: { 
             </div>
           </div>
           <label className='grid gap-1 text-sm'><span>Ordre (sort)</span><input type='number' name='sort' defaultValue={card.sort??0} className='h-11 rounded-lg border border-black/15 px-3' /></label>
-          <div className='flex justify-end gap-2 pt-2'>
-            <Link href='/admin/info-cards' className='rounded-full h-10 px-4 border border-black/15 bg-white hover:bg-black/5'>{locale==='fr'? 'Annuler':'Cancel'}</Link>
-            <button type='submit' className='rounded-full h-10 px-4 bg-[color:var(--primary)] text-white hover:opacity-90'>{locale==='fr'? 'Enregistrer':'Save'}</button>
+          <div className='flex justify-end gap-2 pt-4 border-t border-black/10 mt-4'>
+            <Link href='/admin/info-cards' className='rounded-full h-11 px-6 border-2 border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium inline-flex items-center transition-colors duration-200'>{locale==='fr'? 'Annuler':'Cancel'}</Link>
+            <button type='submit' className='rounded-full h-11 px-6 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold inline-flex items-center transition-all duration-200 shadow-sm hover:shadow' style={{ backgroundColor: '#2563eb' }}>{locale==='fr'? 'Enregistrer':'Save'}</button>
           </div>
         </form>
       </main>
