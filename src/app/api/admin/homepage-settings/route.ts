@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadMultipleToSupabase, uploadToSupabase } from '@/lib/storage';
 import { createRedirectUrl } from '@/lib/redirect';
@@ -7,22 +9,38 @@ import { revalidatePath } from 'next/cache';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+async function ensureAdmin() {
+  const session = (await getServerSession(auth as any)) as any;
+  if (!session?.user) return null;
+  if ((session.user as any)?.role === 'admin') return session.user;
+  if (session.user?.email) {
+    try {
+      const u = await (prisma as any).user.findUnique({ where: { email: session.user.email }, select: { role: true } });
+      if (u?.role === 'admin') return session.user;
+    } catch {}
+  }
+  return null;
+}
+
 export async function GET() {
+  if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const settings = await prisma.settings.findFirst();
   return NextResponse.json(settings);
 }
 
 export async function POST(req: Request) {
+  if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  
   try {
     const data = await req.formData();
-    const mainSliderTitle = data.get('mainSliderTitle') as string;
-    const mainSliderSubtitle = data.get('mainSliderSubtitle') as string;
-    const mainSliderText = data.get('mainSliderText') as string;
+    const mainSliderTitle = (data.get('mainSliderTitle') || '').toString().trim();
+    const mainSliderSubtitle = (data.get('mainSliderSubtitle') || '').toString().trim();
+    const mainSliderText = (data.get('mainSliderText') || '').toString().trim();
     const mainSliderImageFile = data.get('mainSliderImageFile') as File | null; // legacy, un seul fichier
     const mainSliderImagesFiles = data.getAll('mainSliderImagesFiles') as File[]; // multi fichiers
-    const aboutUsTitle = data.get('aboutUsTitle') as string;
-    const aboutUsSubtitle = data.get('aboutUsSubtitle') as string;
-    const aboutUsText = data.get('aboutUsText') as string;
+    const aboutUsTitle = (data.get('aboutUsTitle') || '').toString().trim();
+    const aboutUsSubtitle = (data.get('aboutUsSubtitle') || '').toString().trim();
+    const aboutUsText = (data.get('aboutUsText') || '').toString().trim();
     const whyChooseImageFile = data.get('whyChooseImageFile') as File | null;
 
   // Gestion upload image "Pourquoi choisir" vers Supabase Storage
@@ -88,14 +106,15 @@ export async function POST(req: Request) {
   }
 
   // Concaténer avec la liste existante si on a uploadé quelque chose
-  let dataUpdate: any = {
-    mainSliderTitle,
-    mainSliderSubtitle,
-    mainSliderText,
-    aboutUsTitle,
-    aboutUsSubtitle,
-    aboutUsText,
-  };
+  let dataUpdate: any = {};
+  
+  // Ne mettre à jour que les champs fournis (pas undefined)
+  if (mainSliderTitle !== undefined && mainSliderTitle !== null) dataUpdate.mainSliderTitle = mainSliderTitle;
+  if (mainSliderSubtitle !== undefined && mainSliderSubtitle !== null) dataUpdate.mainSliderSubtitle = mainSliderSubtitle;
+  if (mainSliderText !== undefined && mainSliderText !== null) dataUpdate.mainSliderText = mainSliderText;
+  if (aboutUsTitle !== undefined && aboutUsTitle !== null) dataUpdate.aboutUsTitle = aboutUsTitle;
+  if (aboutUsSubtitle !== undefined && aboutUsSubtitle !== null) dataUpdate.aboutUsSubtitle = aboutUsSubtitle;
+  if (aboutUsText !== undefined && aboutUsText !== null) dataUpdate.aboutUsText = aboutUsText;
 
   // Ajouter l'URL de l'image "Pourquoi choisir" si uploadée
   if (whyChooseImageUrl) {
@@ -141,14 +160,23 @@ export async function POST(req: Request) {
     return NextResponse.redirect(redirectUrl, 303);
   } catch (e: any) {
     console.error('Error updating homepage settings:', e);
-    // En cas d'erreur, rediriger quand même pour éviter une page d'erreur
-    const redirectUrl = createRedirectUrl('/admin/homepage-settings?error=1', req);
-    return NextResponse.redirect(redirectUrl, 303);
+    console.error('Error stack:', e?.stack);
+    console.error('Error message:', e?.message);
+    
+    // Retourner une réponse JSON avec le détail de l'erreur pour le développement
+    return NextResponse.json(
+      { 
+        error: 'Erreur lors de la sauvegarde',
+        details: process.env.NODE_ENV === 'development' ? e?.message : undefined
+      },
+      { status: 500 }
+    );
   }
 }
 
 // Suppression d'une image du slider par URL
 export async function DELETE(req: Request) {
+  if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const urlObj = new URL(req.url);
   const urlToDelete = urlObj.searchParams.get('url');
   if (!urlToDelete) return NextResponse.json({ error: 'Missing url' }, { status: 400 });
@@ -189,6 +217,8 @@ export async function DELETE(req: Request) {
 
 // Réordonner la liste des images (remplacer par l'ordre fourni)
 export async function PATCH(req: Request) {
+  if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  
   try {
     const body = await req.json();
     const urls = Array.isArray(body?.urls) ? body.urls.filter((u: any) => typeof u === 'string') : null;
