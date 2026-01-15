@@ -43,10 +43,18 @@ export default async function AboutPage({ searchParams }: { searchParams?: { lan
                 )}
               </div>
             </div>
-            <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden border border-black/10 shadow-lg">
-              <div className="absolute inset-0 bg-gradient-to-br from-[color:var(--primary)]/20 to-[color:var(--primary)]/5 flex items-center justify-center">
-                <span className="text-6xl">⛵</span>
-              </div>
+            <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden border border-black/10 shadow-lg bg-gray-100">
+              {(settings as any)?.aboutHistoryImageUrl ? (
+                <img 
+                  src={(settings as any).aboutHistoryImageUrl} 
+                  alt={locale === 'fr' ? 'Notre Histoire' : 'Our Story'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-200/30 to-blue-100/10 flex items-center justify-center">
+                  <span className="text-6xl opacity-40">⛵</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -112,10 +120,18 @@ export default async function AboutPage({ searchParams }: { searchParams?: { lan
         {/* Notre Équipe et Expertise */}
         <section className="mb-16">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-            <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden border border-black/10 shadow-lg order-2 md:order-1">
-              <div className="absolute inset-0 bg-gradient-to-br from-[color:var(--primary)]/20 to-[color:var(--primary)]/5 flex items-center justify-center">
-                <span className="text-6xl">👥</span>
-              </div>
+            <div className="relative h-64 md:h-80 rounded-2xl overflow-hidden border border-black/10 shadow-lg order-2 md:order-1 bg-gray-100">
+              {(settings as any)?.aboutTeamImageUrl ? (
+                <img 
+                  src={(settings as any).aboutTeamImageUrl} 
+                  alt={locale === 'fr' ? 'Notre Équipe' : 'Our Team'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-200/30 to-blue-100/10 flex items-center justify-center">
+                  <span className="text-6xl opacity-40">👥</span>
+                </div>
+              )}
             </div>
             <div className="order-1 md:order-2">
               <h2 className="text-2xl md:text-3xl font-bold text-black/90 mb-6">
@@ -217,7 +233,8 @@ export default async function AboutPage({ searchParams }: { searchParams?: { lan
           <div className="flex flex-wrap justify-center gap-4">
             <a
               href={`/${locale === 'en' ? '?lang=en' : ''}#fleet`}
-              className="px-6 h-12 rounded-full bg-[color:var(--primary)] text-white font-semibold hover:brightness-110 transition shadow-lg inline-flex items-center justify-center"
+              className="px-6 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center justify-center"
+              style={{ backgroundColor: '#2563eb' }}
             >
               {locale === 'fr' ? 'Voir notre flotte' : 'View our fleet'}
             </a>

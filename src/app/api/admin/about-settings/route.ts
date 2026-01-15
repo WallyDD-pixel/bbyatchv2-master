@@ -51,12 +51,16 @@ export async function POST(req: Request) {
 
   // Gestion des images
   const imageFiles = data.getAll('imageFiles') as File[];
+  const historyImageFile = data.get('aboutHistoryImageFile') as File | null;
+  const teamImageFile = data.get('aboutTeamImageFile') as File | null;
   const existingImagesRaw = data.getAll('existingImages');
   const existingImages: string[] = Array.isArray(existingImagesRaw) 
     ? existingImagesRaw.map((img: any) => img.toString()).filter((url: string) => url && !url.startsWith('data:'))
     : [];
   
   const uploadedUrls: string[] = [];
+  let historyImageUrl: string | null = null;
+  let teamImageUrl: string | null = null;
 
   // Upload vers Supabase Storage (comme pour les expériences et bateaux)
   if (imageFiles.length > 0) {
@@ -77,6 +81,48 @@ export async function POST(req: Request) {
       console.error('Error uploading to Supabase Storage:', e);
       // Continuer même si l'upload échoue
     }
+  }
+
+  // Upload image Histoire
+  if (historyImageFile && historyImageFile.size > 0) {
+    try {
+      const mime = (historyImageFile as any).type;
+      const allowedImages = ['image/jpeg','image/png','image/webp','image/gif','image/avif'];
+      if (allowedImages.includes(mime)) {
+        const urls = await uploadMultipleToSupabase([historyImageFile], 'about');
+        if (urls.length > 0) {
+          historyImageUrl = urls[0];
+          console.log('Uploaded history image to Supabase');
+        }
+      }
+    } catch (e) {
+      console.error('Error uploading history image to Supabase Storage:', e);
+    }
+  } else {
+    // Conserver l'image existante si pas de nouveau fichier
+    const existingHistoryUrl = data.get('aboutHistoryImageUrl') as string | null;
+    if (existingHistoryUrl) historyImageUrl = existingHistoryUrl;
+  }
+
+  // Upload image Équipe
+  if (teamImageFile && teamImageFile.size > 0) {
+    try {
+      const mime = (teamImageFile as any).type;
+      const allowedImages = ['image/jpeg','image/png','image/webp','image/gif','image/avif'];
+      if (allowedImages.includes(mime)) {
+        const urls = await uploadMultipleToSupabase([teamImageFile], 'about');
+        if (urls.length > 0) {
+          teamImageUrl = urls[0];
+          console.log('Uploaded team image to Supabase');
+        }
+      }
+    } catch (e) {
+      console.error('Error uploading team image to Supabase Storage:', e);
+    }
+  } else {
+    // Conserver l'image existante si pas de nouveau fichier
+    const existingTeamUrl = data.get('aboutTeamImageUrl') as string | null;
+    if (existingTeamUrl) teamImageUrl = existingTeamUrl;
   }
 
   // Combiner les images existantes et les nouvelles
@@ -103,6 +149,8 @@ export async function POST(req: Request) {
         aboutValuesPleasureFr,
         aboutValuesPleasureEn,
         aboutImageUrls,
+        aboutHistoryImageUrl: historyImageUrl !== undefined ? historyImageUrl : undefined,
+        aboutTeamImageUrl: teamImageUrl !== undefined ? teamImageUrl : undefined,
       } as any,
     });
   } catch (updateError: any) {
@@ -128,6 +176,8 @@ export async function POST(req: Request) {
             aboutValuesPleasureFr,
             aboutValuesPleasureEn,
             aboutImageUrls,
+            aboutHistoryImageUrl: historyImageUrl || null,
+            aboutTeamImageUrl: teamImageUrl || null,
           } as any,
         });
       } catch (createError) {

@@ -12,6 +12,8 @@ export default function AdminAboutSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [fileInputKeys, setFileInputKeys] = useState<number[]>([0]);
+  const [historyImagePreview, setHistoryImagePreview] = useState<string | null>(null);
+  const [teamImagePreview, setTeamImagePreview] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   
   // Afficher un message de succès si présent dans l'URL
@@ -37,6 +39,9 @@ export default function AdminAboutSettingsPage() {
           if (Array.isArray(arr)) setImagePreviews(arr);
         } catch {}
       }
+      // Charger les images Histoire et Équipe
+      if (s?.aboutHistoryImageUrl) setHistoryImagePreview(s.aboutHistoryImageUrl);
+      if (s?.aboutTeamImageUrl) setTeamImagePreview(s.aboutTeamImageUrl);
     }
     fetchSettings();
   }, []);
@@ -187,6 +192,35 @@ export default function AdminAboutSettingsPage() {
                 placeholder="The story of BB YACHTS, BB CHARTER and BB SERVICES CHARTER..."
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Image de la section Histoire</label>
+              <input
+                type="file"
+                name="aboutHistoryImageFile"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => setHistoryImagePreview(ev.target?.result as string);
+                    reader.readAsDataURL(file);
+                  } else {
+                    setHistoryImagePreview(settings?.aboutHistoryImageUrl || null);
+                  }
+                }}
+                className="w-full mt-1 border border-black/15 rounded-lg px-3 py-2 text-sm"
+              />
+              {(historyImagePreview || settings?.aboutHistoryImageUrl) && (
+                <div className="mt-3">
+                  <img
+                    src={historyImagePreview || settings?.aboutHistoryImageUrl || ''}
+                    alt="Prévisualisation"
+                    className="max-w-xs h-32 object-cover rounded-lg border border-black/10"
+                  />
+                  <input type="hidden" name="aboutHistoryImageUrl" value={settings?.aboutHistoryImageUrl || ''} />
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -244,6 +278,35 @@ export default function AdminAboutSettingsPage() {
                 className="w-full px-3 py-2 rounded-lg border border-black/15 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
                 placeholder="Our team and local expertise..."
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Image de la section Équipe</label>
+              <input
+                type="file"
+                name="aboutTeamImageFile"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => setTeamImagePreview(ev.target?.result as string);
+                    reader.readAsDataURL(file);
+                  } else {
+                    setTeamImagePreview(settings?.aboutTeamImageUrl || null);
+                  }
+                }}
+                className="w-full mt-1 border border-black/15 rounded-lg px-3 py-2 text-sm"
+              />
+              {(teamImagePreview || settings?.aboutTeamImageUrl) && (
+                <div className="mt-3">
+                  <img
+                    src={teamImagePreview || settings?.aboutTeamImageUrl || ''}
+                    alt="Prévisualisation"
+                    className="max-w-xs h-32 object-cover rounded-lg border border-black/10"
+                  />
+                  <input type="hidden" name="aboutTeamImageUrl" value={settings?.aboutTeamImageUrl || ''} />
+                </div>
+              )}
             </div>
           </div>
         </section>

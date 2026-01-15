@@ -92,6 +92,8 @@ model Settings {
   aboutValuesPleasureFr String?
   aboutValuesPleasureEn String?
   aboutImageUrls        String?  // JSON array d'images pour la galerie
+  aboutHistoryImageUrl  String?  // Image pour la section "Notre Histoire"
+  aboutTeamImageUrl     String?  // Image pour la section "Notre Équipe et Expertise"
   // Page Bateaux d'occasion
   usedSaleTitleFr       String?
   usedSaleTitleEn       String?
