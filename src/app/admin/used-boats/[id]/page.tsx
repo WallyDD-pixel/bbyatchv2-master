@@ -4,7 +4,9 @@ import { prisma } from '@/lib/prisma';
 import { notFound, redirect } from 'next/navigation';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
-import UsedBoatEditFormClient from './UsedBoatEditFormClient';
+import Link from 'next/link';
+import UsedBoatEditClient from './UsedBoatEditClient';
+import ImageGalleryManager from './ImageGalleryManager';
 
 export default async function EditUsedBoatPage({ params, searchParams }: { params:{ id:string }, searchParams?: { lang?: string } }){
   const session = await getServerSession(auth as any) as any;
@@ -23,14 +25,60 @@ export default async function EditUsedBoatPage({ params, searchParams }: { param
       <main className='flex-1 w-full max-w-5xl mx-auto px-4 py-10'>
         <div className='flex items-center justify-between gap-4 flex-wrap'>
           <h1 className='text-2xl font-bold'>{locale==='fr'? `Modifier bateau d'occasion` : 'Edit used boat'}</h1>
+          <Link href='/admin/used-boats' className='text-sm rounded-full border border-black/15 px-4 h-9 inline-flex items-center hover:bg-black/5'>← {locale==='fr'? 'Retour':'Back'}</Link>
         </div>
-        <UsedBoatEditFormClient
-          boatId={id}
-          boat={boat}
-          initialMainImage={boat.mainImage}
-          initialPhotos={photoList}
-          locale={locale as any}
-        />
+        <form action="/api/admin/used-boats/update" method="post" className='mt-6 grid gap-6 rounded-2xl border border-black/10 bg-white p-6 shadow-sm' encType='multipart/form-data'>
+          <input type='hidden' name='id' value={id} />
+          {/* Ligne Nom + Slug */}
+          <div className='grid md:grid-cols-2 gap-5'>
+            <label className='grid gap-1 text-sm'>
+              <span>Nom *</span>
+              <input name='titleFr' defaultValue={boat.titleFr} required className='h-11 rounded-lg border border-black/15 px-3' />
+            </label>
+            <label className='grid gap-1 text-sm'>
+              <span>Slug</span>
+              <input name='slug' defaultValue={boat.slug} readOnly className='h-11 rounded-lg border border-black/15 px-3 bg-black/5 text-black/60' />
+            </label>
+          </div>
+          <input type='hidden' name='titleEn' value='' />
+
+          {/* Specs */}
+          <div className='grid md:grid-cols-3 gap-5'>
+            <label className='grid gap-1 text-sm'><span>Année *</span><input required name='year' type='number' defaultValue={boat.year} className='h-11 rounded-lg border border-black/15 px-3' /></label>
+            <label className='grid gap-1 text-sm'><span>Longueur (m) *</span><input required step='0.01' name='lengthM' type='number' defaultValue={boat.lengthM} className='h-11 rounded-lg border border-black/15 px-3' /></label>
+            <label className='grid gap-1 text-sm'><span>Prix EUR *</span><input required name='priceEur' type='number' defaultValue={boat.priceEur} className='h-11 rounded-lg border border-black/15 px-3' /></label>
+            <label className='grid gap-1 text-sm'><span>Moteurs</span><input name='engines' defaultValue={boat.engines||''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='2x Volvo IPS...' /></label>
+            <label className='grid gap-1 text-sm'><span>Heures moteur</span><input name='engineHours' type='number' defaultValue={boat.engineHours??''} className='h-11 rounded-lg border border-black/15 px-3' /></label>
+            <label className='grid gap-1 text-sm'><span>Carburant</span><input name='fuelType' defaultValue={boat.fuelType||''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='diesel' /></label>
+          </div>
+
+          {/* Gestion images drag & drop */}
+          <ImageGalleryManager 
+            initialMainImage={boat.mainImage}
+            initialPhotos={photoList}
+            locale={locale as any}
+          />
+
+          {/* Vidéos */}
+          <UsedBoatEditClient boat={boat} locale={locale as any} />
+
+          {/* Résumé & Description */}
+          <label className='grid gap-1 text-sm'><span>Résumé</span><input name='summaryFr' defaultValue={boat.summaryFr||''} className='h-11 rounded-lg border border-black/15 px-3' /></label>
+          <input type='hidden' name='summaryEn' value='' />
+          <label className='grid gap-1 text-sm'><span>Description</span><textarea name='descriptionFr' rows={6} className='rounded-lg border border-black/15 px-3 py-2 resize-y' defaultValue={boat.descriptionFr||''} /></label>
+          <input type='hidden' name='descriptionEn' value='' />
+
+          {/* Status & Sort */}
+          <div className='grid md:grid-cols-2 gap-5'>
+            <label className='grid gap-1 text-sm'><span>Status</span><select name='status' defaultValue={boat.status} className='h-11 rounded-lg border border-black/15 px-3 bg-white'><option value='listed'>listed</option><option value='sold'>sold</option><option value='draft'>draft</option></select></label>
+            <label className='grid gap-1 text-sm'><span>Ordre (sort)</span><input name='sort' type='number' defaultValue={boat.sort??0} className='h-11 rounded-lg border border-black/15 px-3' /></label>
+          </div>
+
+          <div className='flex justify-end gap-3 pt-2'>
+            <Link href='/admin/used-boats' className='h-11 px-6 rounded-full border border-black/15 text-sm inline-flex items-center hover:bg-black/5'>Annuler</Link>
+            <button type='submit' className='h-11 px-6 rounded-full bg-[color:var(--primary)] text-white text-sm font-semibold hover:brightness-110'>Enregistrer</button>
+          </div>
+        </form>
       </main>
       <Footer locale={locale as any} t={{} as any} />
     </div>

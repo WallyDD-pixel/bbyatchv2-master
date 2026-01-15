@@ -5,26 +5,14 @@ import Footer from "@/components/Footer";
 import ExperienceBoatSelector from "@/components/ExperienceBoatSelector";
 import BoatMediaCarousel from "@/components/BoatMediaCarousel";
 
-export const dynamic = 'force-dynamic';
-
 export default async function ExperienceDetailPage({ params, searchParams }: { params: { slug: string }; searchParams?: { lang?: string } }) {
   const { slug } = params;
   const sp = searchParams || {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
 
-  console.log('🔍 Recherche expérience avec slug:', slug);
-  let exp: any = null;
-  try {
-    exp = await (prisma as any).experience.findUnique({ where: { slug } });
-    console.log('✅ Expérience trouvée:', exp ? exp.id : 'null');
-  } catch (error) {
-    console.error('❌ Error loading experience:', error);
-  }
-  if(!exp){ 
-    console.log('⚠️ Expérience introuvable pour slug:', slug);
-    return <div className="min-h-screen flex flex-col"><HeaderBar initialLocale={locale} /><main className="flex-1 flex items-center justify-center"><div className="text-center text-sm text-black/60">{locale==='fr'? 'Expérience introuvable':'Experience not found'}</div></main><Footer locale={locale} t={t} /></div>; 
-  }
+  const exp = await (prisma as any).experience.findUnique({ where: { slug } }).catch(()=>null) as any;
+  if(!exp){ return <div className="min-h-screen flex flex-col"><HeaderBar initialLocale={locale} /><main className="flex-1 flex items-center justify-center"><div className="text-center text-sm text-black/60">{locale==='fr'? 'Expérience introuvable':'Experience not found'}</div></main><Footer locale={locale} t={t} /></div>; }
 
   // Parser photoUrls depuis JSON ou array
   const parsePhotoUrls = (val: any): string[] => {
@@ -116,14 +104,6 @@ export default async function ExperienceDetailPage({ params, searchParams }: { p
                   <p className="text-sm text-blue-800">
                     {locale==='fr'? 'Départ' : 'Departure'}: <strong>{exp.fixedDepartureTime}</strong> • {locale==='fr'? 'Retour' : 'Return'}: <strong>{exp.fixedReturnTime}</strong>
                   </p>
-                </div>
-              )}
-              {/* Texte supplémentaire */}
-              {((exp as any).additionalTextFr || (exp as any).additionalTextEn) && (
-                <div className="mt-6 pt-6 border-t border-black/10">
-                  <div className="text-sm sm:text-base leading-relaxed text-black/70 whitespace-pre-line">
-                    {locale==='fr'? (exp as any).additionalTextFr: (exp as any).additionalTextEn}
-                  </div>
                 </div>
               )}
             </div>

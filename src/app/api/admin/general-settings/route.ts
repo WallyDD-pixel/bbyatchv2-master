@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { createRedirectUrl } from '@/lib/redirect';
-import { uploadMultipleToSupabase } from '@/lib/storage';
+import fs from 'fs';
+import path from 'path';
 
 async function ensureAdmin() {
   const session = (await getServerSession(auth as any)) as any;
@@ -30,22 +30,21 @@ export async function POST(req: Request) {
   try {
     const data = await req.formData();
 
-    // Gestion upload logo vers Supabase Storage
+    // Gestion upload logo
     let logoUrl: string | undefined;
     const logoFile = data.get('logoFile') as File | null;
-    if (logoFile && (logoFile as any).size > 0 && (logoFile as any).arrayBuffer) {
+    if (logoFile && (logoFile as any).size > 0) {
       const allowedExt = new Set(['jpg', 'jpeg', 'png', 'svg', 'webp']);
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
       const name = (logoFile as any).name || '';
       const ext = name.split('.').pop()?.toLowerCase() || '';
       if (allowedExt.has(ext)) {
-        try {
-          const urls = await uploadMultipleToSupabase([logoFile], 'logos');
-          if (urls.length > 0) {
-            logoUrl = urls[0];
-          }
-        } catch (e) {
-          console.error('Error uploading logo to Supabase Storage:', e);
-        }
+        const fname = `logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const buf = Buffer.from(await logoFile.arrayBuffer());
+        fs.writeFileSync(path.join(uploadsDir, fname), buf);
+        logoUrl = `/uploads/${fname}`;
       }
     } else {
       // Conserver l'URL existante si pas de nouveau fichier
@@ -71,8 +70,7 @@ export async function POST(req: Request) {
       data: updateData,
     });
 
-    const redirectUrl = createRedirectUrl('/admin/general-settings?success=1', req);
-    return NextResponse.redirect(redirectUrl, 303);
+    return NextResponse.redirect(new URL('/admin/general-settings?success=1', req.url));
   } catch (e: any) {
     console.error('Error updating general settings:', e);
     return NextResponse.json({ error: 'server_error', details: e?.message }, { status: 500 });

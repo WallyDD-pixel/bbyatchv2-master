@@ -66,13 +66,22 @@ export default function HeroSlider({ title, subtitle, imageUrl, images }: HeroSl
 			<div className="absolute inset-0 flex items-end sm:items-center">
 				<div className="w-full px-4 sm:px-8 py-6 sm:py-0">
 					<div className="max-w-3xl text-left text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">
-						<h1 className="text-3xl sm:text-5xl font-display font-extrabold leading-tight">
+						<h1 className="text-3xl sm:text-5xl font-nakilla font-extrabold leading-tight">
 							{title || "Explorez la Riviera en toute élégance"}
 						</h1>
-						<p className="hidden sm:block mt-3 text-sm sm:text-base text-white/90 font-montserrat">
+						<p className="hidden sm:block mt-3 text-sm sm:text-base text-white/90 font-aviano">
 							{subtitle ||
 								"Réservez votre yacht pour une journée d'exception ou une soirée au coucher de soleil."}
 						</p>
+						<div className="mt-4">
+							<a
+								href="#experiences"
+								className="inline-flex items-center rounded-full bg-[color:var(--primary)] text-white font-semibold text-sm px-6 h-11 shadow hover:brightness-110 active:brightness-95 transition"
+							>
+								Découvrir nos expériences
+								<span className="ml-1 text-base translate-y-[1px]">→</span>
+							</a>
+						</div>
 					</div>
 				</div>
 			</div>

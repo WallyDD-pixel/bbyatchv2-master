@@ -78,7 +78,6 @@ export async function GET(_req: Request, context: any) {
     if(!reservation) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if(reservation.user?.email !== sessionEmail && !isAdmin) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     if(reservation.status !== 'completed') return NextResponse.json({ error: 'not_completed' }, { status: 409 });
-    if(!reservation.boat) return NextResponse.json({ error: 'boat_not_found' }, { status: 404 });
 
     const invoiceNumber = `FA-${new Date().getFullYear()}-${reservation.id.slice(-6)}`;
     const baseTotal = reservation.totalPrice || 0;
@@ -384,12 +383,7 @@ export async function GET(_req: Request, context: any) {
     const pdfBytes = await pdfDoc.save();
     return new NextResponse(Buffer.from(pdfBytes), { status:200, headers:{ 'Content-Type':'application/pdf', 'Content-Disposition':`inline; filename="${invoiceNumber}.pdf"` }});
   } catch(e:any){
-    console.error('Error generating final invoice PDF:', e);
-    console.error('Error details:', {
-      message: e?.message,
-      stack: e?.stack,
-      name: e?.name
-    });
-    return NextResponse.json({ error:'server_error', details: process.env.NODE_ENV === 'development' ? e?.message : undefined }, { status:500 });
+    console.error(e);
+    return NextResponse.json({ error:'server_error' }, { status:500 });
   }
 }

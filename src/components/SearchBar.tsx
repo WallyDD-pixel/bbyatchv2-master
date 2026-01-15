@@ -175,15 +175,12 @@ export default function SearchBar({
         const days = Object.values(map);
         setMonthCache(prev=>{ const n = new Map(prev); n.set(key, days); return n; });
       } else {
-        const url = boatSlug 
-          ? `/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}&boat=${encodeURIComponent(boatSlug)}`
-          : `/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}`;
-        const res = await fetch(url);
+        const res = await fetch(`/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}`);
         const data = await res.json();
         setMonthCache(prev=>{ const n = new Map(prev); n.set(key, data.days||[]); return n; });
       }
     } catch { /* ignore */ } finally { setLoadingMonth(false); }
-  },[monthCache, mode, experienceSlug, boatSlug]);
+  },[monthCache, mode, experienceSlug]);
 
   useEffect(()=>{ ensureMonth(calMonth.y, calMonth.m); },[calMonth, ensureMonth]);
 
@@ -199,8 +196,6 @@ export default function SearchBar({
 
   const avail = monthCache.get(monthKey(calMonth.y, calMonth.m)) || [];
   const availMap = new Map(avail.map((d:any)=>[d.date,d]));
-  const reservationStartDates = new Set(avail.filter((d:any)=>d.isReservationStart).map((d:any)=>d.date));
-  const reservationEndDates = new Set(avail.filter((d:any)=>d.isReservationEnd).map((d:any)=>d.date));
 
   const buildMonthMatrix = () => {
     const { y, m } = calMonth; const first = new Date(y,m,1); const startWeekday = (first.getDay()+6)%7; // lundi=0
@@ -341,7 +336,7 @@ export default function SearchBar({
         setPickerOpen(false);
       }}
     >
-      {/* ÉTAPE 1: Ville (cachée en mode expérience) */}
+      {/* Ville (cachée en mode expérience) */}
       {!hideCity && mode!=='experience' && (
         <div className="col-span-1">
           <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
@@ -420,62 +415,98 @@ export default function SearchBar({
           </div>
         </div>
       )}
-      
-      {/* ÉTAPE 1: Sélecteur de type de créneau (en premier) */}
+      {/* Suppression du bloc slug / créneau explicatif en mode expérience */}
+      {mode==='experience' && partFixed && (
+        <div className="hidden" />
+      )}
+      {/* Sélecteur de créneau uniquement si pas de partFixed */}
       {(!partFixed) && (
         <div>
           <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-            {labels.search_part || "Type de prestation"} *
+            {labels.search_part || "Créneau"}
           </label>
           <select
             className={`${baseInput} search-part-select bg-white text-slate-900 border-black/15 focus:ring-[color:var(--primary)]/30 focus:border-[color:var(--primary)] \
             dark:bg-black/60 dark:text-white dark:border-white/40 dark:focus:ring-white/60 dark:focus:border-white shadow-[0_0_0_1px_rgba(0,0,0,0.03)]`}
-            value={part ?? ''}
-            onChange={(e) => { 
-              const v = e.target.value as any; 
-              if(!v) { 
-                setPart(null); 
-                setValues(v => ({ ...v, startDate: '', endDate: '', startTime: '08:00', endTime: '18:00' }));
-                setCustomStartTime('');
-                setCustomEndTime('');
-                return; 
-              } 
-              applyPart(v);
-            } }
+              value={part ?? ''}
+            onChange={(e) => { const v = e.target.value as any; if(!v) { setPart(null); return; } applyPart(v);} }
           >
-            <option value="" disabled>{labels.search_part || 'Choisir le type'}...</option>
+            <option value="" disabled>{labels.search_part || 'Créneau'}...</option>
             {PARTS.map((p) => {
               let lbl = '';
               if (p.key === 'FULL') lbl = labels.search_part_full || 'Journée entière (8h)';
               else if (p.key === 'AM') lbl = labels.search_part_am || 'Matin (4h)';
               else if (p.key === 'PM') lbl = labels.search_part_pm || 'Après-midi (4h)';
               else if (p.key === 'SUNSET') lbl = labels.search_part_sunset || 'Sunset (2h)';
-              return <option key={p.key} value={p.key}>{lbl}</option>;
+              return <option key={p.key} value={p.key}>{lbl} {p.flexible ? '(horaires flexibles)' : ''}</option>;
             })}
           </select>
-          {!part && partHint && <p className="mt-1 text-[10px] text-red-600">{labels.search_hint_part_first || 'Choisis d\'abord le type'}</p>}
         </div>
       )}
       
-      {/* ÉTAPE 2: Date début */}
+      {/* Horaires personnalisés si créneau flexible et sélectionné */}
+      {part && PARTS.find(p => p.key === part)?.flexible && (
+        <div className="col-span-full grid grid-cols-2 gap-3 pt-2 border-t border-black/10">
+          <div>
+            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+              {labels.search_custom_start_time || (currentLocale === 'fr' ? 'Heure de début (optionnel)' : 'Start time (optional)')}
+            </label>
+            <input
+              type="time"
+              value={customStartTime}
+              onChange={(e) => {
+                setCustomStartTime(e.target.value);
+                if (e.target.value) {
+                  setValues(v => ({ ...v, startTime: e.target.value }));
+                }
+              }}
+              className={baseInput}
+              placeholder={PARTS.find(p => p.key === part)?.start}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+              {labels.search_custom_end_time || (currentLocale === 'fr' ? 'Heure de fin (optionnel)' : 'End time (optional)')}
+            </label>
+            <input
+              type="time"
+              value={customEndTime}
+              onChange={(e) => {
+                setCustomEndTime(e.target.value);
+                if (e.target.value) {
+                  setValues(v => ({ ...v, endTime: e.target.value }));
+                }
+              }}
+              className={baseInput}
+              placeholder={PARTS.find(p => p.key === part)?.end}
+            />
+          </div>
+          <p className="col-span-2 text-[10px] text-black/50 dark:text-white/50">
+            {labels.search_flexible_hours_note || (currentLocale === 'fr' 
+              ? 'Les horaires sont flexibles. Laissez vide pour utiliser les horaires par défaut.'
+              : 'Hours are flexible. Leave empty to use default hours.')}
+          </p>
+        </div>
+      )}
+      
+      {/* Date début */}
       <div>
         <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-          {labels.search_start_date} *
+          {labels.search_start_date}
         </label>
         <input
           type="text"
           readOnly
           onClick={openPicker}
           onFocus={openPicker}
-          placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part? 'Choisir le type d\'abord' : 'Sélectionner...')) : (!part? 'Choisir le type d\'abord' : 'Sélectionner...')}
+          placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part? 'Choisir un créneau d\'abord' : 'Sélectionner...')) : (!part? 'Choisir un créneau' : 'Sélectionner...')}
           className={baseInput + ' ' + ((!part || (needsCity && !values.city.trim()))? 'opacity-50 cursor-not-allowed':'cursor-pointer')}
           value={values.startDate}
           disabled={!part || (needsCity && !values.city.trim())}
         />
         {dateHint && !values.startDate && <p className="mt-1 text-[10px] text-red-600">Choisis une date.</p>}
       </div>
-      
-      {/* ÉTAPE 2: Date fin (multi-jours seulement si FULL) */}
+      {/* Date fin (multi-jours seulement si FULL) */}
       <div>
         <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
           {labels.search_end_date}
@@ -494,8 +525,7 @@ export default function SearchBar({
           disabled={!part || (needsCity && !values.city.trim()) || (part !== "FULL" && part !== "SUNSET")}
         />
       </div>
-      
-      {/* Passagers (caché en mode expérience) - aligné avec les autres champs */}
+      {/* Passagers (caché en mode expérience) */}
       {!hidePassengers && mode!=='experience' && (
         <div>
           <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
@@ -518,110 +548,6 @@ export default function SearchBar({
             }}
             placeholder="1"
           />
-        </div>
-      )}
-      
-      {/* ÉTAPE 3: Horaires (uniquement si type et date sélectionnés, par pas de 15 minutes) */}
-      {part && values.startDate && PARTS.find(p => p.key === part)?.flexible && (
-        <div className="col-span-full grid grid-cols-2 gap-3 pt-2 border-t border-black/10">
-          <div>
-            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-              {labels.search_custom_start_time || (currentLocale === 'fr' ? 'Heure de début' : 'Start time')}
-            </label>
-            <select
-              value={customStartTime || PARTS.find(p => p.key === part)?.start || '08:00'}
-              onChange={(e) => {
-                setCustomStartTime(e.target.value);
-                setValues(v => ({ ...v, startTime: e.target.value }));
-              }}
-              className={baseInput}
-            >
-              {(() => {
-                const partDef = PARTS.find(p => p.key === part);
-                if (!partDef) return null;
-                const startHour = parseInt(partDef.start.split(':')[0]);
-                const endHour = parseInt(partDef.end.split(':')[0]);
-                const times: string[] = [];
-                // Générer les horaires par pas de 15 minutes
-                for (let h = startHour; h <= endHour; h++) {
-                  for (let m = 0; m < 60; m += 15) {
-                    if (h === endHour && m > parseInt(partDef.end.split(':')[1])) break;
-                    const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                    times.push(timeStr);
-                  }
-                }
-                return times.map(time => (
-                  <option key={time} value={time}>{time}</option>
-                ));
-              })()}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-              {labels.search_custom_end_time || (currentLocale === 'fr' ? 'Heure de fin' : 'End time')}
-            </label>
-            <select
-              value={customEndTime || PARTS.find(p => p.key === part)?.end || '18:00'}
-              onChange={(e) => {
-                setCustomEndTime(e.target.value);
-                setValues(v => ({ ...v, endTime: e.target.value }));
-              }}
-              className={baseInput}
-            >
-              {(() => {
-                const partDef = PARTS.find(p => p.key === part);
-                if (!partDef) return null;
-                
-                // Récupérer l'heure de début sélectionnée (ou la valeur par défaut)
-                const selectedStartTime = customStartTime || partDef.start;
-                const [startH, startM] = selectedStartTime.split(':').map(Number);
-                const startMinutes = startH * 60 + startM;
-                
-                // Calculer la durée attendue en minutes selon le créneau
-                let expectedDurationMinutes = 480; // 8h par défaut (FULL)
-                if (partDef.key === 'AM' || partDef.key === 'PM') {
-                  expectedDurationMinutes = 240; // 4h
-                } else if (partDef.key === 'SUNSET') {
-                  expectedDurationMinutes = 120; // 2h
-                }
-                
-                // Calculer l'heure de fin attendue
-                const expectedEndMinutes = startMinutes + expectedDurationMinutes;
-                const expectedEndH = Math.floor(expectedEndMinutes / 60);
-                const expectedEndM = expectedEndMinutes % 60;
-                const expectedEndTime = `${String(expectedEndH).padStart(2, '0')}:${String(expectedEndM).padStart(2, '0')}`;
-                
-                // Générer les options autour de l'heure de fin attendue (± 30 minutes pour permettre une petite flexibilité)
-                const times: string[] = [];
-                const minEndMinutes = expectedEndMinutes - 30; // -30min
-                const maxEndMinutes = expectedEndMinutes + 30; // +30min
-                
-                for (let minutes = minEndMinutes; minutes <= maxEndMinutes; minutes += 15) {
-                  if (minutes <= startMinutes) continue; // L'heure de fin doit être après l'heure de début
-                  const h = Math.floor(minutes / 60);
-                  const m = minutes % 60;
-                  if (h > 23) break; // Ne pas dépasser 23:59
-                  const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                  times.push(timeStr);
-                }
-                
-                // Si l'heure de fin attendue n'est pas dans la liste, l'ajouter
-                if (!times.includes(expectedEndTime)) {
-                  times.push(expectedEndTime);
-                  times.sort();
-                }
-                
-                return times.map(time => (
-                  <option key={time} value={time}>{time}</option>
-                ));
-              })()}
-            </select>
-          </div>
-          <p className="col-span-2 text-[10px] text-black/50 dark:text-white/50">
-            {labels.search_flexible_hours_note || (currentLocale === 'fr' 
-              ? 'Horaires flexibles par pas de 15 minutes. Les horaires par défaut sont pré-sélectionnés.'
-              : 'Flexible hours in 15-minute increments. Default hours are pre-selected.')}
-          </p>
         </div>
       )}
       
@@ -879,8 +805,6 @@ export default function SearchBar({
                 const isEnd = !!c.date && values.endDate && c.date===values.endDate;
                 const stats:any = c.stats;
                 const past = !!c.date && c.date < todayStr; // passé
-                const isReservationStart = !!c.date && reservationStartDates.has(c.date);
-                const isReservationEnd = !!c.date && reservationEndDates.has(c.date);
                 let clickable = false;
                 if (c.date && !past) {
                   if (!stats && !tempStart) {
@@ -911,9 +835,6 @@ export default function SearchBar({
                 let bgClass = 'text-white/30';
                 if (past) {
                   bgClass = ' bg-white/5 text-white/30 line-through';
-                } else if (isReservationStart || isReservationEnd) {
-                  // Dates de début ou de fin de réservation en rouge
-                  bgClass = ' bg-red-500/30 border-2 border-red-500 text-red-200 font-bold';
                 } else if (unavailable) {
                   bgClass = ' bg-red-400/15 border border-red-400/40 text-red-200';
                 } else if (stats) {

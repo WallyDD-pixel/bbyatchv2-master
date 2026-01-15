@@ -2,9 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { createRedirectUrl } from '@/lib/redirect';
-import { uploadMultipleToSupabase } from '@/lib/storage';
-import { revalidatePath } from 'next/cache';
 
 export async function POST(req: Request){
   const session = await getServerSession(auth as any) as any;
@@ -27,12 +24,7 @@ export async function POST(req: Request){
     if(keepPhotosRaw){
       try { const parsed = JSON.parse(keepPhotosRaw); if(Array.isArray(parsed)) kept = parsed.filter(p=> typeof p==='string'); } catch {}
     }
-    // Si keepPhotos est envoyé (même vide), on utilise cette liste, sinon on garde toutes les photos existantes
     let basePhotos = kept !== null ? kept.filter(p=> existingPhotos.includes(p)) : existingPhotos;
-    console.log('📋 API - keepPhotos reçu:', keepPhotosRaw);
-    console.log('📋 API - kept parsé:', kept);
-    console.log('📋 API - existingPhotos:', existingPhotos);
-    console.log('📋 API - basePhotos final:', basePhotos);
 
     // mainImageChoice éventuel
     const mainChoice = String(data.get('mainImageChoice')||'').trim();
@@ -46,18 +38,21 @@ export async function POST(req: Request){
       }
     }
 
-    // Upload nouvelles images vers Supabase Storage
+    // Upload nouvelles images
     const imageFiles = data.getAll('images') as File[];
     const newUrls: string[] = [];
     if(imageFiles && imageFiles.length){
-      try {
-        const validFiles = imageFiles.filter(file => (file as any).arrayBuffer);
-        if(validFiles.length > 0){
-          const urls = await uploadMultipleToSupabase(validFiles, 'used-boats');
-          newUrls.push(...urls);
-        }
-      } catch(e){
-        console.error('Error uploading to Supabase Storage:', e);
+      const fs = await import('fs');
+      const path = await import('path');
+      const uploadsDir = path.join(process.cwd(),'public','uploads');
+      if(!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir,{ recursive:true });
+      for(const file of imageFiles){
+        if(!(file as any).arrayBuffer) continue;
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const ext = (file.name.split('.').pop()||'jpg').toLowerCase();
+        const fname = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+        fs.writeFileSync(path.join(uploadsDir,fname), buffer);
+        newUrls.push(`/uploads/${fname}`);
       }
     }
 
@@ -133,13 +128,8 @@ export async function POST(req: Request){
     };
 
     await (prisma as any).usedBoat.update({ where:{ id }, data: update });
-    
-    // Invalider le cache pour cette page et la liste
-    revalidatePath(`/admin/used-boats/${id}`);
-    revalidatePath('/admin/used-boats');
-    
-    const redirectUrl = createRedirectUrl(`/admin/used-boats/${id}?updated=1`, req);
-    return NextResponse.redirect(redirectUrl, 303);
+    const redirectUrl = new URL(`/admin/used-boats/${id}?updated=1`, req.url);
+    return NextResponse.redirect(redirectUrl);
   } catch(e:any){
     console.error(e);
     return NextResponse.json({ error:'server_error', details:e?.message },{ status:500 });

@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -17,8 +17,6 @@ model Experience {
   titleEn   String
   descFr    String
   descEn    String
-  additionalTextFr String? // Texte supplémentaire affiché sur la page d'expérience (FR)
-  additionalTextEn String? // Texte supplémentaire affiché sur la page d'expérience (EN)
   timeFr    String?
   timeEn    String?
   imageUrl  String?
@@ -101,15 +99,6 @@ model Settings {
   usedSaleTextEn        String?
   // Paramètres généraux
   defaultSkipperPrice   Int?     @default(350) // Prix par défaut du skipper/jour
-  // SEO & Tracking
-  facebookPixelId       String?  // ID du Facebook Pixel / Meta Pixel
-  googleAnalyticsId     String?  // ID Google Analytics (GA4)
-  googleTagManagerId    String?  // ID Google Tag Manager
-  metaTitle             String?  // Titre meta par défaut
-  metaDescription       String?  // Description meta par défaut
-  metaKeywords          String?  // Mots-clés meta
-  ogImage               String?  // Image Open Graph
-  siteUrl               String?  // URL de base du site
 }
 
 model NavbarItem {
@@ -160,7 +149,7 @@ model Boat {
   avantagesEn       String?  // Points forts du bateau (EN)
   optionsInclusesFr String?  // Options incluses dans le prix (FR)
   optionsInclusesEn String?  // Options incluses dans le prix (EN)
-  skipperRequired   Boolean  @default(true) // Skipper obligatoire (par défaut)
+  skipperRequired   Boolean  @default(false) // Skipper obligatoire
   skipperPrice      Int?     // Prix du skipper (350€/jour par défaut)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -183,16 +172,11 @@ model GalleryImage {
 
 model InfoCard {
   id        Int      @id @default(autoincrement())
-  imageUrl  String?
+  imageUrl  String
   titleFr   String
   titleEn   String
   descFr    String?
   descEn    String?
-  contentFr String?  // Texte détaillé pour la page dédiée (FR)
-  contentEn String?  // Texte détaillé pour la page dédiée (EN)
-  ctaUrl    String?  // URL du CTA (lien vers une page externe ou interne)
-  ctaLabelFr String? // Label du bouton CTA (FR)
-  ctaLabelEn String? // Label du bouton CTA (EN)
   sort      Int?     @default(0)
   createdAt DateTime @default(now())
 }
