@@ -1,12 +1,12 @@
 // Prisma schema for BB YACHTS
-// SQLite for local dev; can switch to Postgres/MySQL later
+// PostgreSQL for production
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
