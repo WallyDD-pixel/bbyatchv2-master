@@ -45,20 +45,20 @@ export async function POST(req: Request) {
 
   // Gestion upload image "Pourquoi choisir" vers Supabase Storage
   let whyChooseImageUrl: string | undefined;
-  if (whyChooseImageFile && (whyChooseImageFile as any).arrayBuffer) {
+  if (whyChooseImageFile && whyChooseImageFile instanceof File && whyChooseImageFile.size > 0) {
     try {
-      const name = (whyChooseImageFile as any).name || '';
+      const name = whyChooseImageFile.name || '';
       const ext = name.split('.').pop()?.toLowerCase() || '';
-      const mime = (whyChooseImageFile as any).type || '';
+      const mime = whyChooseImageFile.type || '';
       const allowedExt = new Set(['jpg','jpeg','png','webp','gif','avif']);
-      if (allowedExt.has(ext) || mime.startsWith('image/')) {
+      if ((ext && allowedExt.has(ext)) || mime.startsWith('image/')) {
         const result = await uploadToSupabase(whyChooseImageFile, 'homepage');
         if (result) {
           whyChooseImageUrl = result.url;
         }
       }
-    } catch (e) {
-      console.error('Error uploading whyChoose image to Supabase Storage:', e);
+    } catch (e: any) {
+      console.error('Error uploading whyChoose image to Supabase Storage:', e?.message || e);
       // on ignore l'erreur d'upload, pas bloquant
     }
   }
@@ -71,11 +71,11 @@ export async function POST(req: Request) {
     // Multi-images si présentes
     if (Array.isArray(mainSliderImagesFiles) && mainSliderImagesFiles.length > 0) {
       const validFiles = mainSliderImagesFiles.filter(file => {
-        if (!file || !(file as any).arrayBuffer) return false;
-        const name = (file as any).name || '';
+        if (!file || !(file instanceof File) || file.size === 0) return false;
+        const name = file.name || '';
         const ext = name.split('.').pop()?.toLowerCase() || '';
-        const mime = (file as any).type || '';
-        return allowedExt.has(ext) || mime.startsWith('image/');
+        const mime = file.type || '';
+        return (ext && allowedExt.has(ext)) || mime.startsWith('image/');
       });
       
       if (validFiles.length > 0) {
@@ -88,11 +88,11 @@ export async function POST(req: Request) {
     }
 
     // Legacy: un seul fichier si pas de multi fourni
-    if (!mainSliderImageUrl && mainSliderImageFile && (mainSliderImageFile as any).arrayBuffer) {
-      const name = (mainSliderImageFile as any).name || '';
+    if (!mainSliderImageUrl && mainSliderImageFile && mainSliderImageFile instanceof File && mainSliderImageFile.size > 0) {
+      const name = mainSliderImageFile.name || '';
       const ext = name.split('.').pop()?.toLowerCase() || '';
-      const mime = (mainSliderImageFile as any).type || '';
-      if (allowedExt.has(ext) || mime.startsWith('image/')) {
+      const mime = mainSliderImageFile.type || '';
+      if ((ext && allowedExt.has(ext)) || mime.startsWith('image/')) {
         const result = await uploadMultipleToSupabase([mainSliderImageFile], 'homepage');
         if (result.length > 0) {
           mainSliderImageUrl = result[0];
@@ -100,21 +100,21 @@ export async function POST(req: Request) {
         }
       }
     }
-  } catch (e) {
-    console.error('Error uploading slider images to Supabase Storage:', e);
+  } catch (e: any) {
+    console.error('Error uploading slider images to Supabase Storage:', e?.message || e);
     // on ignore l'erreur d'upload, pas bloquant
   }
 
   // Concaténer avec la liste existante si on a uploadé quelque chose
   let dataUpdate: any = {};
   
-  // Ne mettre à jour que les champs fournis (pas undefined)
-  if (mainSliderTitle !== undefined && mainSliderTitle !== null) dataUpdate.mainSliderTitle = mainSliderTitle;
-  if (mainSliderSubtitle !== undefined && mainSliderSubtitle !== null) dataUpdate.mainSliderSubtitle = mainSliderSubtitle;
-  if (mainSliderText !== undefined && mainSliderText !== null) dataUpdate.mainSliderText = mainSliderText;
-  if (aboutUsTitle !== undefined && aboutUsTitle !== null) dataUpdate.aboutUsTitle = aboutUsTitle;
-  if (aboutUsSubtitle !== undefined && aboutUsSubtitle !== null) dataUpdate.aboutUsSubtitle = aboutUsSubtitle;
-  if (aboutUsText !== undefined && aboutUsText !== null) dataUpdate.aboutUsText = aboutUsText;
+  // Toujours mettre à jour les champs texte (même si vides, pour permettre la suppression)
+  dataUpdate.mainSliderTitle = mainSliderTitle || null;
+  dataUpdate.mainSliderSubtitle = mainSliderSubtitle || null;
+  dataUpdate.mainSliderText = mainSliderText || null;
+  dataUpdate.aboutUsTitle = aboutUsTitle || null;
+  dataUpdate.aboutUsSubtitle = aboutUsSubtitle || null;
+  dataUpdate.aboutUsText = aboutUsText || null;
 
   // Ajouter l'URL de l'image "Pourquoi choisir" si uploadée
   if (whyChooseImageUrl) {
@@ -159,15 +159,23 @@ export async function POST(req: Request) {
     const redirectUrl = createRedirectUrl('/admin/homepage-settings?success=1', req);
     return NextResponse.redirect(redirectUrl, 303);
   } catch (e: any) {
-    console.error('Error updating homepage settings:', e);
-    console.error('Error stack:', e?.stack);
+    console.error('=== Error updating homepage settings ===');
+    console.error('Error type:', typeof e);
     console.error('Error message:', e?.message);
+    console.error('Error stack:', e?.stack);
+    console.error('Error full:', JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
     
-    // Retourner une réponse JSON avec le détail de l'erreur pour le développement
+    // Retourner une réponse JSON avec le détail de l'erreur
+    const errorMessage = e?.message || String(e) || 'Erreur inconnue lors de la sauvegarde';
     return NextResponse.json(
       { 
         error: 'Erreur lors de la sauvegarde',
-        details: process.env.NODE_ENV === 'development' ? e?.message : undefined
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? {
+          message: e?.message,
+          stack: e?.stack,
+          name: e?.name
+        } : undefined
       },
       { status: 500 }
     );
