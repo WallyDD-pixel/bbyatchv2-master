@@ -3,6 +3,119 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient() as any;
 
 async function main() {
+  // Page Conditions & Paiement (Base page for booking conditions)
+  const basePage = await (prisma as any).legalPage.upsert({
+    where: { slug: 'conditions-paiement-location' },
+    update: {},
+    create: {
+      slug: 'conditions-paiement-location',
+      titleFr: 'Conditions & Paiement',
+      titleEn: 'Charter & Payment Terms',
+      introFr: 'Toutes les informations relatives aux conditions de réservation, de paiement, d\'annulation, de carburant et de dépôt de garantie.',
+      introEn: 'All information regarding booking conditions, payment, cancellation, fuel and security deposit.',
+      contentFr: `## Informations générales
+Merci de lire attentivement ces conditions avant de confirmer votre réservation. Les présentes conditions s'appliquent à toutes les locations de bateaux et d'expériences proposées par BB YACHTS.
+
+**Contact :** charter@bb-yachts.com | 06 09 17 62 82`,
+      contentEn: `## General Information
+Please read these terms carefully before confirming your booking. These conditions apply to all boat and experience rentals offered by BB YACHTS.
+
+**Contact :** charter@bb-yachts.com | 06 09 17 62 82`,
+      cancellationFr: `## Politique d'annulation
+
+**Annulation jusqu'à 14 jours avant la date de location :**
+- Remboursement à 100% du montant payé
+- Frais de réservation remboursés
+
+**Annulation entre 14 et 7 jours avant :**
+- 50% du montant payé remboursé
+- Frais de réservation non remboursables
+
+**Annulation moins de 7 jours avant :**
+- Aucun remboursement
+- Le dépôt et les frais sont conservés
+
+En cas d'annulation pour cause de mauvais temps (décidé par BB YACHTS), un report ou un remboursement intégral sera proposé.`,
+      cancellationEn: `## Cancellation Policy
+
+**Cancellation up to 14 days before the rental date:**
+- 100% refund of the amount paid
+- Booking fees refunded
+
+**Cancellation between 14 and 7 days before:**
+- 50% of the amount paid refunded
+- Booking fees non-refundable
+
+**Cancellation less than 7 days before:**
+- No refund
+- Deposit and fees are retained
+
+In case of cancellation due to bad weather (decided by BB YACHTS), a postponement or full refund will be offered.`,
+      paymentFr: `## Modalités de paiement
+
+**À la réservation :**
+- Acompte de 30% du montant total requis
+- Paiement par carte bancaire ou virement
+
+**48 heures avant le départ :**
+- Solde de 70% à régler
+- Paiement par carte bancaire ou virement
+
+**Moyens de paiement acceptés :**
+- Carte bancaire (Visa, Mastercard)
+- Virement bancaire
+- Chèque (uniquement pour les réservations effectuées plus de 30 jours à l'avance)`,
+      paymentEn: `## Payment Modalities
+
+**At booking:**
+- Deposit of 30% of the total amount required
+- Payment by credit card or bank transfer
+
+**48 hours before departure:**
+- Balance of 70% to be paid
+- Payment by credit card or bank transfer
+
+**Accepted payment methods:**
+- Credit card (Visa, Mastercard)
+- Bank transfer
+- Check (only for bookings made more than 30 days in advance)`,
+      fuelDepositFr: `## Carburant & Dépôt de garantie
+
+**Carburant :**
+Le carburant est inclus selon le package choisi :
+- Package demi-journée : carburant pour 4 heures inclus
+- Package journée complète : carburant pour 8 heures inclus
+- Package sunset : carburant pour 2 heures inclus
+
+Tout carburant supplémentaire sera facturé au prix du marché.
+
+**Dépôt de garantie :**
+Un dépôt de garantie est requis pour chaque location :
+- Montant variable selon le bateau (entre 1000€ et 5000€)
+- Conservé en pré-autorisation sur votre carte bancaire
+- Libéré dans les 7 jours suivant le retour, sous réserve d'absence de dommages
+
+En cas de dommages, le montant sera débité pour couvrir les réparations.`,
+      fuelDepositEn: `## Fuel & Security Deposit
+
+**Fuel:**
+Fuel is included according to the chosen package:
+- Half-day package: fuel for 4 hours included
+- Full-day package: fuel for 8 hours included
+- Sunset package: fuel for 2 hours included
+
+Any additional fuel will be charged at market price.
+
+**Security Deposit:**
+A security deposit is required for each rental:
+- Variable amount depending on the boat (between €1,000 and €5,000)
+- Held as a pre-authorization on your credit card
+- Released within 7 days of return, subject to no damage
+
+In case of damage, the amount will be debited to cover repairs.`,
+    },
+  });
+
   // Page CGU / Mentions (Terms)
   const termsPage = await (prisma as any).legalPage.upsert({
     where: { slug: 'terms' },
@@ -159,17 +272,20 @@ We implement appropriate technical and organizational measures to protect your p
   await (prisma as any).settings.upsert({
     where: { id: 1 },
     update: {
+      legalBaseSlug: 'conditions-paiement-location',
       legalTermsSlug: 'terms',
       legalPrivacySlug: 'privacy',
     },
     create: {
       id: 1,
+      legalBaseSlug: 'conditions-paiement-location',
       legalTermsSlug: 'terms',
       legalPrivacySlug: 'privacy',
     },
   });
 
   console.log('✅ Pages légales créées avec succès !');
+  console.log('- Conditions & Paiement:', basePage.slug);
   console.log('- CGU / Mentions:', termsPage.slug);
   console.log('- Confidentialité:', privacyPage.slug);
 }

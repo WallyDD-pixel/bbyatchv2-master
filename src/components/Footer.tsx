@@ -66,9 +66,47 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
   const year = new Date().getFullYear();
   // Lire le mapping de liens légaux et réseaux sociaux depuis Settings
   const s = await prisma.settings.findFirst();
-  const baseSlug = (s as any)?.legalBaseSlug || "conditions-paiement-location";
-  const termsSlug = (s as any)?.legalTermsSlug || "terms";
-  const privacySlug = (s as any)?.legalPrivacySlug || "privacy";
+  
+  // Récupérer les slugs depuis les pages légales existantes ou utiliser les Settings comme fallback
+  let baseSlug = (s as any)?.legalBaseSlug || "conditions-paiement-location";
+  let termsSlug = (s as any)?.legalTermsSlug || "terms";
+  let privacySlug = (s as any)?.legalPrivacySlug || "privacy";
+  
+  // Essayer de trouver les pages par slug ou par titre si les slugs des Settings ne fonctionnent pas
+  try {
+    const allPages = await (prisma as any).legalPage.findMany({
+      select: { slug: true, titleFr: true, titleEn: true }
+    });
+    
+    // Chercher la page "Conditions & Paiement" ou similaire
+    const conditionsPage = allPages.find((p: any) => 
+      p.slug === baseSlug || 
+      p.titleFr?.toLowerCase().includes('conditions') && p.titleFr?.toLowerCase().includes('paiement') ||
+      p.slug.includes('conditions') || p.slug.includes('paiement')
+    );
+    if (conditionsPage) baseSlug = conditionsPage.slug;
+    
+    // Chercher la page "CGU" ou "Mentions" ou "Terms"
+    const termsPage = allPages.find((p: any) => 
+      p.slug === termsSlug || 
+      p.titleFr?.toLowerCase().includes('cgu') || 
+      p.titleFr?.toLowerCase().includes('mentions') ||
+      p.slug === 'terms' || p.slug.includes('terms') || p.slug.includes('cgu')
+    );
+    if (termsPage) termsSlug = termsPage.slug;
+    
+    // Chercher la page "Confidentialité" ou "Privacy"
+    const privacyPage = allPages.find((p: any) => 
+      p.slug === privacySlug || 
+      p.titleFr?.toLowerCase().includes('confidentialité') || 
+      p.titleFr?.toLowerCase().includes('privacy') ||
+      p.slug === 'privacy' || p.slug.includes('privacy') || p.slug.includes('confidentialite')
+    );
+    if (privacyPage) privacySlug = privacyPage.slug;
+  } catch (e) {
+    // Si erreur, utiliser les valeurs par défaut
+    console.error('Erreur lors de la récupération des pages légales:', e);
+  }
   
   // URLs des réseaux sociaux depuis Settings
   const instagramUrl = (s as any)?.footerInstagram || null;
@@ -296,7 +334,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               <li>
                 <Link 
                   href={`/legal/${baseSlug}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
+                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'Conditions & Paiement':'Charter & Payment Terms'}
                 </Link>
@@ -304,7 +342,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               <li>
                 <Link 
                   href={`/legal/${termsSlug}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
+                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'CGU / Mentions':'Terms & Notices'}
                 </Link>
@@ -312,7 +350,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               <li>
                 <Link 
                   href={`/legal/${privacySlug}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
+                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'Confidentialité':'Privacy'}
                 </Link>
@@ -327,7 +365,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               <li>
                 <Link 
                   href={`/legal/${baseSlug}#annulation`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
+                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'Politique d\'annulation':'Cancellation Policy'}
                 </Link>
@@ -335,7 +373,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               <li>
                 <Link 
                   href={`/legal/${baseSlug}#paiement`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
+                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'Modalités de paiement':'Payment Modalities'}
                 </Link>
@@ -343,7 +381,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               <li>
                 <Link 
                   href={`/legal/${baseSlug}#carburant`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
+                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'Carburant & dépôt':'Fuel & Security Deposit'}
                 </Link>
@@ -358,7 +396,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               <li>
                 <Link 
                   href={`/contact${locale === 'en' ? '?lang=en' : ''}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
+                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'Contact':'Contact'}
                 </Link>
@@ -366,7 +404,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               <li>
                 <Link 
                   href={`/faq${locale === 'en' ? '?lang=en' : ''}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
+                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   FAQ
                 </Link>
@@ -391,19 +429,19 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
           <div className="flex items-center justify-center sm:justify-end gap-6">
             <Link 
               href={`/legal/${termsSlug}`} 
-              className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
+              className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer"
             >
               {locale === "fr" ? "Conditions" : "Terms"}
             </Link>
             <Link 
               href={`/legal/${privacySlug}`} 
-              className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
+              className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer"
             >
               {locale === "fr" ? "Confidentialité" : "Privacy"}
             </Link>
             <Link 
               href={`/legal/${privacySlug}#cookies`} 
-              className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
+              className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer"
             >
               {locale === "fr" ? "Cookies" : "Cookies"}
             </Link>
