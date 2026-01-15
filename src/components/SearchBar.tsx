@@ -22,10 +22,10 @@ export type SearchValues = {
 type City = { id: string; name: string };
 
 // Remplacement: PARTS ne dépend plus de labels (évite ReferenceError)
-const PARTS: { key: "FULL" | "AM" | "PM" | "SUNSET"; start: string; end: string; duration?: string; flexible?: boolean }[] = [
+// Simplifié : Journée complète et Demi-journée (plus de distinction AM/PM)
+const PARTS: { key: "FULL" | "HALF" | "SUNSET"; start: string; end: string; duration?: string; flexible?: boolean }[] = [
   { key: "FULL", start: "08:00", end: "18:00", duration: "8h", flexible: true },
-  { key: "AM", start: "08:00", end: "12:00", duration: "4h", flexible: true },
-  { key: "PM", start: "13:00", end: "18:00", duration: "4h", flexible: true },
+  { key: "HALF", start: "09:00", end: "13:00", duration: "4h", flexible: true }, // Demi-journée flexible
   { key: "SUNSET", start: "20:00", end: "22:00", duration: "2h", flexible: true },
 ];
 
@@ -99,7 +99,7 @@ export default function SearchBar({
     endTime: '18:00',
     passengers: 2,
   });
-  const [part, setPart] = useState<"FULL" | "AM" | "PM" | "SUNSET" | null>(partFixed || null);
+  const [part, setPart] = useState<"FULL" | "HALF" | "SUNSET" | null>(partFixed || null);
   const [passengersField, setPassengersField] = useState('2');
   const [otherCityNotice, setOtherCityNotice] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,6 +170,7 @@ export default function SearchBar({
             if(!map[d]) map[d] = { date:d, full:0, amOnly:0, pmOnly:0 };
             if(s.status==='available'){
               if(s.part==='FULL') map[d].full = 1; else if(s.part==='AM') { if(map[d].full===0) map[d].amOnly = 1; } else if(s.part==='PM'){ if(map[d].full===0) map[d].pmOnly = 1; }
+              // Note: HALF utilise AM ou PM (géré dans la logique de disponibilité)
             }
         }
         const days = Object.values(map);
@@ -215,17 +216,24 @@ export default function SearchBar({
   const todayObj = new Date();
   const isCurrentMonth = calMonth.y===todayObj.getFullYear() && calMonth.m===todayObj.getMonth();
 
-  const applyPart = (p: "FULL" | "AM" | "PM" | "SUNSET") => {
+  const applyPart = (p: "FULL" | "HALF" | "SUNSET") => {
     const def = PARTS.find((x) => x.key === p)!;
+    let endTime = customEndTime || def.end;
+    // Pour HALF, calculer automatiquement l'heure de fin si heure de début est définie (durée max 4h)
+    if (p === "HALF" && customStartTime) {
+      const [startHour, startMin] = customStartTime.split(':').map(Number);
+      const endHour = (startHour + 4) % 24;
+      endTime = `${String(endHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`;
+    }
     setValues((v) => ({
       ...v,
       startTime: customStartTime || def.start,
-      endTime: customEndTime || def.end,
+      endTime: endTime,
       endDate: (p === "FULL" || p === "SUNSET") ? v.endDate : v.startDate,
     }));
     setPart(p);
     setTempStart(null);
-    // Réinitialiser les horaires personnalisés si on change de créneau
+    // Réinitialiser les horaires personnalisés si on change de créneau non flexible
     if (!def.flexible) {
       setCustomStartTime('');
       setCustomEndTime('');
@@ -236,7 +244,7 @@ export default function SearchBar({
     setValues((v) => {
       const next: any = { ...v, [key]: val };
       if (key === "startDate" && part && part !== "FULL" && part !== "SUNSET") {
-        next.endDate = val; // impose même jour pour AM/PM
+        next.endDate = val; // impose même jour pour HALF
       }
       return next;
     });
@@ -434,9 +442,8 @@ export default function SearchBar({
             <option value="" disabled>{labels.search_part || 'Créneau'}...</option>
             {PARTS.map((p) => {
               let lbl = '';
-              if (p.key === 'FULL') lbl = labels.search_part_full || 'Journée entière (8h)';
-              else if (p.key === 'AM') lbl = labels.search_part_am || 'Matin (4h)';
-              else if (p.key === 'PM') lbl = labels.search_part_pm || 'Après-midi (4h)';
+              if (p.key === 'FULL') lbl = labels.search_part_full || 'Journée complète (8h)';
+              else if (p.key === 'HALF') lbl = labels.search_part_half || 'Demi-journée (4h)';
               else if (p.key === 'SUNSET') lbl = labels.search_part_sunset || 'Sunset (2h)';
               return <option key={p.key} value={p.key}>{lbl} {p.flexible ? '(horaires flexibles)' : ''}</option>;
             })}
@@ -444,20 +451,28 @@ export default function SearchBar({
         </div>
       )}
       
-      {/* Horaires personnalisés si créneau flexible et sélectionné */}
-      {part && PARTS.find(p => p.key === part)?.flexible && (
+      {/* Horaires personnalisés si créneau flexible et sélectionné (pas pour expériences avec horaires fixes) */}
+      {part && PARTS.find(p => p.key === part)?.flexible && !(mode === 'experience' && experienceSlug && partFixed === 'SUNSET') && (
         <div className="col-span-full grid grid-cols-2 gap-3 pt-2 border-t border-black/10">
           <div>
             <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-              {labels.search_custom_start_time || (currentLocale === 'fr' ? 'Heure de début (optionnel)' : 'Start time (optional)')}
+              {labels.search_custom_start_time || (currentLocale === 'fr' ? 'Heure de début' : 'Start time')}
             </label>
             <input
               type="time"
               value={customStartTime}
               onChange={(e) => {
-                setCustomStartTime(e.target.value);
-                if (e.target.value) {
-                  setValues(v => ({ ...v, startTime: e.target.value }));
+                const startTime = e.target.value;
+                setCustomStartTime(startTime);
+                if (startTime && part === 'HALF') {
+                  // Calculer automatiquement l'heure de fin (début + 4h)
+                  const [startHour, startMin] = startTime.split(':').map(Number);
+                  const endHour = (startHour + 4) % 24;
+                  const endTime = `${String(endHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`;
+                  setCustomEndTime(endTime);
+                  setValues(v => ({ ...v, startTime: startTime, endTime: endTime }));
+                } else if (startTime) {
+                  setValues(v => ({ ...v, startTime: startTime }));
                 }
               }}
               className={baseInput}
@@ -466,7 +481,7 @@ export default function SearchBar({
           </div>
           <div>
             <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-              {labels.search_custom_end_time || (currentLocale === 'fr' ? 'Heure de fin (optionnel)' : 'End time (optional)')}
+              {labels.search_custom_end_time || (currentLocale === 'fr' ? 'Heure de fin' : 'End time')}
             </label>
             <input
               type="time"
@@ -479,12 +494,17 @@ export default function SearchBar({
               }}
               className={baseInput}
               placeholder={PARTS.find(p => p.key === part)?.end}
+              disabled={part === 'HALF' && !!customStartTime}
             />
           </div>
           <p className="col-span-2 text-[10px] text-black/50 dark:text-white/50">
-            {labels.search_flexible_hours_note || (currentLocale === 'fr' 
-              ? 'Les horaires sont flexibles. Laissez vide pour utiliser les horaires par défaut.'
-              : 'Hours are flexible. Leave empty to use default hours.')}
+            {part === 'HALF' 
+              ? (labels.search_half_day_note || (currentLocale === 'fr' 
+                  ? 'Pour une demi-journée, choisissez votre heure de début. La durée sera de 4 heures (ex: 9h-13h, 10h-14h, etc.).'
+                  : 'For a half-day, choose your start time. Duration will be 4 hours (e.g., 9am-1pm, 10am-2pm, etc.).'))
+              : (labels.search_flexible_hours_note || (currentLocale === 'fr' 
+                  ? 'Les horaires sont flexibles. Laissez vide pour utiliser les horaires par défaut.'
+                  : 'Hours are flexible. Leave empty to use default hours.'))}
           </p>
         </div>
       )}
@@ -551,214 +571,7 @@ export default function SearchBar({
         </div>
       )}
       
-      {/* Champs supplémentaires pour la réservation (uniquement en mode boats) */}
-      {mode === 'boats' && values.startDate && (
-        <div className="col-span-full space-y-4 pt-4 border-t border-black/10">
-          <button
-            type="button"
-            onClick={() => setShowAdditionalFields(!showAdditionalFields)}
-            className="text-sm font-medium text-[var(--primary)] hover:underline flex items-center gap-2"
-          >
-            <span>{labels.search_additional_info || (currentLocale === 'fr' ? 'Informations complémentaires' : 'Additional information')}</span>
-            <span>{showAdditionalFields ? '▼' : '▶'}</span>
-          </button>
-          
-          {showAdditionalFields && (
-            <div className="space-y-4 pl-4 border-l-2 border-[var(--primary)]/20">
-              {/* Jeux d'eau */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-800 dark:text-white/85">
-                  {labels.search_water_toys || (currentLocale === 'fr' ? 'Jeux d\'eau' : 'Water Toys')}
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="waterToys"
-                      value="yes"
-                      checked={waterToys === 'yes'}
-                      onChange={(e) => setWaterToys(e.target.value as 'yes')}
-                      className="h-4 w-4 accent-[var(--primary)]"
-                    />
-                    <span className="text-sm">{labels.search_yes || (currentLocale === 'fr' ? 'Oui' : 'Yes')}</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="waterToys"
-                      value="no"
-                      checked={waterToys === 'no'}
-                      onChange={(e) => setWaterToys(e.target.value as 'no')}
-                      className="h-4 w-4 accent-[var(--primary)]"
-                    />
-                    <span className="text-sm">{labels.search_no || (currentLocale === 'fr' ? 'Non' : 'No')}</span>
-                  </label>
-                </div>
-                {waterToys === 'yes' && (
-                  <p className="text-xs text-black/60 dark:text-white/60 mt-2 leading-relaxed">
-                    {labels.search_water_toys_note || (currentLocale === 'fr' 
-                      ? 'Nous pouvons nous occuper de la réservation des jeux d\'eau mais le prix ne sera pas calculé avec. Merci de nous indiquer dans le champ commentaire le/les jeux souhaités '
-                      : 'We can handle the water toys reservation but the price will not be calculated with it. Please indicate in the comment field the desired toy(s) ')}
-                    <a 
-                      href={labels.search_water_toys_url || 'https://example.com/water-toys'} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-[var(--primary)] hover:underline font-medium"
-                    >
-                      ({labels.search_link || (currentLocale === 'fr' ? 'Lien' : 'Link')})
-                    </a>
-                  </p>
-                )}
-              </div>
-
-              {/* Nombre d'enfants */}
-              <div>
-                <label htmlFor="childrenCount" className="block text-sm font-medium text-slate-800 dark:text-white/85 mb-2">
-                  {labels.search_children_count || (currentLocale === 'fr' 
-                    ? 'Nombre d\'enfants à bord' 
-                    : 'Number of children on board')}
-                </label>
-                <input
-                  type="number"
-                  id="childrenCount"
-                  min="0"
-                  value={childrenCount}
-                  onChange={(e) => setChildrenCount(e.target.value.replace(/\D/g, ''))}
-                  className={baseInput}
-                  placeholder="0"
-                />
-                <p className="text-xs text-black/50 dark:text-white/50 mt-1">
-                  {labels.search_children_note || (currentLocale === 'fr' 
-                    ? 'Afin de prévoir les gilets de sauvetage adaptés'
-                    : 'To provide appropriate life jackets')}
-                </p>
-              </div>
-
-              {/* Besoin supplémentaire */}
-              <div>
-                <label htmlFor="specialNeeds" className="block text-sm font-medium text-slate-800 dark:text-white/85 mb-2">
-                  {labels.search_special_needs || (currentLocale === 'fr' 
-                    ? 'Besoin supplémentaire' 
-                    : 'Additional needs')}
-                </label>
-                <textarea
-                  id="specialNeeds"
-                  value={specialNeeds}
-                  onChange={(e) => setSpecialNeeds(e.target.value)}
-                  className={`${baseInput} min-h-[100px] resize-y`}
-                  placeholder={labels.search_special_needs_placeholder || (currentLocale === 'fr' 
-                    ? 'Si besoin particulier, merci de nous l\'indiquer ici...'
-                    : 'If you have any special needs, please let us know here...')}
-                />
-              </div>
-
-              {/* Excursion (si journée entière ou demi-journée) */}
-              {(part === 'FULL' || part === 'AM' || part === 'PM') && (
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={wantsExcursion}
-                      onChange={(e) => {
-                        setWantsExcursion(e.target.checked);
-                        if (!e.target.checked) {
-                          setSelectedExperience(null);
-                        }
-                      }}
-                      className="h-4 w-4 accent-[var(--primary)]"
-                    />
-                    <span className="text-sm font-medium text-slate-800 dark:text-white/85">
-                      {labels.search_wants_excursion || (currentLocale === 'fr' 
-                        ? 'Souhaitez-vous compléter avec une excursion ?'
-                        : 'Would you like to add an excursion?')}
-                    </span>
-                  </label>
-
-                  {/* Affichage des expériences disponibles */}
-                  {wantsExcursion && (
-                    <div className="ml-6 space-y-3">
-                      {loadingExperiences && (
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-white/70">
-                          <div className="w-4 h-4 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin"></div>
-                          {currentLocale === 'fr' ? 'Chargement des expériences...' : 'Loading experiences...'}
-                        </div>
-                      )}
-
-                      {!loadingExperiences && boatExperiences.length === 0 && (
-                        <div className="p-4 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-lg">ℹ️</span>
-                            <p className="text-sm font-medium text-slate-700 dark:text-white/80">
-                              {currentLocale === 'fr' 
-                                ? 'Aucune expérience associée'
-                                : 'No associated experiences'}
-                            </p>
-                          </div>
-                          <p className="text-xs text-slate-600 dark:text-white/70 leading-relaxed">
-                            {currentLocale === 'fr' 
-                              ? 'Ce bateau n\'a pas d\'expériences spécifiques associées. Vous pouvez néanmoins réserver le bateau seul ou consulter nos expériences générales sur la page principale.'
-                              : 'This boat has no specific associated experiences. You can still book the boat alone or check our general experiences on the main page.'}
-                          </p>
-                        </div>
-                      )}
-
-                      {!loadingExperiences && boatExperiences.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-medium text-slate-700 dark:text-white/80 mb-2">
-                            {currentLocale === 'fr' 
-                              ? 'Expériences disponibles :'
-                              : 'Available experiences:'}
-                          </p>
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {boatExperiences.map((exp) => (
-                              <label key={exp.id} className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-white/20 hover:border-[var(--primary)]/50 cursor-pointer transition-colors">
-                                <input
-                                  type="radio"
-                                  name="experience"
-                                  value={exp.id}
-                                  checked={selectedExperience === exp.id}
-                                  onChange={(e) => setSelectedExperience(Number(e.target.value))}
-                                  className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h4 className="text-sm font-medium text-slate-800 dark:text-white/90">
-                                      {currentLocale === 'fr' ? exp.titleFr : exp.titleEn}
-                                    </h4>
-                                    {exp.price && (
-                                      <span className="text-xs font-semibold text-[var(--primary)] bg-[var(--primary)]/10 px-2 py-0.5 rounded-full">
-                                        {exp.price}€
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-slate-600 dark:text-white/70 line-clamp-2">
-                                    {currentLocale === 'fr' ? exp.descFr : exp.descEn}
-                                  </p>
-                                  {(exp.timeFr || exp.timeEn) && (
-                                    <p className="text-xs text-slate-500 dark:text-white/60 mt-1">
-                                      ⏱️ {currentLocale === 'fr' ? exp.timeFr : exp.timeEn}
-                                    </p>
-                                  )}
-                                  {exp.hasFixedTimes && exp.fixedDepartureTime && (
-                                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                                      🕐 {currentLocale === 'fr' ? 'Horaires fixes' : 'Fixed schedule'}: {exp.fixedDepartureTime}
-                                      {exp.fixedReturnTime && ` - ${exp.fixedReturnTime}`}
-                                    </p>
-                                  )}
-                                </div>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Suppression du bouton "Informations complémentaires" - sera sur la page de réservation du bateau */}
       
       {/* Submit */}
       <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-6 flex justify-end pt-1">
@@ -819,18 +632,16 @@ export default function SearchBar({
                       const diff = Math.abs((bDate.getTime()-aDate.getTime())/86400000)+1;
                       clickable = diff <= 6 && anyAvail; // autoriser si au moins une demi-journée dispo
                     }
-                  } else if (part === 'AM') {
-                    clickable = !!(stats && (stats.full > 0 || stats.amOnly > 0));
-                  } else if (part === 'PM') {
-                    clickable = !!(stats && (stats.full > 0 || stats.pmOnly > 0));
+                  } else if (part === 'HALF') {
+                    // Demi-journée : disponible si FULL, AM ou PM existe
+                    clickable = !!(stats && (stats.full > 0 || stats.amOnly > 0 || stats.pmOnly > 0));
                   }
                 }
                 // Indisponible si jour futur mais pas clickable
                 let unavailable = false;
                 if (c.date && !past) {
                   if (part === 'FULL') unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
-                  else if (part === 'AM') unavailable = !(stats && (stats.full>0 || stats.amOnly>0));
-                  else if (part === 'PM') unavailable = !(stats && (stats.full>0 || stats.pmOnly>0));
+                  else if (part === 'HALF') unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
                 }
                 let bgClass = 'text-white/30';
                 if (past) {
@@ -841,12 +652,10 @@ export default function SearchBar({
                   if (part === 'FULL') {
                     if (stats.full>0) bgClass = ' bg-emerald-300/20 border border-emerald-300/50 text-emerald-200 font-semibold';
                     else if (stats.amOnly>0 || stats.pmOnly>0) bgClass = ' bg-amber-300/20 border border-amber-300/50 text-amber-200 font-semibold';
-                  } else if (part === 'AM') {
+                  } else if (part === 'HALF') {
+                    // Demi-journée : utiliser la même logique que FULL
                     if (stats.full>0) bgClass = ' bg-emerald-300/20 border border-emerald-300/50 text-emerald-200 font-semibold';
-                    else if (stats.amOnly>0) bgClass = ' bg-sky-300/20 border border-sky-300/50 text-sky-200 font-semibold';
-                  } else if (part === 'PM') {
-                    if (stats.full>0) bgClass = ' bg-emerald-300/20 border border-emerald-300/50 text-emerald-200 font-semibold';
-                    else if (stats.pmOnly>0) bgClass = ' bg-fuchsia-300/20 border border-fuchsia-300/50 text-fuchsia-200 font-semibold';
+                    else if (stats.amOnly>0 || stats.pmOnly>0) bgClass = ' bg-amber-300/20 border border-amber-300/50 text-amber-200 font-semibold';
                   }
                 } else if (part==='FULL' && tempStart && c.date) {
                   const aDate = new Date(tempStart+'T00:00:00');
@@ -865,14 +674,8 @@ export default function SearchBar({
                     onClick={()=>{ if(!c.date) return; if(!clickable) return; selectDay(c.date); }}
                   >
                     {c.label || ''}
-                    {stats && !past && !unavailable && (part==='FULL' || part==='SUNSET') && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0) && (
+                    {stats && !past && !unavailable && (part==='FULL' || part==='SUNSET' || part==='HALF') && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0) && (
                       <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-[#0f1f29]/90 border border-white/10 leading-none">{stats.full + stats.amOnly + stats.pmOnly}</span>
-                    )}
-                    {stats && !past && !unavailable && part==='AM' && clickable && (
-                      <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-[#0f1f29]/90 border border-white/10 leading-none">{stats.full + stats.amOnly}</span>
-                    )}
-                    {stats && !past && !unavailable && part==='PM' && clickable && (
-                      <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-[#0f1f29]/90 border border-white/10 leading-none">{stats.full + stats.pmOnly}</span>
                     )}
                     {!stats && c.date && !past && !unavailable && (
                       <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-black/65 text-white/80 leading-none">—</span>
@@ -885,16 +688,10 @@ export default function SearchBar({
               {part==='FULL' && (
                 <span className="px-2 py-1 rounded bg-emerald-300/20 border border-emerald-300/40 text-emerald-200 font-semibold">Journée complète</span>
               )}
-              {part==='AM' && (
+              {part==='HALF' && (
                 <>
                   <span className="px-2 py-1 rounded bg-emerald-300/20 border border-emerald-300/40 text-emerald-200 font-semibold">Full</span>
-                  <span className="px-2 py-1 rounded bg-sky-300/20 border border-sky-300/40 text-sky-200 font-semibold">AM seul</span>
-                </>
-              )}
-              {part==='PM' && (
-                <>
-                  <span className="px-2 py-1 rounded bg-emerald-300/20 border border-emerald-300/40 text-emerald-200 font-semibold">Full</span>
-                  <span className="px-2 py-1 rounded bg-fuchsia-300/20 border border-fuchsia-300/40 text-fuchsia-200 font-semibold">PM seul</span>
+                  <span className="px-2 py-1 rounded bg-amber-300/20 border border-amber-300/40 text-amber-200 font-semibold">Demi-journée (AM ou PM)</span>
                 </>
               )}
             </div>

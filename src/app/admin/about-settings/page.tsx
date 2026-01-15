@@ -100,9 +100,20 @@ export default function AdminAboutSettingsPage() {
     });
     existingImages.forEach(url => formData.append('existingImages', url));
     
-    // Ajouter les fichiers d'images
-    const imageInputs = e.currentTarget.querySelectorAll<HTMLInputElement>('input[type="file"]');
-    imageInputs.forEach((input, i) => {
+    // Ajouter les fichiers d'images spécifiques (Histoire et Équipe)
+    const historyImageInput = e.currentTarget.querySelector<HTMLInputElement>('input[name="aboutHistoryImageFile"]');
+    if (historyImageInput?.files && historyImageInput.files[0]) {
+      formData.append('aboutHistoryImageFile', historyImageInput.files[0]);
+    }
+    
+    const teamImageInput = e.currentTarget.querySelector<HTMLInputElement>('input[name="aboutTeamImageFile"]');
+    if (teamImageInput?.files && teamImageInput.files[0]) {
+      formData.append('aboutTeamImageFile', teamImageInput.files[0]);
+    }
+    
+    // Ajouter les autres fichiers d'images (galerie)
+    const imageInputs = e.currentTarget.querySelectorAll<HTMLInputElement>('input[type="file"]:not([name="aboutHistoryImageFile"]):not([name="aboutTeamImageFile"])');
+    imageInputs.forEach((input) => {
       if (input.files && input.files[0]) {
         formData.append('imageFiles', input.files[0]);
       }

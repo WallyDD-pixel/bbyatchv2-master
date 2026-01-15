@@ -9,6 +9,7 @@ import GallerySection from "@/components/GallerySection";
 import Footer from "@/components/Footer";
 import AboutUsSection from "@/components/AboutUsSection";
 import WhyChooseSection from "@/components/WhyChooseSection";
+import InfoCardsSection from "@/components/InfoCardsSection";
 import { prisma } from '@/lib/prisma';
 import { getLabelsWithSettings } from '@/lib/settings';
 
@@ -75,8 +76,9 @@ export default async function Home({
 
   {/* Section "Qui sommes-nous" dynamique supprimée, affichage AboutUsSection uniquement */}
 
-        {/* Sections réordonnées: Bateaux d'abord, puis expériences */}
+        {/* Sections réordonnées: Bateaux d'abord, puis avantages, puis expériences */}
         <BoatsSection locale={locale} t={t} />
+        <InfoCardsSection locale={locale} />
         <ExperiencesSection locale={locale} t={t} />
   {/* Section "Pourquoi choisir BB Service" retirée */}
   <AboutUsSection settings={settings} locale={locale} />

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { uploadMultipleToSupabase } from '@/lib/storage';
 
 export async function POST(req: Request){
   const session = await getServerSession(auth as any) as any;
@@ -38,21 +39,24 @@ export async function POST(req: Request){
       }
     }
 
-    // Upload nouvelles images
+    // Upload nouvelles images vers Supabase Storage
     const imageFiles = data.getAll('images') as File[];
     const newUrls: string[] = [];
     if(imageFiles && imageFiles.length){
-      const fs = await import('fs');
-      const path = await import('path');
-      const uploadsDir = path.join(process.cwd(),'public','uploads');
-      if(!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir,{ recursive:true });
-      for(const file of imageFiles){
-        if(!(file as any).arrayBuffer) continue;
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const ext = (file.name.split('.').pop()||'jpg').toLowerCase();
-        const fname = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-        fs.writeFileSync(path.join(uploadsDir,fname), buffer);
-        newUrls.push(`/uploads/${fname}`);
+      try {
+        const validFiles = imageFiles.filter(file => {
+          if (!file || !(file instanceof File) || file.size === 0) return false;
+          const mime = file.type || '';
+          return mime.startsWith('image/');
+        });
+        
+        if (validFiles.length > 0) {
+          const urls = await uploadMultipleToSupabase(validFiles, 'used-boats');
+          newUrls.push(...urls);
+        }
+      } catch (e: any) {
+        console.error('Error uploading images to Supabase Storage:', e?.message || e);
+        // Continue même si l'upload échoue
       }
     }
 
@@ -84,25 +88,24 @@ export async function POST(req: Request){
       }
     }
     
-    // Upload fichiers vidéo (si présents dans le formulaire)
+    // Upload fichiers vidéo vers Supabase Storage (si présents dans le formulaire)
     const videoFiles = data.getAll('videoFiles') as File[];
     if (videoFiles && videoFiles.length) {
-      const fs = await import('fs');
-      const path = await import('path');
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-      
-      for (const file of videoFiles) {
-        if (!file || (file as any).size === 0) continue;
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
-        const allowedExt = ['mp4', 'webm', 'ogg', 'mov'];
-        if (!allowedExt.includes(ext)) continue;
+      try {
+        const validVideos = videoFiles.filter(file => {
+          if (!file || !(file instanceof File) || file.size === 0) return false;
+          const mime = file.type || '';
+          const allowedMimes = ['video/mp4', 'video/webm', 'video/ogg', 'video/mov'];
+          return allowedMimes.includes(mime) || mime.startsWith('video/');
+        });
         
-        const fname = `video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const filepath = path.join(uploadsDir, fname);
-        fs.writeFileSync(filepath, buffer);
-        videoUrls.push(`/uploads/${fname}`);
+        if (validVideos.length > 0) {
+          const urls = await uploadMultipleToSupabase(validVideos, 'used-boats/videos');
+          videoUrls.push(...urls);
+        }
+      } catch (e: any) {
+        console.error('Error uploading videos to Supabase Storage:', e?.message || e);
+        // Continue même si l'upload échoue
       }
     }
 

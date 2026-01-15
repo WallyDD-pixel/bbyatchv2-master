@@ -84,45 +84,53 @@ export async function POST(req: Request) {
   }
 
   // Upload image Histoire
-  if (historyImageFile && historyImageFile.size > 0) {
+  if (historyImageFile && historyImageFile instanceof File && historyImageFile.size > 0) {
     try {
-      const mime = (historyImageFile as any).type;
+      const mime = historyImageFile.type || '';
       const allowedImages = ['image/jpeg','image/png','image/webp','image/gif','image/avif'];
-      if (allowedImages.includes(mime)) {
+      if (allowedImages.includes(mime) || mime.startsWith('image/')) {
         const urls = await uploadMultipleToSupabase([historyImageFile], 'about');
         if (urls.length > 0) {
           historyImageUrl = urls[0];
-          console.log('Uploaded history image to Supabase');
+          console.log('Uploaded history image to Supabase:', urls[0]);
         }
+      } else {
+        console.warn('Invalid image type for history image:', mime);
       }
-    } catch (e) {
-      console.error('Error uploading history image to Supabase Storage:', e);
+    } catch (e: any) {
+      console.error('Error uploading history image to Supabase Storage:', e?.message || e);
     }
   } else {
     // Conserver l'image existante si pas de nouveau fichier
-    const existingHistoryUrl = data.get('aboutHistoryImageUrl') as string | null;
-    if (existingHistoryUrl) historyImageUrl = existingHistoryUrl;
+    const existingHistoryUrl = (data.get('aboutHistoryImageUrl') as string | null)?.trim();
+    if (existingHistoryUrl && existingHistoryUrl !== 'null' && existingHistoryUrl !== '') {
+      historyImageUrl = existingHistoryUrl;
+    }
   }
 
   // Upload image Équipe
-  if (teamImageFile && teamImageFile.size > 0) {
+  if (teamImageFile && teamImageFile instanceof File && teamImageFile.size > 0) {
     try {
-      const mime = (teamImageFile as any).type;
+      const mime = teamImageFile.type || '';
       const allowedImages = ['image/jpeg','image/png','image/webp','image/gif','image/avif'];
-      if (allowedImages.includes(mime)) {
+      if (allowedImages.includes(mime) || mime.startsWith('image/')) {
         const urls = await uploadMultipleToSupabase([teamImageFile], 'about');
         if (urls.length > 0) {
           teamImageUrl = urls[0];
-          console.log('Uploaded team image to Supabase');
+          console.log('Uploaded team image to Supabase:', urls[0]);
         }
+      } else {
+        console.warn('Invalid image type for team image:', mime);
       }
-    } catch (e) {
-      console.error('Error uploading team image to Supabase Storage:', e);
+    } catch (e: any) {
+      console.error('Error uploading team image to Supabase Storage:', e?.message || e);
     }
   } else {
     // Conserver l'image existante si pas de nouveau fichier
-    const existingTeamUrl = data.get('aboutTeamImageUrl') as string | null;
-    if (existingTeamUrl) teamImageUrl = existingTeamUrl;
+    const existingTeamUrl = (data.get('aboutTeamImageUrl') as string | null)?.trim();
+    if (existingTeamUrl && existingTeamUrl !== 'null' && existingTeamUrl !== '') {
+      teamImageUrl = existingTeamUrl;
+    }
   }
 
   // Combiner les images existantes et les nouvelles

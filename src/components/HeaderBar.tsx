@@ -102,15 +102,10 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                 style={{ textDecoration: 'none' }}
               >
                 <span className="relative z-10 flex items-center gap-2">
-                  <span className="text-base opacity-80 group-hover:opacity-100 transition-opacity duration-300">{link.icon}</span>
                   <span className="font-medium">{locale === 'fr' ? link.labelFr : link.labelEn}</span>
                 </span>
-                {/* Effet de survol dégradé */}
-                <span className="absolute inset-0 bg-gradient-to-r from-[color:var(--primary)]/80 via-[color:var(--primary)] to-[color:var(--primary)]/80 opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-2xl scale-0 group-hover:scale-100" />
-                {/* Animation de bordure */}
-                <span className="absolute inset-0 rounded-2xl border border-[color:var(--primary)]/30 opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                {/* Effet de brillance */}
-                <span className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 -skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-700" />
+                {/* Pas d'effet de survol coloré - juste une légère ombre */}
+                <span className="absolute inset-0 bg-slate-100/50 dark:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-2xl" />
               </a>
             ))}
           </nav>

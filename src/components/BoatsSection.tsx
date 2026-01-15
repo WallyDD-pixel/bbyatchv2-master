@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { type Locale } from "@/i18n/messages";
+import { getServerSession } from "next-auth";
+import { auth } from "@/lib/auth";
 
 // Type minimal local pour éviter les any implicites tant que Prisma Client n'est pas rechargé par TS
 type Boat = {
@@ -14,10 +16,32 @@ type Boat = {
   pricePerDay: number;
   priceAm?: number | null;
   pricePm?: number | null;
+  priceAgencyPerDay?: number | null;
+  priceAgencyAm?: number | null;
+  priceAgencyPm?: number | null;
+  skipperRequired?: boolean | null;
   imageUrl?: string | null;
 };
 
 export default async function BoatsSection({ locale, t }: { locale: Locale; t: Record<string, string> }) {
+  // Vérifier si l'utilisateur est une agence
+  const session = await getServerSession(auth as any) as any;
+  let isAgency = false;
+  if (session?.user?.email) {
+    try {
+      const user = await prisma.user.findUnique({ 
+        where: { email: session.user.email }, 
+        select: { role: true } 
+      });
+      isAgency = user?.role === 'agency';
+    } catch {}
+  }
+
+  // Fonction pour calculer le prix agence (-20% sur la coque nue)
+  const calculateAgencyPrice = (publicPrice: number): number => {
+    return Math.round(publicPrice * 0.8);
+  };
+
   // Récup args recherche depuis URL (côté serveur)
   // On ne restreint pas par ville volontairement
   // NOTE: Les cookies ou searchParams ne sont pas accessibles côté serveur via next/navigation ici.
@@ -34,7 +58,17 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
 
   const where: any = { available: true };
   if (paxFilter) where.capacity = { gte: paxFilter };
-  const boats: Boat[] = await (prisma as any).boat.findMany({ where, orderBy: { id: "asc" }, select: { id:true, slug:true, name:true, city:true, capacity:true, enginePower:true, lengthM:true, pricePerDay:true, priceAm:true, pricePm:true, imageUrl:true } });
+  const boats: Boat[] = await (prisma as any).boat.findMany({ 
+    where, 
+    orderBy: { id: "asc" }, 
+    select: { 
+      id:true, slug:true, name:true, city:true, capacity:true, enginePower:true, lengthM:true, 
+      pricePerDay:true, priceAm:true, pricePm:true, 
+      priceAgencyPerDay:true, priceAgencyAm:true, priceAgencyPm:true,
+      skipperRequired:true,
+      imageUrl:true 
+    } 
+  });
 
   return (
     <section id="fleet" className="w-full max-w-6xl mx-auto mt-16">
@@ -47,10 +81,20 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
               <div className="absolute right-3 top-3 flex flex-col items-end gap-1">
                 {(() => {
                   // Calculer le prix à partir de (demi-journée)
-                  const priceFrom = b.priceAm || b.pricePm || Math.round(b.pricePerDay / 2);
+                  let priceFrom: number;
+                  if (isAgency) {
+                    // Prix agence : utiliser prix agence défini ou calculer (-20%)
+                    const agencyAm = b.priceAgencyAm ?? (b.priceAm ? calculateAgencyPrice(b.priceAm) : null);
+                    const agencyPm = b.priceAgencyPm ?? (b.pricePm ? calculateAgencyPrice(b.pricePm) : null);
+                    const agencyHalfDay = agencyAm || agencyPm || calculateAgencyPrice(Math.round(b.pricePerDay / 2));
+                    priceFrom = agencyHalfDay;
+                  } else {
+                    // Prix public
+                    priceFrom = b.priceAm || b.pricePm || Math.round(b.pricePerDay / 2);
+                  }
                   return (
                     <div className="px-4 py-1 rounded-full font-semibold bg-white/90 backdrop-blur border border-black/10 shadow text-[var(--primary)] text-sm">
-                      {locale === 'fr' ? 'À partir de' : 'From'} {priceFrom} €
+                      {locale === 'fr' ? (isAgency ? 'Prix agence' : 'À partir de') : (isAgency ? 'Agency price' : 'From')} {priceFrom} €
                     </div>
                   );
                 })()}
@@ -83,10 +127,18 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
               </div>
               {/* Informations obligatoires */}
               <div className="mt-4 pt-4 border-t border-black/10 space-y-2 text-[10px] text-black/60">
-                <div className="flex items-center justify-center gap-1">
-                  <span>⛵</span>
-                  <span>{locale === 'fr' ? 'Skipper obligatoire' : 'Skipper required'}</span>
-                </div>
+                {!isAgency && b.skipperRequired && (
+                  <div className="flex items-center justify-center gap-1">
+                    <span>⛵</span>
+                    <span>{locale === 'fr' ? 'Skipper obligatoire' : 'Skipper required'}</span>
+                  </div>
+                )}
+                {isAgency && b.skipperRequired && (
+                  <div className="flex items-center justify-center gap-1">
+                    <span>⛵</span>
+                    <span>{locale === 'fr' ? 'Skipper disponible si besoin' : 'Skipper available if needed'}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-center gap-1">
                   <span>⛽</span>
                   <span>{locale === 'fr' ? 'Carburant non inclus' : 'Fuel not included'}</span>

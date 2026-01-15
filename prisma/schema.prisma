@@ -167,8 +167,12 @@ model Boat {
 model GalleryImage {
   id        Int      @id @default(autoincrement())
   imageUrl  String
+  videoUrl  String?  // URL vidéo (optionnel, si pas d'image)
   titleFr   String?
   titleEn   String?
+  contentFr String?  // Texte détaillé (FR)
+  contentEn String?  // Texte détaillé (EN)
+  sort      Int?     @default(0) // Ordre d'affichage
   createdAt DateTime @default(now())
 }
 

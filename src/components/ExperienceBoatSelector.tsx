@@ -154,8 +154,8 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
                   search_city: 'Ville',
                   search_part: 'Créneau',
                   search_part_full: 'Journée',
-                  search_part_am: 'Matin',
-                  search_part_pm: 'Après-midi',
+                  search_part_half: locale==='fr'? 'Demi-journée':'Half-day',
+                  search_part_sunset: locale==='fr'? 'Sunset':'Sunset',
                   search_start_date: locale==='fr'? 'Date':'Date',
                   search_end_date: 'Fin',
                   search_passengers: 'Pax',
@@ -165,7 +165,8 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
                   search_hint_date_required: locale==='fr'? 'Date requise':'Date required',
                   search_help_pick_start_full: locale==='fr'? 'Choisis la date':'Pick the date',
                   search_help_pick_end_full: locale==='fr'? 'Choisis la date':'Pick date',
-                  search_help_pick_half: locale==='fr'? 'Choisis la date':'Pick date'
+                  search_help_pick_half: locale==='fr'? 'Choisis la date':'Pick date',
+                  search_half_day_note: locale==='fr'? 'Pour une demi-journée, choisissez votre heure de début. La durée sera de 4 heures.':'For a half-day, choose your start time. Duration will be 4 hours.'
                 }}
                 onSubmit={(v)=>{
                   // Sauvegarder la date sélectionnée et fermer le modal
@@ -179,7 +180,8 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
                 experienceSlug={experienceSlug}
                 hideCity
                 hidePassengers
-                partFixed="FULL"
+                partFixed={experience?.hasFixedTimes ? "SUNSET" : "FULL"}
+                locale={locale}
                 className="bg-transparent border-0 p-0 shadow-none ring-0"
               />
             </div>

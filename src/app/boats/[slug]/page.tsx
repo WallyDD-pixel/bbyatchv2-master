@@ -261,11 +261,20 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
             <section className='rounded-2xl border border-amber-200 bg-amber-50/50 p-6 shadow-sm'>
               <h2 className='text-lg font-semibold mb-3 text-amber-900'>{locale === 'fr' ? 'Informations importantes' : 'Important Information'}</h2>
               <div className='space-y-3 text-sm text-amber-900/80'>
-                <p className='leading-relaxed font-semibold'>
-                  {locale === 'fr' 
-                    ? `Skipper : Obligatoire à ${(boat as any).skipperPrice || 350}€/jour`
-                    : `Skipper: Required at ${(boat as any).skipperPrice || 350}€/day`}
-                </p>
+                {!isAgency && (boat as any).skipperRequired && (
+                  <p className='leading-relaxed font-semibold'>
+                    {locale === 'fr' 
+                      ? `Skipper : Obligatoire à ${(boat as any).skipperPrice || 350}€/jour`
+                      : `Skipper: Required at ${(boat as any).skipperPrice || 350}€/day`}
+                  </p>
+                )}
+                {isAgency && (boat as any).skipperRequired && (
+                  <p className='leading-relaxed'>
+                    {locale === 'fr' 
+                      ? `Besoin d'un skipper ? Vous avez le choix de prendre votre skipper ou celui de BB Yachts. Si notre skipper = ${(boat as any).skipperPrice || 350}€ HT/jour (sans TVA).`
+                      : `Need a skipper? You can choose your skipper or BB Yachts' skipper. If our skipper = ${(boat as any).skipperPrice || 350}€ HT/day (no VAT).`}
+                  </p>
+                )}
                 <p className='leading-relaxed'>
                   {locale === 'fr' 
                     ? 'Carburant non inclus dans le tarif, à régler en fonction de la consommation à la fin de la location.'
@@ -281,7 +290,10 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
             locale={locale}
             baseTotal={total}
             baseTotalLabel={totalLabel}
-            pricePerDay={boat.pricePerDay}
+            pricePerDay={isAgency 
+              ? (boat.priceAgencyPerDay ?? calculateAgencyPrice(boat.pricePerDay))
+              : boat.pricePerDay
+            }
             part={part as any}
             nbJours={nbJours}
             options={boatOptions}

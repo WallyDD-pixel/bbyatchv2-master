@@ -44,85 +44,118 @@ export async function POST(req: Request){
       return NextResponse.json({ error: 'halfday_range' }, { status: 400 });
     }
     
-    // Calcul du skipper (minimum 1 jour)
+    // Calcul du skipper
+    // Pour les agences : skipper seulement si explicitement demandé (needsSkipper)
+    // Pour les autres : skipper obligatoire si skipperRequired
     const skipperDays = (part==='FULL' || part==='SUNSET') ? Math.max(days, 1) : 1;
-    const skipperTotal = (boat?.skipperRequired && boat?.skipperPrice) ? boat.skipperPrice * skipperDays : 0;
-    const effectiveSkipperPrice = boat?.skipperRequired && boat?.skipperPrice ? boat.skipperPrice * skipperDays : 0;
+    let skipperTotal = 0;
+    if (userRole === 'agency') {
+      // Agence : skipper seulement si demandé explicitement
+      const needsSkipper = body.skipper === '1' || body.skipper === true || body.needsSkipper === true;
+      if (needsSkipper && boat?.skipperPrice) {
+        skipperTotal = boat.skipperPrice * skipperDays; // HT sans TVA pour agence
+      }
+    } else {
+      // Utilisateur normal : skipper obligatoire si requis
+      if (boat?.skipperRequired && boat?.skipperPrice) {
+        skipperTotal = boat.skipperPrice * skipperDays;
+      }
+    }
+    const effectiveSkipperPrice = skipperTotal;
 
     // Vérification dynamique de chevauchement (Option 1)
     // Conflit si plage de dates recouvre et si parties incompatibles (FULL avec tout, AM avec FULL ou AM, etc.)
-    const overlap = await prisma.reservation.findFirst({
-      where: {
-        boatId: boat.id,
-        status: { not: 'cancelled' },
-        startDate: { lte: e },
-        endDate: { gte: s },
-        OR: [
-          { part: 'FULL' },
-          { part: part },
-          ...((part === 'FULL' || part === 'SUNSET') ? [{ part: 'AM' }, { part: 'PM' }] : []),
-          { part: null }
-        ]
-      },
-      select: { id: true }
-    });
-    if(overlap){
-      return NextResponse.json({ error: 'slot_unavailable' }, { status: 409 });
+    // IMPORTANT: Pour les agences, on permet quand même la demande (sera examinée par l'admin)
+    // On vérifie uniquement pour les réservations directes (non-agence)
+    if(userRole !== 'agency') {
+      const overlap = await prisma.reservation.findFirst({
+        where: {
+          boatId: boat.id,
+          status: { not: 'cancelled' },
+          startDate: { lte: e },
+          endDate: { gte: s },
+          OR: [
+            { part: 'FULL' },
+            { part: part },
+            ...((part === 'FULL' || part === 'SUNSET') ? [{ part: 'AM' }, { part: 'PM' }] : []),
+            { part: null }
+          ]
+        },
+        select: { id: true }
+      });
+      if(overlap){
+        return NextResponse.json({ error: 'slot_unavailable' }, { status: 409 });
+      }
     }
 
     // Vérification de disponibilité pour tous les jours de la plage
-    if(part==='FULL' || part==='SUNSET'){
-      // Pour les réservations multi-jours, vérifier tous les jours
-      const requiredDays: Date[] = [];
-      let current = new Date(s);
-      while(current <= e){
-        requiredDays.push(new Date(current));
-        current = new Date(current.getTime() + 86400000);
-      }
-      
-      // Vérifier chaque jour
-      for(const day of requiredDays){
-        const daySlots = await prisma.availabilitySlot.findMany({ 
+    // IMPORTANT: Pour les agences, on saute cette vérification (demande sera examinée par l'admin)
+    if(userRole !== 'agency') {
+      if(part==='FULL' || part==='SUNSET'){
+        // Pour les réservations multi-jours, vérifier tous les jours
+        const requiredDays: Date[] = [];
+        let current = new Date(s);
+        while(current <= e){
+          requiredDays.push(new Date(current));
+          current = new Date(current.getTime() + 86400000);
+        }
+        
+        // Vérifier chaque jour
+        for(const day of requiredDays){
+          const daySlots = await prisma.availabilitySlot.findMany({ 
+            where: { 
+              boat: { slug: boatSlug }, 
+              date: { gte: day, lte: day }, 
+              status: 'available' 
+            }, 
+            select: { part: true } 
+          });
+          const partsSet = new Set(daySlots.map(s=>s.part));
+          const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
+          if(!hasFullEquivalent){
+            return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+          }
+        }
+      } else {
+        // Pour les demi-journées, vérifier seulement le jour de départ
+        const startSlots = await prisma.availabilitySlot.findMany({ 
           where: { 
             boat: { slug: boatSlug }, 
-            date: { gte: day, lte: day }, 
+            date: { gte: s, lte: s }, 
             status: 'available' 
           }, 
           select: { part: true } 
         });
-        const partsSet = new Set(daySlots.map(s=>s.part));
-        const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
-        if(!hasFullEquivalent){
+        const partsSet = new Set(startSlots.map(s=>s.part));
+        if(part==='AM' && !(partsSet.has('AM') || partsSet.has('FULL'))){
+          return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+        }
+        if(part==='PM' && !(partsSet.has('PM') || partsSet.has('FULL'))){
           return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
         }
       }
-    } else {
-      // Pour les demi-journées, vérifier seulement le jour de départ
-      const startSlots = await prisma.availabilitySlot.findMany({ 
-        where: { 
-          boat: { slug: boatSlug }, 
-          date: { gte: s, lte: s }, 
-          status: 'available' 
-        }, 
-        select: { part: true } 
-      });
-      const partsSet = new Set(startSlots.map(s=>s.part));
-      if(part==='AM' && !(partsSet.has('AM') || partsSet.has('FULL'))){
-        return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
-      }
-      if(part==='PM' && !(partsSet.has('PM') || partsSet.has('FULL'))){
-        return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
-      }
     }
     // Prix selon rôle (agence ou normal)
+    // Calcul du prix agence : prix public - 20% sur la coque nue (hors taxe)
+    const calculateAgencyPrice = (publicPrice: number): number => {
+      return Math.round(publicPrice * 0.8); // -20% sur la coque nue
+    };
+    
     const boatWithPrices = await (prisma as any).boat.findUnique({ where: { slug: boatSlug }, select: { pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true, priceAgencyPerDay:true, priceAgencyAm:true, priceAgencyPm:true, priceAgencySunset:true, options: { select:{ id:true, label:true, price:true } } } });
     let total: number|null = null;
     if(userRole === 'agency') {
-      // Prix agence
-      if(part==='FULL') total = (boatWithPrices?.priceAgencyPerDay ?? boatWithPrices?.pricePerDay) * days;
-      else if(part==='AM') total = boatWithPrices?.priceAgencyAm ?? boatWithPrices?.priceAm ?? null;
-      else if(part==='PM') total = boatWithPrices?.priceAgencyPm ?? boatWithPrices?.pricePm ?? null;
-      else if(part==='SUNSET') total = boatWithPrices?.priceAgencySunset ?? boatWithPrices?.priceSunset ?? null;
+      // Prix agence : utiliser prix agence défini ou calculer automatiquement (-20%)
+      if(part==='FULL') {
+        total = boatWithPrices?.priceAgencyPerDay 
+          ? boatWithPrices.priceAgencyPerDay * days 
+          : calculateAgencyPrice(boatWithPrices?.pricePerDay || 0) * days;
+      } else if(part==='AM') {
+        total = boatWithPrices?.priceAgencyAm ?? (boatWithPrices?.priceAm ? calculateAgencyPrice(boatWithPrices.priceAm) : calculateAgencyPrice(Math.round((boatWithPrices?.pricePerDay || 0) / 2)));
+      } else if(part==='PM') {
+        total = boatWithPrices?.priceAgencyPm ?? (boatWithPrices?.pricePm ? calculateAgencyPrice(boatWithPrices.pricePm) : calculateAgencyPrice(Math.round((boatWithPrices?.pricePerDay || 0) / 2)));
+      } else if(part==='SUNSET') {
+        total = boatWithPrices?.priceAgencySunset ?? (boatWithPrices?.priceSunset ? calculateAgencyPrice(boatWithPrices.priceSunset) : null);
+      }
     } else {
       // Prix normal
       if(part==='FULL') total = boatWithPrices?.pricePerDay * days;

@@ -294,28 +294,28 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
             </h4>
             <ul className='space-y-3'>
               <li>
-                <a 
+                <Link 
                   href={`/legal/${baseSlug}`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
                 >
                   {locale==='fr'? 'Conditions & Paiement':'Charter & Payment Terms'}
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
+                <Link 
                   href={`/legal/${termsSlug}`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
                 >
                   {locale==='fr'? 'CGU / Mentions':'Terms & Notices'}
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
+                <Link 
                   href={`/legal/${privacySlug}`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
                 >
                   {locale==='fr'? 'Confidentialité':'Privacy'}
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -325,28 +325,28 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
             </h4>
             <ul className='space-y-3'>
               <li>
-                <a 
+                <Link 
                   href={`/legal/${baseSlug}#annulation`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
                 >
                   {locale==='fr'? 'Politique d\'annulation':'Cancellation Policy'}
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
+                <Link 
                   href={`/legal/${baseSlug}#paiement`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
                 >
                   {locale==='fr'? 'Modalités de paiement':'Payment Modalities'}
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
+                <Link 
                   href={`/legal/${baseSlug}#carburant`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
                 >
                   {locale==='fr'? 'Carburant & dépôt':'Fuel & Security Deposit'}
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -389,24 +389,24 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
             © {year} {t.app_name}. {t.footer_rights}
           </div>
           <div className="flex items-center justify-center sm:justify-end gap-6">
-            <a 
+            <Link 
               href={`/legal/${termsSlug}`} 
               className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
             >
               {locale === "fr" ? "Conditions" : "Terms"}
-            </a>
-            <a 
+            </Link>
+            <Link 
               href={`/legal/${privacySlug}`} 
               className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
             >
               {locale === "fr" ? "Confidentialité" : "Privacy"}
-            </a>
-            <a 
+            </Link>
+            <Link 
               href={`/legal/${privacySlug}#cookies`} 
               className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
             >
               {locale === "fr" ? "Cookies" : "Cookies"}
-            </a>
+            </Link>
           </div>
         </div>
       </div>

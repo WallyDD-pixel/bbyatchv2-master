@@ -6,22 +6,26 @@ import GallerySectionClient from "./GallerySectionClient";
 type GalleryImage = {
   id: number;
   imageUrl: string;
+  videoUrl?: string | null;
   titleFr?: string | null;
   titleEn?: string | null;
+  contentFr?: string | null;
+  contentEn?: string | null;
+  sort?: number | null;
 };
 
 export default async function GallerySection({ locale, t }: { locale: Locale; t: Record<string, string> }) {
   let items: GalleryImage[] = [];
   try {
     // Essai via ORM (cast temporaire)
-    items = await (prisma as any).galleryImage.findMany({ orderBy: { createdAt: "desc" } });
+    items = await (prisma as any).galleryImage.findMany({ orderBy: [{ sort: "asc" }, { createdAt: "desc" }] });
   } catch {
     try {
       // Fallback SQL si le modèle n'est pas disponible
       items = await prisma.$queryRaw<GalleryImage[]>`
-        SELECT id, imageUrl, titleFr, titleEn
+        SELECT id, imageUrl, videoUrl, titleFr, titleEn, contentFr, contentEn, sort
         FROM GalleryImage
-        ORDER BY createdAt DESC
+        ORDER BY COALESCE(sort, 0) ASC, createdAt DESC
       `;
     } catch {
       return null;

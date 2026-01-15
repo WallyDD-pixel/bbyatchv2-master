@@ -7,8 +7,12 @@ import { type Locale } from "@/i18n/messages";
 type GalleryImage = {
   id: number;
   imageUrl: string;
+  videoUrl?: string | null;
   titleFr?: string | null;
   titleEn?: string | null;
+  contentFr?: string | null;
+  contentEn?: string | null;
+  sort?: number | null;
 };
 
 export default function GallerySectionClient({ 

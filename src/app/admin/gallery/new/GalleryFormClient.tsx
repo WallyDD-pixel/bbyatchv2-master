@@ -153,8 +153,10 @@ export default function GalleryFormClient({ locale }: { locale: "fr" | "en" }) {
         <span>{locale === "fr" ? "Titre (EN)" : "Title (EN)"}</span>
         <input name="titleEn" className="h-11 rounded-lg border border-black/15 px-3" placeholder={locale === "fr" ? "Optional title" : "Optional title"} />
       </label>
-      <div className="grid gap-2 text-sm">
-        <span>{locale === "fr" ? "Image *" : "Image *"}</span>
+      <div className="border-t border-black/10 pt-4 mt-2">
+        <h3 className="text-sm font-semibold mb-3">{locale === "fr" ? "Média (Image ou Vidéo)" : "Media (Image or Video)"}</h3>
+        <div className="grid gap-2 text-sm">
+          <span>{locale === "fr" ? "Image (recommandé)" : "Image (recommended)"}</span>
         <input type="hidden" name="imageUrl" value="" />
         <div className="relative h-48 rounded-lg border border-dashed border-black/25 flex flex-col items-center justify-center text-xs text-black/60 cursor-pointer bg-black/[0.02] hover:bg-black/[0.04] transition">
           <input
@@ -163,7 +165,6 @@ export default function GalleryFormClient({ locale }: { locale: "fr" | "en" }) {
             type="file"
             accept="image/*"
             className="absolute inset-0 opacity-0 cursor-pointer"
-            required
             onChange={handleFileChange}
           />
           {!previewUrl && (
@@ -190,7 +191,37 @@ export default function GalleryFormClient({ locale }: { locale: "fr" | "en" }) {
             </>
           )}
         </div>
+        <div className="mt-4 grid gap-2 text-sm">
+          <span>{locale === "fr" ? "OU Vidéo (URL YouTube/Vimeo)" : "OR Video (YouTube/Vimeo URL)"}</span>
+          <input 
+            name="videoUrl" 
+            type="url" 
+            className="h-11 rounded-lg border border-black/15 px-3" 
+            placeholder={locale === "fr" ? "https://youtube.com/... ou https://vimeo.com/..." : "https://youtube.com/... or https://vimeo.com/..."}
+          />
+          <p className="text-xs text-black/50 mt-1">
+            {locale === "fr" 
+              ? "Si vous ajoutez une vidéo, l'image n'est pas obligatoire (mais recommandée pour la miniature)"
+              : "If you add a video, image is not required (but recommended for thumbnail)"}
+          </p>
+        </div>
       </div>
+      <div className="border-t border-black/10 pt-4 mt-2">
+        <h3 className="text-sm font-semibold mb-3">{locale === "fr" ? "Texte détaillé (optionnel)" : "Detailed text (optional)"}</h3>
+        <label className="grid gap-1 text-sm">
+          <span>{locale === "fr" ? "Description (FR)" : "Description (FR)"}</span>
+          <textarea name="contentFr" rows={4} className="rounded-lg border border-black/15 px-3 py-2" placeholder={locale === "fr" ? "Texte détaillé affiché sous l'image/vidéo..." : "Detailed text displayed below image/video..."} />
+        </label>
+        <label className="grid gap-1 text-sm mt-3">
+          <span>{locale === "fr" ? "Description (EN)" : "Description (EN)"}</span>
+          <textarea name="contentEn" rows={4} className="rounded-lg border border-black/15 px-3 py-2" placeholder={locale === "fr" ? "Detailed text displayed below image/video..." : "Detailed text displayed below image/video..."} />
+        </label>
+      </div>
+      <label className="grid gap-1 text-sm">
+        <span>{locale === "fr" ? "Ordre d'affichage" : "Display order"}</span>
+        <input name="sort" type="number" defaultValue="0" className="h-11 rounded-lg border border-black/15 px-3" />
+        <p className="text-xs text-black/50 mt-1">{locale === "fr" ? "Plus petit = affiché en premier" : "Lower = displayed first"}</p>
+      </label>
       <div className="flex justify-end gap-2 pt-2">
         <Link href="/admin/gallery" className="rounded-full h-10 px-4 border border-black/15 bg-white hover:bg-black/5 inline-flex items-center">
           {locale === "fr" ? "Annuler" : "Cancel"}
