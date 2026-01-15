@@ -316,18 +316,58 @@ export default function ExperienceEditClient({
       const response = await fetch(`/api/admin/experiences/${experience.id}`, {
         method: 'POST',
         body: formData,
+        headers: {
+          'Accept': 'application/json',
+        },
       });
 
+      // Gérer les redirections (303, 302, 301)
+      if (response.status === 303 || response.status === 302 || response.status === 301) {
+        const redirectUrl = response.headers.get('location') || `/admin/experiences/${experience.id}?updated=1`;
+        router.push(redirectUrl);
+        router.refresh();
+        return;
+      }
+
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'unknown_error' }));
-        alert(locale === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error saving');
+        let error: any;
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            error = await response.json();
+          } else {
+            const text = await response.text();
+            error = { error: 'server_error', message: text || `HTTP ${response.status}` };
+          }
+        } catch (e) {
+          error = { error: 'unknown_error', message: `HTTP ${response.status}` };
+        }
+        alert(locale === 'fr' ? `Erreur lors de l'enregistrement: ${error.message || error.error}` : `Error saving: ${error.message || error.error}`);
         console.error('Error:', error);
         return;
       }
 
-      // Redirection après succès
-      router.push(`/admin/experiences/${experience.id}?updated=1`);
-      router.refresh();
+      // Si la réponse est du JSON
+      try {
+        const data = await response.json();
+        if (data.ok) {
+          // Mettre à jour les données locales si nécessaire
+          if (data.photoUrls) {
+            setPhotos(data.photoUrls);
+          }
+          if (data.imageUrl) {
+            setImageUrl(data.imageUrl);
+          }
+          
+          // Redirection après succès
+          router.push(`/admin/experiences/${experience.id}?updated=1`);
+          router.refresh();
+        }
+      } catch (e) {
+        // Si ce n'est pas du JSON, supposer que c'est un succès
+        router.push(`/admin/experiences/${experience.id}?updated=1`);
+        router.refresh();
+      }
     } catch (error) {
       console.error('Error:', error);
       alert(locale === 'fr' ? 'Erreur lors de l\'enregistrement' : 'Error saving');

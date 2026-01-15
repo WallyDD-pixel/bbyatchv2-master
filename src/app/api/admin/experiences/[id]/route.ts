@@ -281,7 +281,22 @@ export async function POST(req:Request, { params }: { params:{ id:string } }){
         });
       }
       
-      // Sinon, rediriger après sauvegarde normale
+      // Vérifier si c'est une requête AJAX (fetch) ou un formulaire HTML classique
+      const acceptHeader = req.headers.get('accept') || '';
+      const isAjaxRequest = acceptHeader.includes('application/json') || 
+                            req.headers.get('x-requested-with') === 'XMLHttpRequest';
+      
+      // Si c'est une requête AJAX, retourner JSON pour éviter les problèmes de redirection
+      if (isAjaxRequest || !ctype.includes('multipart/form-data')) {
+        return NextResponse.json({ 
+          ok: true, 
+          experience: updated,
+          photoUrls: responsePhotoUrls,
+          imageUrl: finalImageUrl
+        });
+      }
+      
+      // Sinon, rediriger après sauvegarde normale (formulaire HTML classique)
       const redirectUrl = createRedirectUrl(`/admin/experiences/${id}?updated=1`, req);
       return NextResponse.redirect(redirectUrl, 303);
     }
