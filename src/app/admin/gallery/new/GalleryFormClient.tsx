@@ -157,39 +157,40 @@ export default function GalleryFormClient({ locale }: { locale: "fr" | "en" }) {
         <h3 className="text-sm font-semibold mb-3">{locale === "fr" ? "Média (Image ou Vidéo)" : "Media (Image or Video)"}</h3>
         <div className="grid gap-2 text-sm">
           <span>{locale === "fr" ? "Image (recommandé)" : "Image (recommended)"}</span>
-        <input type="hidden" name="imageUrl" value="" />
-        <div className="relative h-48 rounded-lg border border-dashed border-black/25 flex flex-col items-center justify-center text-xs text-black/60 cursor-pointer bg-black/[0.02] hover:bg-black/[0.04] transition">
-          <input
-            id="fileInput"
-            name="imageFile"
-            type="file"
-            accept="image/*"
-            className="absolute inset-0 opacity-0 cursor-pointer"
-            onChange={handleFileChange}
-          />
-          {!previewUrl && (
-            <div className="pointer-events-none flex flex-col items-center px-4 text-center">
-              <svg width="30" height="30" viewBox="0 0 24 24" className="mb-2 text-black/40">
-                <path fill="currentColor" d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7M14 3v2h3.59l-9.83 9.83l1.41 1.41L19 6.41V10h2V3h-7Z"/>
-              </svg>
-              <span>{locale === "fr" ? "Glisser-déposer ou cliquer pour choisir" : "Drag & drop or click to choose"}</span>
-              <span className="mt-1 text-[11px] text-black/40">{locale === "fr" ? "PNG/JPG, max ~5MB" : "PNG/JPG, max ~5MB"}</span>
-            </div>
-          )}
-          {previewUrl && (
-            <>
-              <img src={previewUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover rounded-lg" />
-              <div
-                className="absolute top-2 right-2 bg-white/80 backdrop-blur px-2 py-0.5 rounded text-[10px] font-medium shadow border border-black/10 cursor-pointer z-10"
-                onClick={(e) => {
-                  e.preventDefault();
-                  clearPreview();
-                }}
-              >
-                ×
+          <input type="hidden" name="imageUrl" value="" />
+          <div className="relative h-48 rounded-lg border border-dashed border-black/25 flex flex-col items-center justify-center text-xs text-black/60 cursor-pointer bg-black/[0.02] hover:bg-black/[0.04] transition">
+            <input
+              id="fileInput"
+              name="imageFile"
+              type="file"
+              accept="image/*"
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              onChange={handleFileChange}
+            />
+            {!previewUrl && (
+              <div className="pointer-events-none flex flex-col items-center px-4 text-center">
+                <svg width="30" height="30" viewBox="0 0 24 24" className="mb-2 text-black/40">
+                  <path fill="currentColor" d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7M14 3v2h3.59l-9.83 9.83l1.41 1.41L19 6.41V10h2V3h-7Z"/>
+                </svg>
+                <span>{locale === "fr" ? "Glisser-déposer ou cliquer pour choisir" : "Drag & drop or click to choose"}</span>
+                <span className="mt-1 text-[11px] text-black/40">{locale === "fr" ? "PNG/JPG, max ~5MB" : "PNG/JPG, max ~5MB"}</span>
               </div>
-            </>
-          )}
+            )}
+            {previewUrl && (
+              <>
+                <img src={previewUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover rounded-lg" />
+                <div
+                  className="absolute top-2 right-2 bg-white/80 backdrop-blur px-2 py-0.5 rounded text-[10px] font-medium shadow border border-black/10 cursor-pointer z-10"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    clearPreview();
+                  }}
+                >
+                  ×
+                </div>
+              </>
+            )}
+          </div>
         </div>
         <div className="mt-4 grid gap-2 text-sm">
           <span>{locale === "fr" ? "OU Vidéo (URL YouTube/Vimeo)" : "OR Video (YouTube/Vimeo URL)"}</span>
@@ -248,4 +249,3 @@ export default function GalleryFormClient({ locale }: { locale: "fr" | "en" }) {
     </form>
   );
 }
-
