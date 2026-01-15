@@ -258,6 +258,7 @@ export default function AdminSocialMediaContent({ initialLocale }: { initialLoca
                   locale === "fr" ? "Enregistrer" : "Save"
                 )}
               </button>
+            </div>
           </div>
         </form>
       </div>
