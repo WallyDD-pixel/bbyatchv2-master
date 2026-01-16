@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import fs from 'fs';
-import path from 'path';
+import { uploadToSupabase } from '@/lib/storage';
 
 async function ensureAdmin() {
   const session = (await getServerSession(auth as any)) as any;
@@ -33,23 +32,28 @@ export async function POST(req: Request) {
     // Gestion upload logo
     let logoUrl: string | undefined;
     const logoFile = data.get('logoFile') as File | null;
-    if (logoFile && (logoFile as any).size > 0) {
+    if (logoFile && logoFile instanceof File && logoFile.size > 0) {
       const allowedExt = new Set(['jpg', 'jpeg', 'png', 'svg', 'webp']);
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-      const name = (logoFile as any).name || '';
+      const name = logoFile.name || '';
       const ext = name.split('.').pop()?.toLowerCase() || '';
+      
       if (allowedExt.has(ext)) {
-        const fname = `logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const buf = Buffer.from(await logoFile.arrayBuffer());
-        fs.writeFileSync(path.join(uploadsDir, fname), buf);
-        logoUrl = `/uploads/${fname}`;
+        try {
+          const uploadedUrl = await uploadToSupabase(logoFile, `logos/logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`);
+          if (uploadedUrl) {
+            logoUrl = uploadedUrl;
+          }
+        } catch (error) {
+          console.error('Error uploading logo to Supabase:', error);
+          // Ne pas bloquer la mise à jour si l'upload échoue
+        }
       }
     } else {
       // Conserver l'URL existante si pas de nouveau fichier
       const existingLogoUrl = data.get('logoUrl') as string;
-      if (existingLogoUrl) logoUrl = existingLogoUrl;
+      if (existingLogoUrl && !existingLogoUrl.startsWith('/uploads/')) {
+        logoUrl = existingLogoUrl;
+      }
     }
 
     // Prix du skipper par défaut

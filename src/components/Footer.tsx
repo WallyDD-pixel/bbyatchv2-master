@@ -78,20 +78,27 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
       select: { slug: true, titleFr: true, titleEn: true }
     });
     
-    // Chercher la page "Conditions & Paiement" ou similaire
+    // Si aucune page trouvée, utiliser les slugs par défaut (on continue quand même)
+    if (allPages.length === 0) {
+      // Pas de pages légales dans la DB, on garde les valeurs par défaut
+    } else {
+    
+    // Chercher la page "Conditions & Paiement" ou similaire (priorité aux slugs contenant ces mots)
     const conditionsPage = allPages.find((p: any) => {
       const titleFr = (p.titleFr || '').toLowerCase();
       const titleEn = (p.titleEn || '').toLowerCase();
       const slug = (p.slug || '').toLowerCase();
       
-      return (
-        p.slug === baseSlug ||
-        slug === 'conditions-paiement-location' ||
-        slug === 'conditions-paiement' ||
-        (titleFr.includes('conditions') && titleFr.includes('paiement')) ||
-        (titleEn.includes('conditions') && titleEn.includes('payment')) ||
-        slug.includes('conditions') && slug.includes('paiement')
-      );
+      // Priorité 1: Slug exact
+      if (p.slug === baseSlug) return true;
+      // Priorité 2: Slug qui contient "conditions" ET "paiement"
+      if (slug.includes('conditions') && slug.includes('paiement')) return true;
+      // Priorité 3: Slug qui contient "conditions" OU "paiement"
+      if (slug.includes('conditions') || slug.includes('paiement')) return true;
+      // Priorité 4: Titre qui contient "conditions" ET "paiement"
+      if (titleFr.includes('conditions') && titleFr.includes('paiement')) return true;
+      if (titleEn.includes('conditions') && titleEn.includes('payment')) return true;
+      return false;
     });
     if (conditionsPage) baseSlug = conditionsPage.slug;
     
@@ -101,16 +108,14 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
       const titleEn = (p.titleEn || '').toLowerCase();
       const slug = (p.slug || '').toLowerCase();
       
-      return (
-        p.slug === termsSlug ||
-        slug === 'terms' ||
-        slug === 'cgu-mentions' ||
-        titleFr.includes('cgu') ||
-        titleFr.includes('mentions') ||
-        titleEn.includes('terms') ||
-        slug.includes('terms') ||
-        slug.includes('cgu')
-      );
+      // Priorité 1: Slug exact
+      if (p.slug === termsSlug) return true;
+      // Priorité 2: Slug qui contient "terms" ou "cgu" ou "mentions"
+      if (slug === 'terms' || slug === 'cgu-mentions' || slug.includes('cgu') || slug.includes('terms')) return true;
+      // Priorité 3: Titre qui contient "cgu" ou "mentions"
+      if (titleFr.includes('cgu') || titleFr.includes('mentions')) return true;
+      if (titleEn.includes('terms') || titleEn.includes('notices')) return true;
+      return false;
     });
     if (termsPage) termsSlug = termsPage.slug;
     
@@ -120,17 +125,17 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
       const titleEn = (p.titleEn || '').toLowerCase();
       const slug = (p.slug || '').toLowerCase();
       
-      return (
-        p.slug === privacySlug ||
-        slug === 'privacy' ||
-        slug === 'confidentialite' ||
-        titleFr.includes('confidentialité') ||
-        titleEn.includes('privacy') ||
-        slug.includes('privacy') ||
-        slug.includes('confidentialite')
-      );
+      // Priorité 1: Slug exact
+      if (p.slug === privacySlug) return true;
+      // Priorité 2: Slug qui contient "privacy" ou "confidentialite"
+      if (slug === 'privacy' || slug === 'confidentialite' || slug.includes('privacy') || slug.includes('confidentialite')) return true;
+      // Priorité 3: Titre qui contient "confidentialité" ou "privacy"
+      if (titleFr.includes('confidentialité') || titleFr.includes('confidentialite')) return true;
+      if (titleEn.includes('privacy')) return true;
+      return false;
     });
     if (privacyPage) privacySlug = privacyPage.slug;
+    }
   } catch (e) {
     // Si erreur, utiliser les valeurs par défaut
     console.error('Erreur lors de la récupération des pages légales:', e);
