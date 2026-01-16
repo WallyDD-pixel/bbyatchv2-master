@@ -67,79 +67,65 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
   // Lire le mapping de liens légaux et réseaux sociaux depuis Settings
   const s = await prisma.settings.findFirst();
   
-  // Récupérer les slugs depuis les pages légales existantes ou utiliser les Settings comme fallback
-  let baseSlug = (s as any)?.legalBaseSlug || "conditions-paiement-location";
-  let termsSlug = (s as any)?.legalTermsSlug || "terms";
-  let privacySlug = (s as any)?.legalPrivacySlug || "privacy";
+  // Récupérer toutes les pages légales pour mapper les slugs du footer
+  const footerPagesMap = new Map<string, string>();
   
-  // Essayer de trouver les pages par slug ou par titre si les slugs des Settings ne fonctionnent pas
   try {
     const allPages = await (prisma as any).legalPage.findMany({
       select: { slug: true, titleFr: true, titleEn: true }
     });
     
-    // Si aucune page trouvée, utiliser les slugs par défaut (on continue quand même)
-    if (allPages.length === 0) {
-      // Pas de pages légales dans la DB, on garde les valeurs par défaut
-    } else {
+    // Mapping des slugs du footer vers les slugs réels des pages
+    const footerMappings = [
+      { footerSlug: 'conditions-paiement', searchTerms: ['conditions', 'paiement', 'payment'] },
+      { footerSlug: 'cgu-mentions', searchTerms: ['cgu', 'mentions', 'terms', 'notices'] },
+      { footerSlug: 'confidentialite', searchTerms: ['confidentialité', 'confidentialite', 'privacy'] },
+      { footerSlug: 'politique-annulation', searchTerms: ['annulation', 'cancellation'] },
+      { footerSlug: 'modalites-paiement', searchTerms: ['modalités', 'paiement', 'payment', 'modalities'] },
+      { footerSlug: 'carburant-depot', searchTerms: ['carburant', 'dépôt', 'depot', 'fuel', 'deposit'] },
+    ];
     
-    // Chercher la page "Conditions & Paiement" ou similaire (priorité aux slugs contenant ces mots)
-    const conditionsPage = allPages.find((p: any) => {
-      const titleFr = (p.titleFr || '').toLowerCase();
-      const titleEn = (p.titleEn || '').toLowerCase();
-      const slug = (p.slug || '').toLowerCase();
+    footerMappings.forEach(({ footerSlug, searchTerms }) => {
+      // Chercher d'abord par slug exact
+      let page = allPages.find((p: any) => p.slug === footerSlug);
       
-      // Priorité 1: Slug exact
-      if (p.slug === baseSlug) return true;
-      // Priorité 2: Slug qui contient "conditions" ET "paiement"
-      if (slug.includes('conditions') && slug.includes('paiement')) return true;
-      // Priorité 3: Slug qui contient "conditions" OU "paiement"
-      if (slug.includes('conditions') || slug.includes('paiement')) return true;
-      // Priorité 4: Titre qui contient "conditions" ET "paiement"
-      if (titleFr.includes('conditions') && titleFr.includes('paiement')) return true;
-      if (titleEn.includes('conditions') && titleEn.includes('payment')) return true;
-      return false;
-    });
-    if (conditionsPage) baseSlug = conditionsPage.slug;
-    
-    // Chercher la page "CGU" ou "Mentions" ou "Terms"
-    const termsPage = allPages.find((p: any) => {
-      const titleFr = (p.titleFr || '').toLowerCase();
-      const titleEn = (p.titleEn || '').toLowerCase();
-      const slug = (p.slug || '').toLowerCase();
+      // Si pas trouvé, chercher par slug similaire ou titre
+      if (!page) {
+        page = allPages.find((p: any) => {
+          const slug = (p.slug || '').toLowerCase();
+          const titleFr = (p.titleFr || '').toLowerCase();
+          const titleEn = (p.titleEn || '').toLowerCase();
+          
+          return searchTerms.some(term => 
+            slug.includes(term.toLowerCase()) || 
+            titleFr.includes(term.toLowerCase()) || 
+            titleEn.includes(term.toLowerCase())
+          );
+        });
+      }
       
-      // Priorité 1: Slug exact
-      if (p.slug === termsSlug) return true;
-      // Priorité 2: Slug qui contient "terms" ou "cgu" ou "mentions"
-      if (slug === 'terms' || slug === 'cgu-mentions' || slug.includes('cgu') || slug.includes('terms')) return true;
-      // Priorité 3: Titre qui contient "cgu" ou "mentions"
-      if (titleFr.includes('cgu') || titleFr.includes('mentions')) return true;
-      if (titleEn.includes('terms') || titleEn.includes('notices')) return true;
-      return false;
+      if (page) {
+        footerPagesMap.set(footerSlug, page.slug);
+      } else {
+        // Utiliser le slug par défaut si la page n'existe pas encore
+        footerPagesMap.set(footerSlug, footerSlug);
+      }
     });
-    if (termsPage) termsSlug = termsPage.slug;
-    
-    // Chercher la page "Confidentialité" ou "Privacy"
-    const privacyPage = allPages.find((p: any) => {
-      const titleFr = (p.titleFr || '').toLowerCase();
-      const titleEn = (p.titleEn || '').toLowerCase();
-      const slug = (p.slug || '').toLowerCase();
-      
-      // Priorité 1: Slug exact
-      if (p.slug === privacySlug) return true;
-      // Priorité 2: Slug qui contient "privacy" ou "confidentialite"
-      if (slug === 'privacy' || slug === 'confidentialite' || slug.includes('privacy') || slug.includes('confidentialite')) return true;
-      // Priorité 3: Titre qui contient "confidentialité" ou "privacy"
-      if (titleFr.includes('confidentialité') || titleFr.includes('confidentialite')) return true;
-      if (titleEn.includes('privacy')) return true;
-      return false;
-    });
-    if (privacyPage) privacySlug = privacyPage.slug;
-    }
   } catch (e) {
-    // Si erreur, utiliser les valeurs par défaut
     console.error('Erreur lors de la récupération des pages légales:', e);
+    // En cas d'erreur, utiliser les slugs par défaut
+    ['conditions-paiement', 'cgu-mentions', 'confidentialite', 'politique-annulation', 'modalites-paiement', 'carburant-depot'].forEach(slug => {
+      footerPagesMap.set(slug, slug);
+    });
   }
+  
+  // Récupérer les slugs pour chaque section du footer
+  const conditionsSlug = footerPagesMap.get('conditions-paiement') || 'conditions-paiement';
+  const cguSlug = footerPagesMap.get('cgu-mentions') || 'cgu-mentions';
+  const privacySlug = footerPagesMap.get('confidentialite') || 'confidentialite';
+  const annulationSlug = footerPagesMap.get('politique-annulation') || 'politique-annulation';
+  const paiementSlug = footerPagesMap.get('modalites-paiement') || 'modalites-paiement';
+  const carburantSlug = footerPagesMap.get('carburant-depot') || 'carburant-depot';
   
   // URLs des réseaux sociaux depuis Settings
   const instagramUrl = (s as any)?.footerInstagram || null;
@@ -366,7 +352,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
             <ul className='space-y-3'>
               <li>
                 <Link 
-                  href={`/legal/${baseSlug}`} 
+                  href={`/legal/${conditionsSlug}`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'Conditions & Paiement':'Charter & Payment Terms'}
@@ -374,7 +360,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               </li>
               <li>
                 <Link 
-                  href={`/legal/${termsSlug}`} 
+                  href={`/legal/${cguSlug}`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'CGU / Mentions':'Terms & Notices'}
@@ -397,7 +383,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
             <ul className='space-y-3'>
               <li>
                 <Link 
-                  href={`/legal/${baseSlug}#annulation`} 
+                  href={`/legal/${annulationSlug}`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'Politique d\'annulation':'Cancellation Policy'}
@@ -405,7 +391,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               </li>
               <li>
                 <Link 
-                  href={`/legal/${baseSlug}#paiement`} 
+                  href={`/legal/${paiementSlug}`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'Modalités de paiement':'Payment Modalities'}
@@ -413,7 +399,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               </li>
               <li>
                 <Link 
-                  href={`/legal/${baseSlug}#carburant`} 
+                  href={`/legal/${carburantSlug}`} 
                   className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
                 >
                   {locale==='fr'? 'Carburant & dépôt':'Fuel & Security Deposit'}
@@ -461,7 +447,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
           </div>
           <div className="flex items-center justify-center sm:justify-end gap-6">
             <Link 
-              href={`/legal/${termsSlug}`} 
+              href={`/legal/${cguSlug}`} 
               className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer"
             >
               {locale === "fr" ? "Conditions" : "Terms"}

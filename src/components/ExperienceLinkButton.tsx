@@ -31,7 +31,8 @@ export default function ExperienceLinkButton({ href, locale, className }: Props)
     <a
       href={href}
       onClick={handleClick}
-      className={`inline-flex items-center gap-2 px-4 h-9 rounded-full bg-[color:var(--primary)] text-white text-[11px] sm:text-xs font-semibold hover:brightness-110 active:brightness-95 shadow transition ${isLoading ? 'opacity-70 cursor-wait' : ''} ${className || ''}`}
+      className={`inline-flex items-center gap-2 px-4 h-9 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[11px] sm:text-xs font-semibold shadow-sm hover:shadow transition-colors ${isLoading ? 'opacity-70 cursor-wait' : ''} ${className || ''}`}
+      style={{ backgroundColor: isLoading ? '#60a5fa' : '#2563eb' }}
     >
       {isLoading ? (
         <>

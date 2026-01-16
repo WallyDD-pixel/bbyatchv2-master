@@ -5,16 +5,16 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { messages, type Locale } from '@/i18n/messages';
 
-// Définir les slugs des pages légales standard
+// Définir les slugs des pages légales standard correspondant aux liens du footer
 const LEGAL_PAGES = [
-  { slug: 'legal', titleFr: 'Légal', titleEn: 'Legal' },
-  { slug: 'conditions-paiement', titleFr: 'Conditions & Paiement', titleEn: 'Terms & Payment' },
-  { slug: 'cgu-mentions', titleFr: 'CGU / Mentions', titleEn: 'Terms of Use / Legal Mentions' },
+  // Section "Légal"
+  { slug: 'conditions-paiement', titleFr: 'Conditions & Paiement', titleEn: 'Charter & Payment Terms' },
+  { slug: 'cgu-mentions', titleFr: 'CGU / Mentions', titleEn: 'Terms & Notices' },
   { slug: 'confidentialite', titleFr: 'Confidentialité', titleEn: 'Privacy' },
-  { slug: 'reservations', titleFr: 'Réservations', titleEn: 'Bookings' },
+  // Section "Réservations"
   { slug: 'politique-annulation', titleFr: 'Politique d\'annulation', titleEn: 'Cancellation Policy' },
-  { slug: 'modalites-paiement', titleFr: 'Modalités de paiement', titleEn: 'Payment Terms' },
-  { slug: 'carburant-depot', titleFr: 'Carburant & dépôt', titleEn: 'Fuel & Deposit' },
+  { slug: 'modalites-paiement', titleFr: 'Modalités de paiement', titleEn: 'Payment Modalities' },
+  { slug: 'carburant-depot', titleFr: 'Carburant & dépôt', titleEn: 'Fuel & Security Deposit' },
 ];
 
 export default async function AdminLegalPages({ searchParams }: { searchParams?: { lang?: string } }){
