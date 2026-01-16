@@ -578,7 +578,8 @@ export default function SearchBar({
         <button
           type="submit"
           disabled={((!values.city.trim() && needsCity) || !part || !values.startDate) || isSubmitting}
-          className={`rounded-full px-6 h-12 text-sm font-semibold text-white bg-[var(--primary)] hover:brightness-110 active:brightness-95 transition shadow-sm flex items-center justify-center gap-2 ${((!values.city.trim() && needsCity) || !part || !values.startDate || isSubmitting)? 'opacity-40 cursor-not-allowed hover:brightness-100': ''}`}
+          className={`rounded-full px-6 h-12 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-sm hover:shadow flex items-center justify-center gap-2 ${((!values.city.trim() && needsCity) || !part || !values.startDate || isSubmitting)? 'opacity-40 cursor-not-allowed': ''}`}
+          style={{ backgroundColor: isSubmitting || ((!values.city.trim() && needsCity) || !part || !values.startDate) ? '#93c5fd' : '#2563eb' }}
         >
           {isSubmitting ? (
             <>
