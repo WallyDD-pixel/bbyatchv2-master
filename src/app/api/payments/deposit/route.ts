@@ -215,10 +215,44 @@ export async function POST(req: Request){
               bookingDate: new Date().toISOString(),
               userRole: userRole,
               skipperRequired: boat.skipperRequired,
-              effectiveSkipperPrice: boat.skipperRequired ? effectiveSkipperPrice : null,
+              needsSkipper: body.skipper === '1' || body.skipper === true || body.needsSkipper === true,
+              effectiveSkipperPrice: boat.skipperRequired && (body.skipper === '1' || body.skipper === true || body.needsSkipper === true) ? effectiveSkipperPrice : null,
             }),
         }
       });
+      
+      // Envoyer un email à charter@bb-yachts.com pour notifier d'une nouvelle demande agence
+      try {
+        const userEmail = (session?.user as any)?.email || '';
+        const userName = (session?.user as any)?.name || userEmail;
+        const emailBody = `Nouvelle demande de réservation agence reçue
+
+ID: ${agencyReq.id}
+Utilisateur: ${userName} (${userEmail})
+Bateau: ${boat.name}
+Dates: ${start}${end && end !== start ? ` → ${end}` : ''}
+Créneau: ${part}
+Passagers: ${pax || '—'}
+Prix total: ${grandTotal.toLocaleString('fr-FR')} €
+
+Détails complets disponibles dans le tableau de bord admin.
+`;
+        
+        // Envoyer via API route d'email (à créer ou utiliser service externe)
+        await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: 'charter@bb-yachts.com',
+            subject: `Nouvelle demande agence - ${boat.name} - ${start}`,
+            text: emailBody,
+          }),
+        }).catch(err => console.error('Error sending email:', err));
+      } catch (emailErr) {
+        console.error('Error sending notification email for agency request:', emailErr);
+        // Ne pas bloquer la création de la demande si l'email échoue
+      }
+      
       return NextResponse.json({ status: 'agency_request_created', requestId: agencyReq.id });
     }
 

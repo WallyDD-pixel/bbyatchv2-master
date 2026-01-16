@@ -3,6 +3,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SearchBar, { type SearchValues } from './SearchBar';
 
+interface AdditionalInfo {
+  waterToys: 'yes' | 'no' | '';
+  childrenCount: string;
+  specialNeeds: string;
+  wantsExcursion: boolean;
+}
+
 interface Props {
   t: Record<string,string>;
   locale: string;
@@ -15,9 +22,10 @@ interface Props {
   part?: 'FULL'|'AM'|'PM';
   optionIds?: number[]; // nouvelles options sélectionnées
   needsSkipper?: boolean;
+  additionalInfo?: AdditionalInfo;
 }
 
-export default function RequestBookingButton({ t, locale, slug, hasDates, disabled, disabledMessage, startDate, endDate, part='FULL', optionIds, needsSkipper }: Props){
+export default function RequestBookingButton({ t, locale, slug, hasDates, disabled, disabledMessage, startDate, endDate, part='FULL', optionIds, needsSkipper, additionalInfo }: Props){
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -51,6 +59,13 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
     if (part==='FULL' && endDate) params.set('end', endDate);
     if (optionIds && optionIds.length) params.set('opts', optionIds.join(','));
     if (needsSkipper) params.set('skipper', '1');
+    // Ajouter les informations complémentaires
+    if (additionalInfo) {
+      if (additionalInfo.waterToys === 'yes') params.set('waterToys', '1');
+      if (additionalInfo.childrenCount) params.set('children', additionalInfo.childrenCount);
+      if (additionalInfo.specialNeeds) params.set('specialNeeds', encodeURIComponent(additionalInfo.specialNeeds));
+      if (additionalInfo.wantsExcursion) params.set('excursion', '1');
+    }
     return `/checkout?${params.toString()}`;
   };
 

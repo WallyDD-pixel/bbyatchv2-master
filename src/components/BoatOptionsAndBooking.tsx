@@ -22,9 +22,22 @@ interface Props {
   skipperPrice?: number;
 }
 
+interface AdditionalInfo {
+  waterToys: 'yes' | 'no' | '';
+  childrenCount: string;
+  specialNeeds: string;
+  wantsExcursion: boolean;
+}
+
 export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalLabel, pricePerDay, part, nbJours, options, disabled, disabledMessage, slug, startDate, endDate, isAgency = false, skipperRequired = false, skipperPrice = 350 }: Props){
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [needsSkipper, setNeedsSkipper] = useState(skipperRequired && !isAgency); // Si obligatoire et pas agence, coché par défaut
+  const [additionalInfo, setAdditionalInfo] = useState<AdditionalInfo>({
+    waterToys: '',
+    childrenCount: '',
+    specialNeeds: '',
+    wantsExcursion: false,
+  });
 
   const toggle = (id:number) => setSelected(s=> { const n=new Set(s); if(n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -112,18 +125,97 @@ export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalL
         </section>
       )}
 
+      {/* Informations complémentaires */}
+      <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
+        <h2 className='text-lg font-semibold mb-4'>{locale === 'fr' ? 'Informations complémentaires' : 'Additional Information'}</h2>
+        <div className='space-y-4'>
+          {/* Nombre d'enfants */}
+          <div>
+            <label className='block text-sm font-medium text-black/80 mb-1.5'>
+              {locale === 'fr' ? 'Nombre d\'enfants à bord' : 'Number of children on board'}
+            </label>
+            <input
+              type='number'
+              min='0'
+              value={additionalInfo.childrenCount}
+              onChange={(e) => setAdditionalInfo(prev => ({ ...prev, childrenCount: e.target.value }))}
+              className='w-full h-10 rounded-lg border border-black/15 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30'
+              placeholder={locale === 'fr' ? 'Ex: 2' : 'Ex: 2'}
+            />
+          </div>
+
+          {/* Jeux d'eau */}
+          <div>
+            <label className='block text-sm font-medium text-black/80 mb-1.5'>
+              {locale === 'fr' ? 'Réservation de jeux d\'eau' : 'Water toys reservation'}
+            </label>
+            <div className='flex gap-4'>
+              <label className='flex items-center gap-2 cursor-pointer'>
+                <input
+                  type='radio'
+                  name='waterToys'
+                  checked={additionalInfo.waterToys === 'yes'}
+                  onChange={() => setAdditionalInfo(prev => ({ ...prev, waterToys: 'yes' }))}
+                  className='h-4 w-4 accent-blue-600'
+                />
+                <span className='text-sm'>{locale === 'fr' ? 'Oui' : 'Yes'}</span>
+              </label>
+              <label className='flex items-center gap-2 cursor-pointer'>
+                <input
+                  type='radio'
+                  name='waterToys'
+                  checked={additionalInfo.waterToys === 'no'}
+                  onChange={() => setAdditionalInfo(prev => ({ ...prev, waterToys: 'no' }))}
+                  className='h-4 w-4 accent-blue-600'
+                />
+                <span className='text-sm'>{locale === 'fr' ? 'Non' : 'No'}</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Excursion */}
+          <div>
+            <label className='flex items-center gap-2 cursor-pointer'>
+              <input
+                type='checkbox'
+                checked={additionalInfo.wantsExcursion}
+                onChange={(e) => setAdditionalInfo(prev => ({ ...prev, wantsExcursion: e.target.checked }))}
+                className='h-4 w-4 accent-blue-600'
+              />
+              <span className='text-sm font-medium text-black/80'>
+                {locale === 'fr' ? 'Souhaitez-vous une excursion ?' : 'Would you like an excursion?'}
+              </span>
+            </label>
+          </div>
+
+          {/* Besoins spéciaux */}
+          <div>
+            <label className='block text-sm font-medium text-black/80 mb-1.5'>
+              {locale === 'fr' ? 'Besoins spéciaux ou demandes particulières' : 'Special needs or particular requests'}
+            </label>
+            <textarea
+              value={additionalInfo.specialNeeds}
+              onChange={(e) => setAdditionalInfo(prev => ({ ...prev, specialNeeds: e.target.value }))}
+              rows={3}
+              className='w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none'
+              placeholder={locale === 'fr' ? 'Décrivez vos besoins particuliers...' : 'Describe your particular needs...'}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Carte Récap + action */}
-      <section className='rounded-2xl border border-black/10 bg-gradient-to-br from-[var(--primary)]/10 to-white p-6 shadow-sm flex flex-col gap-4'>
+      <section className='rounded-2xl border border-black/10 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm flex flex-col gap-4'>
         <div>
           {isAgency ? (
             <>
               <p className='text-xs uppercase tracking-wide text-black/50 mb-1'>{locale === 'fr' ? 'Prix agence' : 'Agency price'} {baseTotalLabel}</p>
-              <p className='text-3xl font-extrabold text-[var(--primary)]'>{grandTotal!=null? grandTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €':'—'}</p>
+              <p className='text-3xl font-extrabold text-blue-600'>{grandTotal!=null? grandTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €':'—'}</p>
             </>
           ) : (
             <>
               <p className='text-xs uppercase tracking-wide text-black/50 mb-1'>{t.boat_total} {baseTotalLabel}</p>
-              <p className='text-3xl font-extrabold text-[var(--primary)]'>{grandTotal!=null? grandTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €':'—'}</p>
+              <p className='text-3xl font-extrabold text-blue-600'>{grandTotal!=null? grandTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €':'—'}</p>
             </>
           )}
           {(optionsTotal>0 || skipperTotal>0) && baseTotal!=null && (
@@ -158,6 +250,7 @@ export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalL
           part={part} 
           optionIds={Array.from(selected)}
           needsSkipper={needsSkipper}
+          additionalInfo={additionalInfo}
         />
       </section>
     </div>

@@ -252,7 +252,7 @@ export default function SearchBar({
   const openPicker = () => {
     const hasCity = mode==='experience'? true : values.city.trim().length>0;
     if(!hasCity){ setCityHint(true); return; }
-    if (!part && !partFixed) { setPartHint(true); return; }
+    // Permettre d'ouvrir le calendrier même sans créneau sélectionné
     const ref = values.startDate || values.endDate || fmtDate(new Date());
     const d = new Date(ref + 'T00:00:00');
     setCalMonth({ y: d.getFullYear(), m: d.getMonth() });
@@ -427,7 +427,45 @@ export default function SearchBar({
       {mode==='experience' && partFixed && (
         <div className="hidden" />
       )}
-      {/* Sélecteur de créneau uniquement si pas de partFixed */}
+      
+      {/* Date début - AFFICHÉE EN PREMIER */}
+      <div>
+        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+          {labels.search_start_date}
+        </label>
+        <input
+          type="text"
+          readOnly
+          onClick={openPicker}
+          onFocus={openPicker}
+          placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : 'Sélectionner...') : 'Sélectionner...'}
+          className={baseInput + ' ' + ((needsCity && !values.city.trim())? 'opacity-50 cursor-not-allowed':'cursor-pointer')}
+          value={values.startDate}
+          disabled={needsCity && !values.city.trim()}
+        />
+        {dateHint && !values.startDate && <p className="mt-1 text-[10px] text-red-600">Choisis une date.</p>}
+      </div>
+      {/* Date fin (multi-jours seulement si FULL) */}
+      <div>
+        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+          {labels.search_end_date}
+          {(part !== "FULL" && part !== "SUNSET") && (
+            <span className="text-[10px] font-normal text-black dark:text-white">(= début)</span>
+          )}
+        </label>
+        <input
+          type="text"
+          readOnly
+          onClick={()=> openPicker()}
+          onFocus={()=> openPicker()}
+          placeholder={(part==='FULL' || part==='SUNSET' || !part)? (needsCity ? (!values.city.trim()? 'Choisir la ville' : 'Sélectionner...') : 'Sélectionner...') : (values.startDate? values.startDate : '')}
+          className={baseInput + ' ' + ((needsCity && !values.city.trim())? 'opacity-50 cursor-not-allowed': ((part !== "FULL" && part !== "SUNSET" && part) ? "opacity-60" : "cursor-pointer"))}
+          value={values.endDate}
+          disabled={needsCity && !values.city.trim() || (part && part !== "FULL" && part !== "SUNSET")}
+        />
+      </div>
+      
+      {/* Sélecteur de créneau uniquement si pas de partFixed - APRÈS LES DATES */}
       {(!partFixed) && (
         <div>
           <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
@@ -451,8 +489,8 @@ export default function SearchBar({
         </div>
       )}
       
-      {/* Horaires personnalisés si créneau flexible et sélectionné (pas pour expériences avec horaires fixes) */}
-      {part && PARTS.find(p => p.key === part)?.flexible && !(mode === 'experience' && experienceSlug && partFixed === 'SUNSET') && (
+      {/* Horaires personnalisés si créneau flexible et sélectionné (pas pour expériences - horaires demandés dans le formulaire après) */}
+      {part && PARTS.find(p => p.key === part)?.flexible && mode !== 'experience' && (
         <div className="col-span-full grid grid-cols-2 gap-3 pt-2 border-t border-black/10">
           <div>
             <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
@@ -508,43 +546,6 @@ export default function SearchBar({
           </p>
         </div>
       )}
-      
-      {/* Date début */}
-      <div>
-        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-          {labels.search_start_date}
-        </label>
-        <input
-          type="text"
-          readOnly
-          onClick={openPicker}
-          onFocus={openPicker}
-          placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part? 'Choisir un créneau d\'abord' : 'Sélectionner...')) : (!part? 'Choisir un créneau' : 'Sélectionner...')}
-          className={baseInput + ' ' + ((!part || (needsCity && !values.city.trim()))? 'opacity-50 cursor-not-allowed':'cursor-pointer')}
-          value={values.startDate}
-          disabled={!part || (needsCity && !values.city.trim())}
-        />
-        {dateHint && !values.startDate && <p className="mt-1 text-[10px] text-red-600">Choisis une date.</p>}
-      </div>
-      {/* Date fin (multi-jours seulement si FULL) */}
-      <div>
-        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-          {labels.search_end_date}
-          {(part !== "FULL" && part !== "SUNSET") && (
-            <span className="text-[10px] font-normal text-black dark:text-white">(= début)</span>
-          )}
-        </label>
-        <input
-          type="text"
-          readOnly
-          onClick={()=> (part==='FULL' || part==='SUNSET') && openPicker()}
-          onFocus={()=> (part==='FULL' || part==='SUNSET') && openPicker()}
-          placeholder={(part==='FULL' || part==='SUNSET')? (needsCity ? (!values.city.trim()? 'Choisir la ville' : 'Sélectionner...') : 'Sélectionner...') : (!part? '' : values.startDate? values.startDate : '')}
-          className={baseInput + ' ' + ((!part || (needsCity && !values.city.trim()))? 'opacity-50 cursor-not-allowed': ((part !== "FULL" && part !== "SUNSET") ? "opacity-60" : "cursor-pointer"))}
-          value={values.endDate}
-          disabled={!part || (needsCity && !values.city.trim()) || (part !== "FULL" && part !== "SUNSET")}
-        />
-      </div>
       {/* Passagers (caché en mode expérience) */}
       {!hidePassengers && mode!=='experience' && (
         <div>
@@ -664,15 +665,18 @@ export default function SearchBar({
                   const diff = Math.abs((bDate.getTime()-aDate.getTime())/86400000)+1;
                   if (diff<=6) bgClass = ' bg-amber-300/15 border border-amber-300/40 text-amber-200';
                 }
+                // S'assurer que les jours passés ou indisponibles ne sont jamais cliquables
+                const isClickable = clickable && !past && !unavailable && c.date;
+                
                 return (
                   <div key={c.key}
                     className={`sb-day relative h-11 rounded-lg text-[11px] flex items-center justify-center font-medium transition-colors
-                    ${c.date? (clickable? 'cursor-pointer':'') : ''}
+                    ${c.date? (isClickable? 'cursor-pointer':'cursor-not-allowed') : ''}
                     ${bgClass}
                     ${selected && !past? ' selected-range ' : ''}
                     ${isStart? ' range-start ' : ''}
                     ${isEnd? ' range-end ' : ''}`}
-                    onClick={()=>{ if(!c.date) return; if(!clickable) return; selectDay(c.date); }}
+                    onClick={()=>{ if(!c.date || !isClickable) return; selectDay(c.date); }}
                   >
                     {c.label || ''}
                     {stats && !past && !unavailable && (part==='FULL' || part==='SUNSET' || part==='HALF') && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0) && (

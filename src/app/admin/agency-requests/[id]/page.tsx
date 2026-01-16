@@ -185,9 +185,76 @@ export default async function AgencyRequestDetailPage(
           </div>
           <div className='grid gap-1 text-sm'>
             <span className='text-black/50'>{locale==='fr'? 'Montant total':'Total amount'}</span>
-            <span>{row.totalPrice? (row.totalPrice/100).toFixed(2)+' €':'—'}</span>
+            <span>{row.totalPrice? row.totalPrice.toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €':'—'}</span>
           </div>
-          {row.metadata && <div className='grid gap-1 text-sm'><span className='text-black/50'>{locale==='fr'? 'Métadonnées':'Metadata'}</span><pre className='text-[11px] bg-black/5 rounded p-2 overflow-auto max-h-60'>{row.metadata}</pre></div>}
+          {row.metadata && (() => {
+            let metadataObj: any = {};
+            try {
+              metadataObj = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata;
+            } catch {}
+            return (
+              <div className='grid gap-2 text-sm'>
+                <span className='text-black/50'>{locale==='fr'? 'Informations complémentaires':'Additional information'}</span>
+                <div className='bg-black/5 rounded-lg p-4 space-y-3 text-xs'>
+                  {metadataObj.childrenCount && (
+                    <div>
+                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Nombre d\'enfants':'Number of children'}: </span>
+                      <span>{metadataObj.childrenCount}</span>
+                    </div>
+                  )}
+                  {metadataObj.waterToys !== undefined && (
+                    <div>
+                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Jeux d\'eau':'Water toys'}: </span>
+                      <span>{metadataObj.waterToys === 'yes' || metadataObj.waterToys === true ? (locale==='fr'? 'Oui':'Yes') : (locale==='fr'? 'Non':'No')}</span>
+                    </div>
+                  )}
+                  {metadataObj.wantsExcursion && (
+                    <div>
+                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Excursion':'Excursion'}: </span>
+                      <span>{locale==='fr'? 'Oui':'Yes'}</span>
+                    </div>
+                  )}
+                  {metadataObj.specialNeeds && (
+                    <div>
+                      <span className='font-semibold text-black/70 block mb-1'>{locale==='fr'? 'Besoins spéciaux':'Special needs'}: </span>
+                      <p className='text-black/70 whitespace-pre-line'>{decodeURIComponent(metadataObj.specialNeeds)}</p>
+                    </div>
+                  )}
+                  {metadataObj.optionIds && Array.isArray(metadataObj.optionIds) && metadataObj.optionIds.length > 0 && (
+                    <div>
+                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Options sélectionnées':'Selected options'}: </span>
+                      <span>{metadataObj.optionIds.join(', ')}</span>
+                    </div>
+                  )}
+                  {metadataObj.departurePort && (
+                    <div>
+                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Port de départ':'Departure port'}: </span>
+                      <span>{metadataObj.departurePort}</span>
+                    </div>
+                  )}
+                  {metadataObj.skipperRequired && (
+                    <div>
+                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Skipper requis':'Skipper required'}: </span>
+                      <span>{locale==='fr'? 'Oui':'Yes'}</span>
+                      {metadataObj.effectiveSkipperPrice && (
+                        <span className='ml-2 text-black/50'>({metadataObj.effectiveSkipperPrice}€ HT/jour)</span>
+                      )}
+                    </div>
+                  )}
+                  {(metadataObj.boatCapacity || metadataObj.boatLength || metadataObj.boatSpeed) && (
+                    <div className='pt-2 border-t border-black/10'>
+                      <span className='font-semibold text-black/70 block mb-1'>{locale==='fr'? 'Caractéristiques du bateau':'Boat specifications'}:</span>
+                      <ul className='space-y-0.5 text-black/60'>
+                        {metadataObj.boatCapacity && <li>• {locale==='fr'? 'Capacité':'Capacity'}: {metadataObj.boatCapacity} {locale==='fr'? 'personnes':'people'}</li>}
+                        {metadataObj.boatLength && <li>• {locale==='fr'? 'Longueur':'Length'}: {metadataObj.boatLength}m</li>}
+                        {metadataObj.boatSpeed && <li>• {locale==='fr'? 'Vitesse':'Speed'}: {metadataObj.boatSpeed} {locale==='fr'? 'nœuds':'knots'}</li>}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
           <div className='pt-4 flex gap-2 flex-wrap'>
             <form action={`/api/admin/agency-requests/${row.id}`} method='post' className='flex gap-2 flex-wrap'>
               <input type='hidden' name='_method' value='PATCH' />

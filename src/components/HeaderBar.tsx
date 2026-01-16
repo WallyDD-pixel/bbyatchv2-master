@@ -115,9 +115,10 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
               <button
                 className={`relative h-9 px-4 rounded-xl text-sm font-bold transition-all duration-300 overflow-hidden ${
                   locale === "fr" 
-                    ? "bg-gradient-to-r from-[color:var(--primary)] to-[color:var(--primary)]/80 text-white shadow-lg scale-105" 
+                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-105" 
                     : "text-slate-600 dark:text-white/90 hover:bg-slate-200/70 dark:hover:bg-white/15 hover:scale-105"
                 }`}
+                style={locale === "fr" ? { background: 'linear-gradient(to right, #2563eb, #1d4ed8)' } : {}}
                 aria-pressed={locale === "fr"}
                 onClick={() => setLocale("fr")}
                 type="button"
@@ -128,9 +129,10 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
               <button
                 className={`relative h-9 px-4 rounded-xl text-sm font-bold transition-all duration-300 overflow-hidden ${
                   locale === "en" 
-                    ? "bg-gradient-to-r from-[color:var(--primary)] to-[color:var(--primary)]/80 text-white shadow-lg scale-105" 
+                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-105" 
                     : "text-slate-600 dark:text-white/90 hover:bg-slate-200/70 dark:hover:bg-white/15 hover:scale-105"
                 }`}
+                style={locale === "en" ? { background: 'linear-gradient(to right, #2563eb, #1d4ed8)' } : {}}
                 aria-pressed={locale === "en"}
                 onClick={() => setLocale("en")}
                 type="button"
@@ -143,7 +145,8 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
             {!session && (
               <a
                 href="/signin"
-                className="group relative rounded-2xl px-6 h-11 flex items-center text-sm font-bold text-white bg-gradient-to-r from-[color:var(--primary)] via-[color:var(--primary)]/90 to-[color:var(--primary)] hover:from-[color:var(--primary)]/90 hover:via-[color:var(--primary)] hover:to-[color:var(--primary)]/90 active:scale-95 transition-all duration-300 shadow-lg hover:shadow-xl overflow-hidden"
+                className="group relative rounded-2xl px-6 h-11 flex items-center text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 transition-all duration-300 shadow-lg hover:shadow-xl overflow-hidden"
+                style={{ backgroundColor: '#2563eb' }}
               >
                 <span className="relative z-10 flex items-center gap-2">
                   <span className="text-base">👤</span>
@@ -162,7 +165,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                   className="group h-11 pl-3 pr-4 rounded-2xl flex items-center gap-3 bg-gradient-to-r from-slate-100/90 via-slate-50/90 to-slate-100/90 dark:from-white/15 dark:via-white/10 dark:to-white/15 text-slate-700 dark:text-slate-200 text-sm font-medium hover:from-slate-200/90 hover:via-slate-100/90 hover:to-slate-200/90 dark:hover:from-white/20 dark:hover:via-white/15 dark:hover:to-white/20 transition-all duration-300 ring-1 ring-inset ring-white/60 dark:ring-white/10 shadow-md hover:shadow-lg backdrop-blur-sm"
                 >
                   <div className="relative">
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-[color:var(--primary)] to-[color:var(--primary)]/80 text-white text-sm font-bold shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110" style={{ backgroundColor: '#2563eb' }}>
                       {session.user?.name?.[0]?.toUpperCase() || session.user?.email?.[0]?.toUpperCase() || 'U'}
                     </span>
                     <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full ring-2 ring-white dark:ring-slate-800 animate-pulse" />
@@ -173,15 +176,15 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                 {userMenuOpen && (
                   <div className="absolute right-0 mt-3 w-64 rounded-2xl border border-slate-300/60 dark:border-white/10 bg-gradient-to-br from-white/95 to-white/90 dark:from-[#243443]/95 dark:to-[#1f2c38]/95 shadow-2xl p-1.5 z-[130] text-sm backdrop-blur-xl">
                     <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[color:var(--primary)]" />{userRole==='admin'? 'Admin': userRole==='agency'? 'Agence':'Utilisateur'}
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-600" style={{ backgroundColor: '#2563eb' }} />{userRole==='admin'? 'Admin': userRole==='agency'? 'Agence':'Utilisateur'}
                     </div>
-                    <a href={userRole==='admin'? '/admin': userRole==='agency'? '/agency':'/dashboard'} className="flex items-center gap-3 px-3 h-10 rounded-xl hover:bg-[color:var(--primary)]/10 active:bg-[color:var(--primary)]/15 text-slate-700 dark:text-slate-200">
+                    <a href={userRole==='admin'? '/admin': userRole==='agency'? '/agency':'/dashboard'} className="flex items-center gap-3 px-3 h-10 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 dark:active:bg-blue-900/30 text-slate-700 dark:text-slate-200">
                       <span className="text-[15px]">📊</span><span>{locale==='fr'? 'Tableau de bord':'Dashboard'}</span>
                     </a>
                     {userRole==='admin' && (
                       <>
-                        <a href="/admin/reservations" className="flex items-center gap-3 px-3 h-10 rounded-xl hover:bg-[color:var(--primary)]/10 active:bg-[color:var(--primary)]/15 text-slate-700 dark:text-slate-200"><span className="text-[15px]">🗂️</span><span>{locale==='fr'? 'Réservations':'Reservations'}</span></a>
-                        <a href="/admin/agency/requests" className="flex items-center gap-3 px-3 h-10 rounded-xl hover:bg-[color:var(--primary)]/10 active:bg-[color:var(--primary)]/15 text-slate700 dark:text-slate-200"><span className="text-[15px]">🤝</span><span>{locale==='fr'? 'Demandes agence':'Agency requests'}</span></a>
+                        <a href="/admin/reservations" className="flex items-center gap-3 px-3 h-10 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 dark:active:bg-blue-900/30 text-slate-700 dark:text-slate-200"><span className="text-[15px]">🗂️</span><span>{locale==='fr'? 'Réservations':'Reservations'}</span></a>
+                        <a href="/admin/agency-requests" className="flex items-center gap-3 px-3 h-10 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 dark:active:bg-blue-900/30 text-slate-700 dark:text-slate-200"><span className="text-[15px]">🤝</span><span>{locale==='fr'? 'Demandes agence':'Agency requests'}</span></a>
                       </>
                     )}
                     <div className="my-1 h-px bg-gradient-to-r from-transparent via-slate-300/70 dark:via-white/10 to-transparent" />
@@ -249,13 +252,15 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                 <div className="flex items-center gap-1 rounded-full border border-slate-300/80 dark:border-white/15 p-1 flex-1 justify-center bg-white/80 dark:bg-white/5 shadow-inner">
                   {/* active state stays primary, inactive state forced to white for readability */}
                   <button
-                    className={`h-9 px-4 rounded-full text-sm font-semibold transition leading-none ${locale === "fr" ? "bg-[color:var(--primary)] text-white shadow" : "text-white/90 dark:text-white/90 hover:bg-white/10"}`}
+                    className={`h-9 px-4 rounded-full text-sm font-semibold transition leading-none ${locale === "fr" ? "bg-blue-600 text-white shadow" : "text-white/90 dark:text-white/90 hover:bg-white/10"}`}
+                    style={locale === "fr" ? { backgroundColor: '#2563eb' } : {}}
                     aria-pressed={locale === "fr"}
                     onClick={() => setLocale("fr")}
                     type="button"
                   >FR</button>
                   <button
-                    className={`h-9 px-4 rounded-full text-sm font-semibold transition leading-none ${locale === "en" ? "bg-[color:var(--primary)] text-white shadow" : "text-white/90 dark:text-white/90 hover:bg-white/10"}`}
+                    className={`h-9 px-4 rounded-full text-sm font-semibold transition leading-none ${locale === "en" ? "bg-blue-600 text-white shadow" : "text-white/90 dark:text-white/90 hover:bg-white/10"}`}
+                    style={locale === "en" ? { backgroundColor: '#2563eb' } : {}}
                     aria-pressed={locale === "en"}
                     onClick={() => setLocale("en")}
                     type="button"
@@ -264,9 +269,9 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                 {!session && (
                   <a
                     href="/signin"
-                    className="w-full sm:flex-1 rounded-2xl px-6 py-4 min-h-[56px] flex items-center justify-center text-base font-bold text-white bg-[color:var(--primary)] hover:brightness-105 active:brightness-95 transition shadow-lg"
+                    className="w-full sm:flex-1 rounded-2xl px-6 py-4 min-h-[56px] flex items-center justify-center text-base font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-lg"
                     onClick={() => setOpen(false)}
-                    style={{letterSpacing: '0.2px'}}
+                    style={{letterSpacing: '0.2px', backgroundColor: '#2563eb'}}
                   >{t.auth_signin}</a>
                 )}
                 {session && (
@@ -274,7 +279,8 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                     <a
                       href={userRole==='admin'? '/admin': userRole==='agency'? '/agency':'/dashboard'}
                       onClick={()=>setOpen(false)}
-                      className="group flex-1 rounded-2xl bg-gradient-to-r from-[color:var(--primary)] via-[color:var(--primary)]/90 to-[color:var(--primary)]/80 text-white min-h-[56px] flex items-center justify-center gap-2 text-base sm:text-lg font-semibold shadow-[0_6px_18px_-4px_rgba(0,0,0,0.35)] hover:brightness-110 active:brightness-95 transition tracking-wide"
+                      className="group flex-1 rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white min-h-[56px] flex items-center justify-center gap-2 text-base sm:text-lg font-semibold shadow-[0_6px_18px_-4px_rgba(0,0,0,0.35)] transition-colors tracking-wide"
+                      style={{ backgroundColor: '#2563eb' }}
                     >
                       <span className="text-lg drop-shadow-sm">📊</span>
                       <span className="relative">

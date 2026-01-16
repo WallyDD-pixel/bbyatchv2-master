@@ -183,6 +183,11 @@ model InfoCard {
   titleEn   String
   descFr    String?
   descEn    String?
+  contentFr String?  // Texte détaillé (FR)
+  contentEn String?  // Texte détaillé (EN)
+  ctaUrl    String?  // URL du bouton CTA
+  ctaLabelFr String? // Label du bouton CTA (FR)
+  ctaLabelEn String? // Label du bouton CTA (EN)
   sort      Int?     @default(0)
   createdAt DateTime @default(now())
 }
@@ -363,7 +368,7 @@ model UsedBoat {
   engineHours    Int?
   engines        String?
   fuelType       String?   // diesel | essence | hybride
-  priceEur       Int
+  priceEur       Int?      // Nullable pour "nous consulter"
   status         String    @default("listed") // listed | sold | hidden
   mainImage      String?
   photoUrls      String?   // JSON array

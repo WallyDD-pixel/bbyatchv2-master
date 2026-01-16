@@ -133,8 +133,21 @@ export async function POST(req: Request) {
     }
   }
 
-  // Combiner les images existantes et les nouvelles
-  const allImages = [...existingImages, ...uploadedUrls];
+  // Combiner les images existantes et les nouvelles, en évitant les doublons
+  const allImagesSet = new Set<string>();
+  // Ajouter d'abord les images existantes
+  existingImages.forEach(url => {
+    if (url && url.trim() && !url.startsWith('data:')) {
+      allImagesSet.add(url.trim());
+    }
+  });
+  // Ajouter les nouvelles images uploadées
+  uploadedUrls.forEach(url => {
+    if (url && url.trim()) {
+      allImagesSet.add(url.trim());
+    }
+  });
+  const allImages = Array.from(allImagesSet);
   const aboutImageUrls = allImages.length > 0 ? JSON.stringify(allImages) : null;
 
   // Mettre à jour les settings

@@ -115,7 +115,10 @@ export async function POST(req: Request){
       titleEn: (data.get('titleEn')? String(data.get('titleEn')): String(data.get('titleFr')||'')).trim(),
       year: parseInt(String(data.get('year')),10),
       lengthM: parseFloat(String(data.get('lengthM'))),
-      priceEur: parseInt(String(data.get('priceEur')),10),
+      priceEur: (() => {
+        const priceRaw = String(data.get('priceEur') || '').trim();
+        return priceRaw ? parseInt(priceRaw, 10) : null;
+      })(),
       engines: data.get('engines')? String(data.get('engines')).trim(): null,
       engineHours: data.get('engineHours')? parseInt(String(data.get('engineHours')),10): null,
       fuelType: data.get('fuelType')? String(data.get('fuelType')).trim(): null,

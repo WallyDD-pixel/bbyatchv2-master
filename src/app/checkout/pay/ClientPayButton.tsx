@@ -59,7 +59,8 @@ export default function ClientPayButton({ locale, label, boatSlug, start, end, p
         type="button"
         onClick={handleClick}
         disabled={loading || disabled}
-        className={`w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm hover:shadow disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors`}
+        className={`w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold shadow-sm hover:shadow disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors`}
+        style={{ backgroundColor: loading || disabled ? '#93c5fd' : '#2563eb' }}
       >
         {loading && <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full" />}
         <span>{label}</span>

@@ -148,42 +148,6 @@ export default async function AboutPage({ searchParams }: { searchParams?: { lan
           </div>
         </section>
 
-        {/* Nos Marques */}
-        <section className="mb-16">
-          <h2 className="text-2xl md:text-3xl font-bold text-black/90 mb-8 text-center">
-            {locale === 'fr' ? 'Nos Marques' : 'Our Brands'}
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="rounded-2xl border border-black/10 bg-gradient-to-br from-[color:var(--primary)]/10 to-white p-6 shadow-sm">
-              <div className="text-3xl mb-3">🏆</div>
-              <h3 className="text-xl font-bold text-black/90 mb-2">BB YACHTS</h3>
-              <p className="text-sm text-black/70">
-                {locale === 'fr' 
-                  ? 'Notre marque principale dédiée à la vente de yachts de qualité supérieure.'
-                  : 'Our main brand dedicated to the sale of superior quality yachts.'}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-black/10 bg-gradient-to-br from-[color:var(--primary)]/10 to-white p-6 shadow-sm">
-              <div className="text-3xl mb-3">⛵</div>
-              <h3 className="text-xl font-bold text-black/90 mb-2">BB CHARTER</h3>
-              <p className="text-sm text-black/70">
-                {locale === 'fr' 
-                  ? 'Notre flotte de bateaux mise en avant pour des locations exceptionnelles.'
-                  : 'Our boat fleet showcased for exceptional rentals.'}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-black/10 bg-gradient-to-br from-[color:var(--primary)]/10 to-white p-6 shadow-sm">
-              <div className="text-3xl mb-3">🚤</div>
-              <h3 className="text-xl font-bold text-black/90 mb-2">BB SERVICES CHARTER</h3>
-              <p className="text-sm text-black/70">
-                {locale === 'fr' 
-                  ? 'Extension de BB YACHTS permettant la location de notre flotte de bateaux.'
-                  : 'Extension of BB YACHTS allowing the rental of our boat fleet.'}
-              </p>
-            </div>
-          </div>
-        </section>
-
         {/* Galerie / Photos */}
         <section className="mb-16">
           <h2 className="text-2xl md:text-3xl font-bold text-black/90 mb-8 text-center">

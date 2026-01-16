@@ -39,9 +39,9 @@ export async function POST(req: Request) {
       
       if (allowedExt.has(ext)) {
         try {
-          const uploadedUrl = await uploadToSupabase(logoFile, `logos/logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`);
-          if (uploadedUrl) {
-            logoUrl = uploadedUrl;
+          const uploadResult = await uploadToSupabase(logoFile, `logos/logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`);
+          if (uploadResult?.url) {
+            logoUrl = uploadResult.url;
           }
         } catch (error) {
           console.error('Error uploading logo to Supabase:', error);

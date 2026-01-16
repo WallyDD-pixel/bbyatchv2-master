@@ -19,8 +19,8 @@ export async function POST(req: Request){
   if(!session?.user || (session.user as any).role !== 'admin') return NextResponse.json({ error:'unauthorized' },{ status:401 });
   try {
     const data = await req.formData();
-    // Champs requis (sans slug désormais)
-    const required = ['titleFr','year','lengthM','priceEur'];
+    // Champs requis (priceEur peut être vide pour "nous consulter")
+    const required = ['titleFr','year','lengthM'];
     for(const f of required){ if(!data.get(f)) return NextResponse.json({ error:'missing_'+f },{ status:400 }); }
 
     // Fonction de slugify
@@ -47,12 +47,16 @@ export async function POST(req: Request){
       }
     }
 
+    // Gestion du prix (peut être vide/null pour "nous consulter")
+    const priceEurRaw = String(data.get('priceEur') || '').trim();
+    const priceEur = priceEurRaw ? parseInt(priceEurRaw, 10) : null;
+
     const payloadBase:any = {
       titleFr: rawTitleFr,
       titleEn: String(data.get('titleEn')||data.get('titleFr')||'').trim(),
       year: parseInt(String(data.get('year')),10),
       lengthM: parseFloat(String(data.get('lengthM'))),
-      priceEur: parseInt(String(data.get('priceEur')),10),
+      priceEur: priceEur,
       engines: data.get('engines')? String(data.get('engines')).trim(): null,
       engineHours: data.get('engineHours')? parseInt(String(data.get('engineHours')),10): null,
       fuelType: data.get('fuelType')? String(data.get('fuelType')).trim(): null,
