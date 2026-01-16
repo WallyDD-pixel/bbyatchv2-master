@@ -83,12 +83,10 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
         {/* Barre principale ultra-moderne */}
         <div className="flex items-center gap-4 rounded-3xl bg-gradient-to-r from-white/96 via-white/92 to-white/96 dark:from-slate-900/95 dark:via-slate-800/95 dark:to-slate-900/95 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)] dark:shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)] px-4 sm:px-6 py-3 ring-1 ring-[color:var(--primary)]/15 hover:ring-[color:var(--primary)]/25 transition-all duration-300 group">
           {/* Logo avec animation sophistiquée */}
-          <a href={homeBase} className="flex items-center gap-3 group hover:scale-[1.02] transition-all duration-300 ease-out" aria-label={t.app_name}>
+          <a href={homeBase} className="flex items-center group hover:scale-[1.02] transition-all duration-300 ease-out" aria-label={t.app_name}>
             <div className="relative">
               <Image src={logoUrl} alt="BB YACHTS" width={150} height={50} priority className="h-12 w-auto object-contain drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--primary)]/0 via-[color:var(--primary)]/5 to-[color:var(--primary)]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
             </div>
-            <span className="hidden sm:inline text-base font-bold tracking-wide bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 dark:from-slate-100 dark:via-slate-200 dark:to-slate-100 bg-clip-text text-transparent group-hover:from-[color:var(--primary)] group-hover:via-[color:var(--primary)]/80 group-hover:to-[color:var(--primary)] transition-all duration-500">{t.app_name}</span>
           </a>
 
           {/* Navigation desktop améliorée */}
@@ -98,14 +96,14 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                 key={link.href} 
                 href={link.href} 
                 target={link.target}
-                className="group relative px-5 py-3 rounded-2xl font-semibold text-slate-700 dark:text-slate-200/95 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/50 transition-all duration-300 overflow-hidden no-underline visited:text-slate-700 visited:dark:text-slate-200/95 hover:visited:text-white active:text-white" 
+                className="group relative px-5 py-3 rounded-2xl font-semibold text-slate-700 dark:text-slate-200/95 hover:text-slate-900 dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/50 transition-all duration-300 overflow-hidden no-underline visited:text-slate-700 visited:dark:text-slate-200/95 hover:visited:text-slate-900 active:text-slate-900" 
                 style={{ textDecoration: 'none' }}
               >
                 <span className="relative z-10 flex items-center gap-2">
                   <span className="font-medium">{locale === 'fr' ? link.labelFr : link.labelEn}</span>
                 </span>
-                {/* Pas d'effet de survol coloré - juste une légère ombre */}
-                <span className="absolute inset-0 bg-slate-100/50 dark:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-2xl" />
+                {/* Légère ombre au survol, pas de fond transparent */}
+                <span className="absolute inset-0 bg-slate-100 dark:bg-white/10 rounded-2xl shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
               </a>
             ))}
           </nav>
