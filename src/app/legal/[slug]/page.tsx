@@ -26,6 +26,8 @@ export default async function LegalPage({ params, searchParams }: { params:{ slu
   const t = messages[locale];
   const slug = params.slug;
   let page: LegalRow | null = null;
+  
+  // Essayer d'abord avec le slug exact
   try {
     page = await (prisma as any).legalPage.findUnique({ where:{ slug } });
   } catch {
@@ -33,13 +35,60 @@ export default async function LegalPage({ params, searchParams }: { params:{ slu
       const rows = await prisma.$queryRaw<LegalRow[]>`
         SELECT id, slug, titleFr, titleEn, introFr, introEn, contentFr, contentEn,
                cancellationFr, cancellationEn, paymentFr, paymentEn, fuelDepositFr, fuelDepositEn
-        FROM LegalPage WHERE slug = ${slug} LIMIT 1
+        FROM "LegalPage" WHERE slug = ${slug} LIMIT 1
       `;
       page = rows?.[0] || null;
     } catch {
       page = null;
     }
   }
+  
+  // Si pas trouvé, essayer une recherche flexible par slug similaire
+  if(!page) {
+    try {
+      // Mapping de slugs alternatifs
+      const slugMappings: Record<string, string[]> = {
+        'conditions-paiement-location': ['conditions-paiement', 'conditions-paiement-location', 'conditions', 'paiement'],
+        'conditions-paiement': ['conditions-paiement-location', 'conditions-paiement', 'conditions', 'paiement'],
+        'terms': ['cgu-mentions', 'terms', 'cgu', 'mentions'],
+        'cgu-mentions': ['terms', 'cgu-mentions', 'cgu', 'mentions'],
+        'privacy': ['confidentialite', 'privacy', 'confidentialité'],
+        'confidentialite': ['privacy', 'confidentialite', 'confidentialité'],
+      };
+      
+      const alternativeSlugs = slugMappings[slug] || [slug];
+      
+      for (const altSlug of alternativeSlugs) {
+        try {
+          page = await (prisma as any).legalPage.findUnique({ where:{ slug: altSlug } });
+          if (page) break;
+        } catch {}
+      }
+      
+      // Si toujours pas trouvé, chercher par titre
+      if(!page) {
+        const allPages = await (prisma as any).legalPage.findMany({
+          select: { slug: true, titleFr: true, titleEn: true }
+        });
+        
+        // Chercher une correspondance partielle dans les titres
+        const searchTerms = slug.toLowerCase().split('-');
+        page = allPages.find((p: any) => {
+          const titleFr = (p.titleFr || '').toLowerCase();
+          const titleEn = (p.titleEn || '').toLowerCase();
+          return searchTerms.some(term => titleFr.includes(term) || titleEn.includes(term));
+        }) as any;
+        
+        // Si trouvé par titre, récupérer la page complète
+        if (page) {
+          page = await (prisma as any).legalPage.findUnique({ where:{ slug: page.slug } });
+        }
+      }
+    } catch (e) {
+      console.error('Erreur lors de la recherche flexible:', e);
+    }
+  }
+  
   if(!page) notFound();
 
   return (

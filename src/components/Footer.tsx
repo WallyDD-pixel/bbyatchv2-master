@@ -79,29 +79,57 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
     });
     
     // Chercher la page "Conditions & Paiement" ou similaire
-    const conditionsPage = allPages.find((p: any) => 
-      p.slug === baseSlug || 
-      p.titleFr?.toLowerCase().includes('conditions') && p.titleFr?.toLowerCase().includes('paiement') ||
-      p.slug.includes('conditions') || p.slug.includes('paiement')
-    );
+    const conditionsPage = allPages.find((p: any) => {
+      const titleFr = (p.titleFr || '').toLowerCase();
+      const titleEn = (p.titleEn || '').toLowerCase();
+      const slug = (p.slug || '').toLowerCase();
+      
+      return (
+        p.slug === baseSlug ||
+        slug === 'conditions-paiement-location' ||
+        slug === 'conditions-paiement' ||
+        (titleFr.includes('conditions') && titleFr.includes('paiement')) ||
+        (titleEn.includes('conditions') && titleEn.includes('payment')) ||
+        slug.includes('conditions') && slug.includes('paiement')
+      );
+    });
     if (conditionsPage) baseSlug = conditionsPage.slug;
     
     // Chercher la page "CGU" ou "Mentions" ou "Terms"
-    const termsPage = allPages.find((p: any) => 
-      p.slug === termsSlug || 
-      p.titleFr?.toLowerCase().includes('cgu') || 
-      p.titleFr?.toLowerCase().includes('mentions') ||
-      p.slug === 'terms' || p.slug.includes('terms') || p.slug.includes('cgu')
-    );
+    const termsPage = allPages.find((p: any) => {
+      const titleFr = (p.titleFr || '').toLowerCase();
+      const titleEn = (p.titleEn || '').toLowerCase();
+      const slug = (p.slug || '').toLowerCase();
+      
+      return (
+        p.slug === termsSlug ||
+        slug === 'terms' ||
+        slug === 'cgu-mentions' ||
+        titleFr.includes('cgu') ||
+        titleFr.includes('mentions') ||
+        titleEn.includes('terms') ||
+        slug.includes('terms') ||
+        slug.includes('cgu')
+      );
+    });
     if (termsPage) termsSlug = termsPage.slug;
     
     // Chercher la page "Confidentialité" ou "Privacy"
-    const privacyPage = allPages.find((p: any) => 
-      p.slug === privacySlug || 
-      p.titleFr?.toLowerCase().includes('confidentialité') || 
-      p.titleFr?.toLowerCase().includes('privacy') ||
-      p.slug === 'privacy' || p.slug.includes('privacy') || p.slug.includes('confidentialite')
-    );
+    const privacyPage = allPages.find((p: any) => {
+      const titleFr = (p.titleFr || '').toLowerCase();
+      const titleEn = (p.titleEn || '').toLowerCase();
+      const slug = (p.slug || '').toLowerCase();
+      
+      return (
+        p.slug === privacySlug ||
+        slug === 'privacy' ||
+        slug === 'confidentialite' ||
+        titleFr.includes('confidentialité') ||
+        titleEn.includes('privacy') ||
+        slug.includes('privacy') ||
+        slug.includes('confidentialite')
+      );
+    });
     if (privacyPage) privacySlug = privacyPage.slug;
   } catch (e) {
     // Si erreur, utiliser les valeurs par défaut
