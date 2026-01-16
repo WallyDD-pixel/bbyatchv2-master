@@ -75,7 +75,7 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
               <button 
                 type="button" 
                 onClick={() => setSearchOpen(true)} 
-                className="w-full h-11 rounded-full text-sm font-semibold shadow bg-[color:var(--primary)] text-white hover:brightness-110"
+                className="w-full h-11 rounded-full text-sm font-semibold shadow bg-blue-600 hover:bg-blue-700 text-white transition-colors"
               >
                 {locale==='fr'? 'Choisir la date':'Choose date'} →
               </button>

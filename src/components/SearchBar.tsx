@@ -699,7 +699,7 @@ export default function SearchBar({
               <p className="text-[10px] text-white/60 flex-1">{(part==='FULL' || part==='SUNSET')? (tempStart? labels.search_help_pick_end_full : labels.search_help_pick_start_full) : labels.search_help_pick_half}.</p>
               <div className="flex items-center gap-2">
                 {values.startDate && <button type="button" onClick={()=>{ setValues(v=>({...v,startDate:'', endDate:''})); setTempStart(null); }} className="text-[10px] px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80">Reset</button>}
-                <button type="button" onClick={()=>setPickerOpen(false)} className="text-[11px] px-4 py-2 rounded-full bg-[var(--primary)] text-white font-semibold hover:brightness-110">OK</button>
+                <button type="button" onClick={()=>setPickerOpen(false)} className="text-[11px] px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm">OK</button>
               </div>
             </div>
             {loadingMonth && <div className="absolute inset-0 rounded-3xl bg-black/70 backdrop-blur-sm flex items-center justify-center text-[11px] font-medium text-white">Chargement...</div>}
@@ -719,8 +719,8 @@ export default function SearchBar({
         <div className="col-span-full mt-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 p-3 text-[11px] flex flex-col gap-2">
           <p><strong>Ville « Autre » sélectionnée :</strong> nous avons besoin de plus d’informations sur le port / la zone souhaitée avant d’afficher les disponibilités.</p>
           <div className="flex flex-wrap gap-2">
-            <Link href="/autre-ville" className="px-3 py-1.5 rounded bg-[color:var(--primary)] text-white text-[11px] font-medium hover:brightness-110">Remplir le formulaire</Link>
-            <button type="button" onClick={()=> setOtherCityNotice(false)} className="px-3 py-1.5 rounded border text-[11px] hover:bg-black/5">Fermer</button>
+            <Link href="/autre-ville" className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-medium shadow-sm">Remplir le formulaire</Link>
+            <button type="button" onClick={()=> setOtherCityNotice(false)} className="px-3 py-1.5 rounded border border-gray-300 bg-white hover:bg-gray-50 text-[11px] text-gray-700 font-medium">Fermer</button>
           </div>
         </div>
       )}

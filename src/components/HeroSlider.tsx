@@ -76,7 +76,7 @@ export default function HeroSlider({ title, subtitle, imageUrl, images }: HeroSl
 						<div className="mt-4">
 							<a
 								href="#experiences"
-								className="inline-flex items-center rounded-full bg-[color:var(--primary)] text-white font-semibold text-sm px-6 h-11 shadow hover:brightness-110 active:brightness-95 transition"
+								className="inline-flex items-center rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-6 h-11 shadow-sm hover:shadow transition-colors"
 							>
 								Découvrir nos expériences
 								<span className="ml-1 text-base translate-y-[1px]">→</span>

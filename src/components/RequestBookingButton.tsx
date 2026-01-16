@@ -55,8 +55,8 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
   };
 
   const baseBtnClasses = 'h-12 rounded-full text-sm font-semibold focus:outline-none focus-visible:ring-2 transition-colors px-6';
-  const enabledClasses = 'bg-[var(--primary)] text-white hover:brightness-110 focus-visible:ring-[var(--primary)]/60';
-  const disabledClasses = 'bg-black/10 text-black/30 cursor-not-allowed';
+  const enabledClasses = 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow focus-visible:ring-blue-500/60';
+  const disabledClasses = 'bg-gray-200 text-gray-400 cursor-not-allowed';
 
   const formatDate = (d?: string) => {
     if(!d) return '';
