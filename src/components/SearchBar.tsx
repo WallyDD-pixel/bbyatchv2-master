@@ -642,16 +642,22 @@ export default function SearchBar({
                 // Indisponible si jour futur mais pas clickable
                 let unavailable = false;
                 if (c.date && !past) {
-                  if (part === 'FULL') unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
-                  else if (part === 'HALF') unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
+                  if (mode === 'experience') {
+                    // Pour les expériences : indisponible si pas de stats ou pas de slots disponibles
+                    unavailable = !stats || !(stats.full>0 || stats.amOnly>0 || stats.pmOnly>0);
+                  } else {
+                    // Pour les bateaux : logique existante
+                    if (part === 'FULL') unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
+                    else if (part === 'HALF') unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
+                  }
                 }
                 let bgClass = 'text-white/30';
                 if (past) {
                   bgClass = ' bg-white/5 text-white/30 line-through';
                 } else if (unavailable) {
-                  bgClass = ' bg-red-400/15 border border-red-400/40 text-red-200';
+                  bgClass = ' bg-red-400/15 border border-red-400/40 text-red-200 opacity-50';
                 } else if (stats) {
-                  if (part === 'FULL') {
+                  if (part === 'FULL' || part === 'SUNSET') {
                     if (stats.full>0) bgClass = ' bg-emerald-300/20 border border-emerald-300/50 text-emerald-200 font-semibold';
                     else if (stats.amOnly>0 || stats.pmOnly>0) bgClass = ' bg-amber-300/20 border border-amber-300/50 text-amber-200 font-semibold';
                   } else if (part === 'HALF') {
@@ -666,17 +672,31 @@ export default function SearchBar({
                   if (diff<=6) bgClass = ' bg-amber-300/15 border border-amber-300/40 text-amber-200';
                 }
                 // S'assurer que les jours passés ou indisponibles ne sont jamais cliquables
-                const isClickable = clickable && !past && !unavailable && c.date;
+                // Pour les expériences à heures fixes, forcer unavailable si pas de stats
+                const isClickable = clickable && !past && !unavailable && c.date && (mode !== 'experience' || (stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0)));
                 
                 return (
                   <div key={c.key}
                     className={`sb-day relative h-11 rounded-lg text-[11px] flex items-center justify-center font-medium transition-colors
-                    ${c.date? (isClickable? 'cursor-pointer':'cursor-not-allowed') : ''}
+                    ${c.date? (isClickable? 'cursor-pointer hover:brightness-110':'cursor-not-allowed opacity-60') : ''}
                     ${bgClass}
-                    ${selected && !past? ' selected-range ' : ''}
-                    ${isStart? ' range-start ' : ''}
-                    ${isEnd? ' range-end ' : ''}`}
-                    onClick={()=>{ if(!c.date || !isClickable) return; selectDay(c.date); }}
+                    ${selected && !past && isClickable? ' selected-range ' : ''}
+                    ${isStart && isClickable? ' range-start ' : ''}
+                    ${isEnd && isClickable? ' range-end ' : ''}
+                    ${unavailable? ' pointer-events-none' : ''}`}
+                    onClick={(e)=>{ 
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if(!c.date || !isClickable || unavailable) return; 
+                      selectDay(c.date); 
+                    }}
+                    onMouseDown={(e)=>{
+                      // Empêcher le clic si la date est indisponible
+                      if(unavailable || !isClickable) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
                   >
                     {c.label || ''}
                     {stats && !past && !unavailable && (part==='FULL' || part==='SUNSET' || part==='HALF') && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0) && (

@@ -42,8 +42,12 @@ export default function ExperienceBookingDisplay({ locale }: Props) {
       </div>
       {bookingData.preferredTime && (
         <div>
-          <span className="font-semibold text-black/70">{locale === 'fr' ? 'Horaire souhaité:' : 'Preferred time:'}</span>
-          <span className="ml-2 text-black/80">{bookingData.preferredTime}</span>
+          <span className="font-semibold text-black/70">{locale === 'fr' ? 'Horaires souhaités:' : 'Preferred times:'}</span>
+          <span className="ml-2 text-black/80">
+            {bookingData.preferredTime.includes('-') 
+              ? bookingData.preferredTime.split('-').join(' → ')
+              : bookingData.preferredTime}
+          </span>
         </div>
       )}
       {bookingData.children && bookingData.children.length > 0 && (

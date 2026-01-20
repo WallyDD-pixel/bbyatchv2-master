@@ -25,121 +25,136 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
   return (
     <div className="rounded-2xl border border-black/10 bg-white shadow p-5">
       <h2 className="text-base font-extrabold tracking-tight uppercase mb-4 flex items-center gap-2">
-        <span>🛥️</span>{locale==='fr'? 'Sélectionnez votre bateau':'Select your boat'}
+        <span>📅</span>{locale==='fr'? 'Réservez votre expérience':'Book your experience'}
       </h2>
-      {boats.length===0 && <p className="text-xs text-black/50">{locale==='fr'? 'Aucun bateau configuré.':'No boat configured.'}</p>}
-      <div className="space-y-3 max-h-72 overflow-auto pr-1">
-        {boats.map(b=>{
-          const active = b.boatId===selectedBoatId;
-          return (
-            <button type="button" key={b.boatId} onClick={()=> setSelectedBoatId(b.boatId)} className={`w-full text-left rounded-xl border px-3 py-2 flex items-center gap-3 hover:border-[color:var(--primary)]/60 transition ${active? 'border-[color:var(--primary)] bg-[color:var(--primary)]/5 shadow-inner':'border-black/15 bg-white'}`}>
-              <div className="relative w-14 h-12 rounded-lg overflow-hidden bg-black/5 shrink-0">
-                {b.imageUrl && <Image src={b.imageUrl} alt={b.name} fill className="object-cover" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-black truncate">{b.name}</div>
-                <div className="text-[10px] text-black/50 mt-0.5">{b.capacity} pax • {b.speedKn} kn</div>
-              </div>
-              {b.priceExperience!=null && <div className="text-xs font-semibold text-[color:var(--primary)] whitespace-nowrap">{b.priceExperience}€</div>}
-            </button>
-          );
-        })}
-      </div>
+      
+      {/* ÉTAPE 1: Sélection de la date EN PREMIER (comme pour les bateaux) */}
+      {!selectedDate && (
+        <div className="mb-5">
+          <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60 mb-3">{locale==='fr'? 'Étape 1 : Choisissez votre date':'Step 1: Choose your date'}</h3>
+          <button 
+            type="button" 
+            onClick={() => setSearchOpen(true)} 
+            className="w-full h-11 rounded-full text-sm font-semibold shadow bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+          >
+            {locale==='fr'? 'Choisir la date':'Choose date'} →
+          </button>
+        </div>
+      )}
 
-      {selectedBoat && (
-        <div className="mt-5 border-t border-black/10 pt-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60 mb-2">{locale==='fr'? 'Options':'Options'}</h3>
-          {selectedBoat.options.length===0 && <p className="text-[11px] text-black/40 mb-2">{locale==='fr'? 'Aucune option pour ce bateau.':'No option for this boat.'}</p>}
-          <div className="space-y-2 max-h-40 overflow-auto pr-1">
-            {selectedBoat.options.map(o=>{
-              const checked = !!selectedOptions[o.id];
-              return (
-                <label key={o.id} className={`flex items-center gap-2 text-[11px] px-2 py-2 rounded-lg border cursor-pointer ${checked? 'bg-[color:var(--primary)]/5 border-[color:var(--primary)]':'border-black/15 hover:border-black/30'}`}> 
-                  <input type="checkbox" className="accent-[color:var(--primary)]" checked={checked} onChange={()=>toggleOption(o.id)} />
-                  <span className="flex-1 font-medium text-black/80">{o.label}</span>
-                  {o.price!=null && <span className="text-[10px] font-semibold text-[color:var(--primary)]">+{o.price}€</span>}
-                </label>
-              );
-            })}
-          </div>
-          <div className="mt-4 rounded-xl bg-[#f5f7fa] border border-black/10 p-4 text-[11px] flex flex-col gap-2">
-            <div className="flex justify-between font-semibold"><span>{locale==='fr'? 'Prix base':'Base price'}</span><span>{basePrice!=null? basePrice+' €':'—'}</span></div>
-            <div className="flex justify-between"><span>{locale==='fr'? 'Options':'Options'}</span><span>{totalOptions} €</span></div>
-            <div className="flex justify-between text-sm font-extrabold pt-1 border-t border-black/10"><span>{locale==='fr'? 'Total':'Total'}</span><span>{total} €</span></div>
-          </div>
-          
-          {/* ÉTAPE 1: Sélection de la date EN PREMIER */}
-          {!selectedDate && (
-            <div className="mt-4 border-t border-black/10 pt-4">
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60 mb-3">{locale==='fr'? 'Étape 1 : Sélectionnez votre date':'Step 1: Select your date'}</h3>
-              <button 
-                type="button" 
-                onClick={() => setSearchOpen(true)} 
-                className="w-full h-11 rounded-full text-sm font-semibold shadow bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-              >
-                {locale==='fr'? 'Choisir la date':'Choose date'} →
-              </button>
-            </div>
-          )}
-          
-          {/* ÉTAPE 2: Formulaire d'informations de réservation (après sélection de date) */}
-          {selectedDate && (
-            <div className="mt-4 border-t border-black/10 pt-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60">{locale==='fr'? 'Étape 2 : Informations de réservation':'Step 2: Booking information'}</h3>
-                <button 
-                  type="button"
-                  onClick={() => setSelectedDate(null)}
-                  className="text-[10px] text-black/50 hover:text-black/70"
-                >
-                  {locale==='fr'? 'Changer la date':'Change date'}
-                </button>
-              </div>
-              <div className="mb-3 p-2 rounded-lg bg-[color:var(--primary)]/5 border border-[color:var(--primary)]/20 text-[11px]">
+      {/* ÉTAPE 2: Sélection du bateau (après sélection de date) */}
+      {selectedDate && (
+        <>
+          <div className="mb-4 p-3 rounded-lg bg-[color:var(--primary)]/5 border border-[color:var(--primary)]/20 text-[11px]">
+            <div className="flex items-center justify-between">
+              <div>
                 <span className="font-semibold">{locale==='fr'? 'Date sélectionnée':'Selected date'}: </span>
                 <span>{selectedDate.startDate}</span>
               </div>
-              <ExperienceBookingForm 
-                locale={locale}
-                hasFixedTimes={experience?.hasFixedTimes || false}
-                fixedDepartureTime={experience?.fixedDepartureTime || null}
-                fixedReturnTime={experience?.fixedReturnTime || null}
-                onSubmit={(data) => {
-                  // Les données sont sauvegardées dans sessionStorage par le formulaire
-                  // Rediriger vers le checkout avec la date déjà sélectionnée
-                  const params = new URLSearchParams();
-                  params.set('exp', experienceSlug);
-                  params.set('boat', String(selectedBoatId));
-                  params.set('part', 'FULL');
-                  params.set('start', selectedDate.startDate);
-                  params.set('end', selectedDate.endDate);
-                  window.location.href = `/booking/experience?${params.toString()}`;
-                }} 
-              />
-              <div className="mt-4">
-                <button 
-                  type="button" 
-                  onClick={()=> {
-                    // Vérifier que le formulaire est valide
-                    const form = document.getElementById('experience-booking-form') as HTMLFormElement;
-                    if (form && !form.checkValidity()) {
-                      form.reportValidity();
-                      return;
-                    }
-                    // Déclencher la soumission du formulaire pour sauvegarder les données
-                    if (form) {
-                      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-                      form.dispatchEvent(submitEvent);
-                    }
+              <button 
+                type="button"
+                onClick={() => {
+                  setSelectedDate(null);
+                  setSelectedBoatId(undefined);
+                  setSelectedOptions({});
+                }}
+                className="text-[10px] text-black/50 hover:text-black/70 underline"
+              >
+                {locale==='fr'? 'Changer':'Change'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-5">
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60 mb-3">{locale==='fr'? 'Étape 2 : Sélectionnez votre bateau':'Step 2: Select your boat'}</h3>
+            {boats.length===0 && <p className="text-xs text-black/50">{locale==='fr'? 'Aucun bateau configuré.':'No boat configured.'}</p>}
+            <div className="space-y-3 max-h-72 overflow-auto pr-1">
+              {boats.map(b=>{
+                const active = b.boatId===selectedBoatId;
+                return (
+                  <button type="button" key={b.boatId} onClick={()=> setSelectedBoatId(b.boatId)} className={`w-full text-left rounded-xl border px-3 py-2 flex items-center gap-3 hover:border-[color:var(--primary)]/60 transition ${active? 'border-[color:var(--primary)] bg-[color:var(--primary)]/5 shadow-inner':'border-black/15 bg-white'}`}>
+                    <div className="relative w-14 h-12 rounded-lg overflow-hidden bg-black/5 shrink-0">
+                      {b.imageUrl && <Image src={b.imageUrl} alt={b.name} fill className="object-cover" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-black truncate">{b.name}</div>
+                      <div className="text-[10px] text-black/50 mt-0.5">{b.capacity} pax • {b.speedKn} kn</div>
+                    </div>
+                    {b.priceExperience!=null && <div className="text-xs font-semibold text-[color:var(--primary)] whitespace-nowrap">{b.priceExperience}€</div>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ÉTAPE 3: Options et formulaire (après sélection du bateau) */}
+          {selectedBoat && (
+            <div className="border-t border-black/10 pt-4">
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60 mb-2">{locale==='fr'? 'Options':'Options'}</h3>
+              {selectedBoat.options.length===0 && <p className="text-[11px] text-black/40 mb-2">{locale==='fr'? 'Aucune option pour ce bateau.':'No option for this boat.'}</p>}
+              <div className="space-y-2 max-h-40 overflow-auto pr-1">
+                {selectedBoat.options.map(o=>{
+                  const checked = !!selectedOptions[o.id];
+                  return (
+                    <label key={o.id} className={`flex items-center gap-2 text-[11px] px-2 py-2 rounded-lg border cursor-pointer ${checked? 'bg-[color:var(--primary)]/5 border-[color:var(--primary)]':'border-black/15 hover:border-black/30'}`}> 
+                      <input type="checkbox" className="accent-[color:var(--primary)]" checked={checked} onChange={()=>toggleOption(o.id)} />
+                      <span className="flex-1 font-medium text-black/80">{o.label}</span>
+                      {o.price!=null && <span className="text-[10px] font-semibold text-[color:var(--primary)]">+{o.price}€</span>}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="mt-4 rounded-xl bg-[#f5f7fa] border border-black/10 p-4 text-[11px] flex flex-col gap-2">
+                <div className="flex justify-between font-semibold"><span>{locale==='fr'? 'Prix base':'Base price'}</span><span>{basePrice!=null? basePrice+' €':'—'}</span></div>
+                <div className="flex justify-between"><span>{locale==='fr'? 'Options':'Options'}</span><span>{totalOptions} €</span></div>
+                <div className="flex justify-between text-sm font-extrabold pt-1 border-t border-black/10"><span>{locale==='fr'? 'Total':'Total'}</span><span>{total} €</span></div>
+              </div>
+              
+              {/* ÉTAPE 3: Formulaire d'informations de réservation */}
+              <div className="mt-4 border-t border-black/10 pt-4">
+                <h3 className="text-[11px] font-bold uppercase tracking-wide text-black/60 mb-3">{locale==='fr'? 'Étape 3 : Informations de réservation':'Step 3: Booking information'}</h3>
+                <ExperienceBookingForm 
+                  locale={locale}
+                  hasFixedTimes={experience?.hasFixedTimes || false}
+                  fixedDepartureTime={experience?.fixedDepartureTime || null}
+                  fixedReturnTime={experience?.fixedReturnTime || null}
+                  onSubmit={(data) => {
+                    // Les données sont sauvegardées dans sessionStorage par le formulaire
+                    // Rediriger vers le checkout avec la date déjà sélectionnée
+                    const params = new URLSearchParams();
+                    params.set('exp', experienceSlug);
+                    params.set('boat', String(selectedBoatId));
+                    params.set('part', 'FULL');
+                    params.set('start', selectedDate.startDate);
+                    params.set('end', selectedDate.endDate);
+                    window.location.href = `/booking/experience?${params.toString()}`;
                   }} 
-                  className="inline-flex items-center justify-center gap-2 w-full h-11 rounded-full text-sm font-semibold shadow bg-[color:var(--primary)] text-white hover:brightness-110"
-                >
-                  {ctaLabel} <span className="text-base">→</span>
-                </button>
+                />
+                <div className="mt-4">
+                  <button 
+                    type="button" 
+                    onClick={()=> {
+                      // Vérifier que le formulaire est valide
+                      const form = document.getElementById('experience-booking-form') as HTMLFormElement;
+                      if (form && !form.checkValidity()) {
+                        form.reportValidity();
+                        return;
+                      }
+                      // Déclencher la soumission du formulaire pour sauvegarder les données
+                      if (form) {
+                        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                        form.dispatchEvent(submitEvent);
+                      }
+                    }} 
+                    className="inline-flex items-center justify-center gap-2 w-full h-11 rounded-full text-sm font-semibold shadow bg-[color:var(--primary)] text-white hover:brightness-110"
+                  >
+                    {ctaLabel} <span className="text-base">→</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
-        </div>
+        </>
       )}
       {searchOpen && (
         <div className="fixed inset-0 z-[300] flex items-start md:items-center justify-center p-4 md:p-8">
