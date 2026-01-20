@@ -366,8 +366,12 @@ CREATE TABLE IF NOT EXISTS "LegalPage" (
 CREATE TABLE IF NOT EXISTS "GalleryImage" (
     "id" SERIAL PRIMARY KEY,
     "imageUrl" TEXT NOT NULL,
+    "videoUrl" TEXT,
     "titleFr" TEXT,
     "titleEn" TEXT,
+    "contentFr" TEXT,
+    "contentEn" TEXT,
+    "sort" INTEGER DEFAULT 0,
     "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
