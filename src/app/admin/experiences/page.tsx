@@ -31,7 +31,7 @@ export default async function AdminExperiencesPage({ searchParams }: { searchPar
           <h1 className="text-2xl font-bold">{locale === "fr" ? "Expériences" : "Experiences"}</h1>
           <div className="flex items-center gap-2">
             <Link href="/admin" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale === "fr" ? "Retour" : "Back"}</Link>
-            <Link href="/admin/experiences/new" className="text-sm rounded-full bg-[color:var(--primary)] text-white px-3 h-9 inline-flex items-center hover:opacity-90">{locale === "fr" ? "Nouveau" : "New"}</Link>
+            <Link href="/admin/experiences/new" className="text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 h-9 inline-flex items-center transition-colors">{locale === "fr" ? "Nouveau" : "New"}</Link>
           </div>
         </div>
         <div className="mt-6 rounded-2xl border border-black/10 bg-white p-5 shadow-sm overflow-x-auto">

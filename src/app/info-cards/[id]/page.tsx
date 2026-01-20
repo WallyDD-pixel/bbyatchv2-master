@@ -73,7 +73,7 @@ export default async function InfoCardDetailPage({ params, searchParams }: { par
                     href={card.ctaUrl}
                     target={card.ctaUrl.startsWith('http') ? '_blank' : '_self'}
                     rel={card.ctaUrl.startsWith('http') ? 'noopener noreferrer' : undefined}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[color:var(--primary)] text-white font-semibold hover:brightness-110 transition shadow-sm"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors shadow-sm"
                   >
                     <span>{ctaLabel}</span>
                     <span>→</span>

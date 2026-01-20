@@ -1177,7 +1177,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                     <p className='text-[11px] font-semibold leading-tight truncate'>{b.name}</p>
                     <p className='text-[9px] text-black/50'>{stats? stats.total:0} {locale==='fr'?'créneaux':'slots'}</p>
                   </div>
-                  {active && <span className='text-[8px] px-2 py-1 rounded-full bg-[color:var(--primary)] text-white font-semibold'>OK</span>}
+                  {active && <span className='text-[8px] px-2 py-1 rounded-full bg-blue-600 text-white font-semibold'>OK</span>}
                 </button> ); })}
               {boats.length===0 && <div className='text-xs text-black/50'>{locale==='fr'?'Aucun bateau':'No boats'}</div>}
             </div>
@@ -1649,7 +1649,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
               <p className='text-xs text-black/60'>{editingSlot.date} {editingSlot.part}</p>
               <textarea value={noteEdit} onChange={e=>setNoteEdit(e.target.value)} className='w-full h-24 border border-black/20 rounded p-2 text-xs' placeholder='Note' />
               <div className='flex gap-2'>
-                <button onClick={saveNote} className='flex-1 h-9 rounded bg-[color:var(--primary)] text-white text-xs'>Save</button>
+                <button onClick={saveNote} className='flex-1 h-9 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs transition-colors'>Save</button>
                 <button onClick={removeSlot} className='h-9 rounded bg-red-600 text-white text-xs px-3'>Delete</button>
                 <button onClick={()=>setEditingSlot(null)} className='h-9 rounded bg-black/10 text-xs px-3'>Close</button>
               </div>

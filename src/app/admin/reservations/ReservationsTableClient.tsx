@@ -324,7 +324,7 @@ export default function ReservationsTableClient({
                       </select>
                       <button
                         type="submit"
-                        className="h-7 px-3 rounded-md bg-[color:var(--primary)] text-white text-[11px] hover:opacity-90"
+                        className="h-7 px-3 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-[11px] transition-colors"
                       >
                         OK
                       </button>

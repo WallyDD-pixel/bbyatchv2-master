@@ -31,7 +31,7 @@ export default async function AdminBoatsPage({ searchParams }: { searchParams?: 
           <h1 className="text-2xl font-bold">{locale === "fr" ? "Bateaux" : "Boats"}</h1>
           <div className="flex items-center gap-2">
             <Link href="/admin" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale === "fr" ? "Retour" : "Back"}</Link>
-            <Link href="/admin/boats/new" className="text-sm rounded-full bg-[color:var(--primary)] text-white px-3 h-9 inline-flex items-center hover:opacity-90">{locale === "fr" ? "Nouveau" : "New"}</Link>
+            <Link href="/admin/boats/new" className="text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 h-9 inline-flex items-center transition-colors">{locale === "fr" ? "Nouveau" : "New"}</Link>
           </div>
         </div>
         <BoatsTableClient boats={boats} locale={locale} />

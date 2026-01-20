@@ -103,7 +103,7 @@ export default function ProfileCardClient({ name, email, locale }: { name: strin
                 <button type="button" className="rounded-full h-9 px-4 border border-black/15 bg-white hover:bg-black/5" onClick={close}>
                   {locale === "fr" ? "Annuler" : "Cancel"}
                 </button>
-                <button disabled={saving} type="submit" className="rounded-full h-9 px-4 bg-[color:var(--primary)] text-white hover:opacity-90 disabled:opacity-50">
+                <button disabled={saving} type="submit" className="rounded-full h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50">
                   {saving ? (locale === "fr" ? "Enregistrement…" : "Saving…") : (locale === "fr" ? "Enregistrer" : "Save")}
                 </button>
               </div>

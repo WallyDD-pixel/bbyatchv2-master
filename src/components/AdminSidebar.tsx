@@ -98,7 +98,7 @@ export default function AdminSidebar({ locale: initialLocale, stats }: AdminSide
       {/* Header */}
       <div className="p-6 border-b border-slate-800">
         <Link href="/admin" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-[color:var(--primary)] flex items-center justify-center text-white font-bold text-sm group-hover:scale-105 transition-transform">
+          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm group-hover:scale-105 transition-transform">
             A
           </div>
           <div>
@@ -119,7 +119,7 @@ export default function AdminSidebar({ locale: initialLocale, stats }: AdminSide
               className={`
                 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 ${active
-                  ? "bg-[color:var(--primary)] text-white shadow-md"
+                  ? "bg-blue-600 text-white shadow-md"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 }
               `}

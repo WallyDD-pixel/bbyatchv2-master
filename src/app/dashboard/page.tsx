@@ -131,7 +131,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                         <div className="flex flex-col items-center gap-2">
                           <div className="size-9 rounded-full bg-black/[0.06] flex items-center justify-center">⛵</div>
                           <div className="text-sm">{locale === "fr" ? "Aucune réservation pour le moment." : "No bookings yet."}</div>
-                          <Link href="#fleet" className="mt-1 inline-flex items-center rounded-full bg-[color:var(--primary)] text-white text-xs h-8 px-4 hover:opacity-90">
+                          <Link href="#fleet" className="mt-1 inline-flex items-center rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-4 transition-colors">
                             {locale === "fr" ? "Voir les bateaux disponibles" : "Browse available boats"}
                           </Link>
                         </div>
@@ -176,7 +176,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   <div className="flex flex-col items-center gap-2">
                     <div className="size-9 rounded-full bg-black/[0.06] flex items-center justify-center">⛵</div>
                     <div className="text-sm">{locale === "fr" ? "Aucune réservation pour le moment." : "No bookings yet."}</div>
-                    <Link href="#fleet" className="mt-1 inline-flex items-center rounded-full bg-[color:var(--primary)] text-white text-xs h-8 px-4 hover:opacity-90">
+                    <Link href="#fleet" className="mt-1 inline-flex items-center rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-4 transition-colors">
                       {locale === "fr" ? "Voir les bateaux disponibles" : "Browse available boats"}
                     </Link>
                   </div>
@@ -223,7 +223,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm hover:shadow-md transition">
             <h2 className="text-lg font-semibold">{locale === "fr" ? "Actions rapides" : "Quick actions"}</h2>
             <div className="mt-3 flex flex-wrap gap-2">
-              <a href={locale === "fr" ? "/?lang=fr#fleet" : "/?lang=en#fleet"} className="inline-flex items-center rounded-full bg-[color:var(--primary)] text-white text-sm h-9 px-4 hover:brightness-110 transition">{locale === "fr" ? "Réserver un bateau" : "Book a boat"}</a>
+              <a href={locale === "fr" ? "/?lang=fr#fleet" : "/?lang=en#fleet"} className="inline-flex items-center rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm h-9 px-4 transition-colors">{locale === "fr" ? "Réserver un bateau" : "Book a boat"}</a>
               <a href="#edit-profile" className="inline-flex items-center rounded-full border border-black/15 bg-white text-sm h-9 px-4 hover:bg-black/5">{locale === "fr" ? "Mettre à jour mon profil" : "Update profile"}</a>
             </div>
           </div>

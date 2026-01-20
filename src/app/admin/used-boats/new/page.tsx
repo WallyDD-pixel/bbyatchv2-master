@@ -38,7 +38,7 @@ export default async function AdminUsedBoatNewPage({ searchParams }: { searchPar
             <label className='grid gap-1 text-sm'><span>Heures moteur</span><input name='engineHours' type='number' className='h-11 rounded-lg border border-black/15 px-3' /></label>
             <label className='grid gap-1 text-sm'><span>Carburant</span><input name='fuelType' className='h-11 rounded-lg border border-black/15 px-3' placeholder='diesel' /></label>
             {/* Upload images */}
-            <label className='grid gap-1 text-sm md:col-span-2'><span>Images (une ou plusieurs)</span><input name='images' type='file' multiple accept='image/*' className='h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[color:var(--primary)] file:text-white file:cursor-pointer' /></label>
+            <label className='grid gap-1 text-sm md:col-span-2'><span>Images (une ou plusieurs)</span><input name='images' type='file' multiple accept='image/*' className='h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:hover:bg-blue-700 file:text-white file:cursor-pointer' /></label>
             <div id='images-preview' className='md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-2'></div>
           </div>
           <label className='grid gap-1 text-sm'><span>Résumé</span><input name='summaryFr' className='h-11 rounded-lg border border-black/15 px-3' /></label>
@@ -52,7 +52,7 @@ export default async function AdminUsedBoatNewPage({ searchParams }: { searchPar
           <p className='text-[11px] text-black/50'>La première image deviendra l'image principale automatiquement.</p>
           <div className='flex justify-end gap-3 pt-2'>
             <a href='/admin/used-boats' className='h-11 px-6 rounded-full border border-black/15 text-sm inline-flex items-center hover:bg-black/5'>Annuler</a>
-            <button type='submit' className='h-11 px-6 rounded-full bg-[color:var(--primary)] text-white text-sm font-semibold hover:brightness-110'>Enregistrer</button>
+            <button type='submit' className='h-11 px-6 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors'>Enregistrer</button>
           </div>
         </form>
       </main>

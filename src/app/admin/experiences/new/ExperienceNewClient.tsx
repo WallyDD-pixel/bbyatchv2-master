@@ -314,7 +314,7 @@ export default function ExperienceNewClient({ locale }: ExperienceNewClientProps
           <div className='flex items-center justify-between'>
             <h2 className='text-lg font-semibold'>{locale === 'fr' ? 'Images' : 'Images'}</h2>
             <label className='text-sm inline-flex items-center gap-2 cursor-pointer'>
-              <span className='rounded-full bg-[color:var(--primary)] text-white px-4 h-9 inline-flex items-center'>
+              <span className='rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 h-9 inline-flex items-center transition-colors'>
                 {uploading ? (locale === 'fr' ? 'Téléversement…' : 'Uploading…') : (locale === 'fr' ? 'Ajouter des images' : 'Add images')}
               </span>
               <input 

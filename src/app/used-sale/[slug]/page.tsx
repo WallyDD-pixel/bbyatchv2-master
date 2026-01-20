@@ -123,7 +123,7 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
                   <a
                     href="#contact"
                     aria-label={(locale==='fr'? 'Contacter au sujet de ':'Contact about ')+boat.titleFr}
-                    className="group relative w-full inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-[color:var(--primary)] text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-4 focus:ring-[color:var(--primary)]/30 overflow-hidden"
+                    className="group relative w-full inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-4 focus:ring-blue-600/30 overflow-hidden"
                     data-cta="usedboat-contact"
                   >
                     <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-transparent to-white/10 opacity-0 group-hover:opacity-100 transition duration-500" />
@@ -160,7 +160,7 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
               <textarea required name="message" placeholder={locale==='fr'? 'Votre message':'Your message'} rows={4} className="col-span-2 resize-none p-4 rounded-lg border border-black/15 bg-white text-sm outline-none focus:border-black/40" />
               <div className="col-span-2 flex items-center justify-between">
                 <p className="text-[11px] text-black/40">{locale==='fr'? 'Nous ne partageons jamais vos informations.':'We never share your information.'}</p>
-                <button className="h-11 px-8 rounded-xl bg-[color:var(--primary)] text-white text-sm font-medium shadow hover:brightness-110" type="submit">{locale==='fr'? 'Envoyer':'Send'}</button>
+                <button className="h-11 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow transition-colors" type="submit">{locale==='fr'? 'Envoyer':'Send'}</button>
               </div>
             </form>
           </div>

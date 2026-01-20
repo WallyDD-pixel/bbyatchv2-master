@@ -283,7 +283,7 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
           </div>
           <div className="flex justify-between pt-2">
             <Link href="/" className="text-xs text-black/50 hover:text-black underline">← Retour</Link>
-            <button type="submit" disabled={!ville || !experience || !message || !email || !part || !rgpd || !startDate} className="px-6 h-11 rounded-full bg-[color:var(--primary)] text-white text-sm font-semibold hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed">Envoyer</button>
+            <button type="submit" disabled={!ville || !experience || !message || !email || !part || !rgpd || !startDate} className="px-6 h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Envoyer</button>
           </div>
 
           {/* Popover calendrier */}
@@ -365,7 +365,7 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
                           <div className="rounded bg-black/5 px-1 py-1 text-center"><span className="font-semibold">{b.pmCount}</span><br/>PM</div>
                         </div>
                         {b.pricePerDay && part==='FULL' && totalDays>1 && <p className="text-[10px] text-black/60">≈ {new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(b.pricePerDay * totalDays)} ({totalDays} j)</p>}
-                        <button type="button" onClick={()=>{ setSelectedBoat(b); setAttemptedClose(false); setShowBoatsModal(false); }} className={`mt-auto text-[11px] h-9 rounded-full font-medium hover:brightness-110 ${selectedBoat?.id===b.id? 'bg-emerald-600 text-white':'bg-[color:var(--primary)] text-white'}`}>{selectedBoat?.id===b.id? 'Sélectionné':'Sélectionner'}</button>
+                        <button type="button" onClick={()=>{ setSelectedBoat(b); setAttemptedClose(false); setShowBoatsModal(false); }} className={`mt-auto text-[11px] h-9 rounded-full font-medium transition-colors ${selectedBoat?.id===b.id? 'bg-emerald-600 hover:bg-emerald-700 text-white':'bg-blue-600 hover:bg-blue-700 text-white'}`}>{selectedBoat?.id===b.id? 'Sélectionné':'Sélectionner'}</button>
                       </div>
                     </div>
                   ))}

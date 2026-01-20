@@ -259,7 +259,7 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
                 }}
                 className={`h-11 rounded-lg border text-sm font-medium transition ${
                   formData.part === p
-                    ? 'border-[color:var(--primary)] bg-[color:var(--primary)] text-white'
+                    ? 'border-blue-600 bg-blue-600 text-white'
                     : 'border-black/15 bg-white text-black/70 hover:border-black/30'
                 }`}
               >

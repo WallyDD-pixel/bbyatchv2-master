@@ -56,7 +56,7 @@ export default async function AgencyDashboard({ searchParams }: { searchParams?:
             <h1 className='text-2xl font-bold'>{locale==='fr'? 'Espace agence':'Agency dashboard'}</h1>
             <p className='mt-1 text-black/70'>{locale==='fr'? 'Vos demandes de réservation':'Your booking requests'}</p>
           </div>
-          <Link href={locale==='fr'? '/?lang=fr#fleet':'/?lang=en#fleet'} className='rounded-full bg-[color:var(--primary)] text-white h-9 px-5 flex items-center text-sm font-medium hover:brightness-110'>{locale==='fr'? 'Nouvelle demande':'New request'}</Link>
+          <Link href={locale==='fr'? '/?lang=fr#fleet':'/?lang=en#fleet'} className='rounded-full bg-blue-600 hover:bg-blue-700 text-white h-9 px-5 flex items-center text-sm font-medium transition-colors'>{locale==='fr'? 'Nouvelle demande':'New request'}</Link>
         </div>
 
         <div className='mt-8 rounded-2xl border border-black/10 bg-white p-5 shadow-sm'>

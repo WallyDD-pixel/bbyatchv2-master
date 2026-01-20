@@ -67,7 +67,7 @@ export default function ExperiencePayButton({ expSlug, boatId, start, end, part,
         type="button"
         onClick={handleClick} 
         disabled={disabled||loading} 
-        className={`w-full h-11 rounded-full text-sm font-semibold flex items-center justify-center transition ${disabled? 'bg-black/20 text-white/50 cursor-not-allowed':'bg-[var(--primary)] text-white hover:brightness-110 active:brightness-95'} ${loading? 'opacity-70':''}`}
+        className={`w-full h-11 rounded-full text-sm font-semibold flex items-center justify-center transition ${disabled? 'bg-black/20 text-white/50 cursor-not-allowed':'bg-blue-600 hover:bg-blue-700 text-white active:bg-blue-800'} ${loading? 'opacity-70':''}`}
       >
         {loading? (locale==='fr'? 'Création du paiement...':'Creating payment...') : (locale==='fr'? 'Continuer vers paiement':'Continue to payment')}
       </button>

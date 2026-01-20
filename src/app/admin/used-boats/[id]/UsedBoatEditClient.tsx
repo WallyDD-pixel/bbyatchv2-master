@@ -93,7 +93,7 @@ export default function UsedBoatEditClient({ boat, locale }: { boat: any; locale
             <button
               type="button"
               onClick={addVideosUrlsFromText}
-              className="px-4 h-10 rounded-lg bg-[color:var(--primary)] text-white text-sm font-medium hover:opacity-90"
+              className="px-4 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
             >
               {locale === "fr" ? "Ajouter" : "Add"}
             </button>
@@ -111,7 +111,7 @@ export default function UsedBoatEditClient({ boat, locale }: { boat: any; locale
         <label className="grid gap-2 text-sm">
           <span className="font-medium">{locale === "fr" ? "Uploader des fichiers vidéo" : "Upload video files"}</span>
           <label className="inline-flex items-center gap-2 cursor-pointer">
-            <span className="rounded-full bg-[color:var(--primary)] text-white px-4 h-10 inline-flex items-center text-sm">
+            <span className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 h-10 inline-flex items-center text-sm transition-colors">
               {uploading ? (locale === 'fr' ? 'Téléversement…' : 'Uploading…') : (locale === 'fr' ? 'Choisir des fichiers vidéo' : 'Choose video files')}
             </span>
             <input

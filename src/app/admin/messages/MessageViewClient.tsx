@@ -241,7 +241,7 @@ export default function MessageViewClient({ messages, locale }: MessageViewClien
             ref={mailRef}
             id="mm-mail"
             href="#"
-            className="h-10 px-5 rounded-full bg-[color:var(--primary)] text-white text-sm font-medium inline-flex items-center justify-center hover:brightness-110 transition-all shadow-sm"
+            className="h-10 px-5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium inline-flex items-center justify-center transition-colors shadow-sm"
           >
             {locale === "fr" ? "Répondre par email" : "Reply by email"}
           </a>

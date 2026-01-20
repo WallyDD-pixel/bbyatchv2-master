@@ -121,7 +121,7 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{locale === "fr" ? "Réservations" : "Reservations"}</h1>
           <div className="flex items-center gap-2">
-            <Link href={`/admin/reservations/new${locale==='en'? '?lang=en':''}`} className="text-sm rounded-full bg-[color:var(--primary)] text-white px-3 h-9 inline-flex items-center hover:brightness-110">➕ {locale==='fr'? 'Créer réservation agence':'Create agency reservation'}</Link>
+            <Link href={`/admin/reservations/new${locale==='en'? '?lang=en':''}`} className="text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 h-9 inline-flex items-center transition-colors">➕ {locale==='fr'? 'Créer réservation agence':'Create agency reservation'}</Link>
             <Link href={`/admin/agency-requests${locale==='en'? '?lang=en':''}`} className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">🤝 {locale==='fr'? 'Demandes agence':'Agency requests'}</Link>
             <Link href="/admin" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale === "fr" ? "Retour" : "Back"}</Link>
           </div>
@@ -144,7 +144,7 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
                 <Link href="/admin/used-boats" className="h-9 px-4 rounded-full text-[13px] font-medium border border-black/15 hover:bg-black/5 inline-flex items-center gap-2">
                   <span>📂</span>Gérer
                 </Link>
-                <Link href="/admin/used-boats/new" className="h-9 px-4 rounded-full text-[13px] font-medium bg-[color:var(--primary)] text-white shadow hover:brightness-110 inline-flex items-center gap-2">
+                <Link href="/admin/used-boats/new" className="h-9 px-4 rounded-full text-[13px] font-medium bg-blue-600 hover:bg-blue-700 text-white shadow transition-colors inline-flex items-center gap-2">
                   <span>➕</span>Ajouter
                 </Link>
               </div>

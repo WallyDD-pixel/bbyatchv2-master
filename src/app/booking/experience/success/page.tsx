@@ -100,8 +100,8 @@ export default async function ExperienceSuccessPage({ searchParams }: Props){
             </p>
           </section>
           <div className='flex flex-wrap gap-3'>
-            <a href='/experiences' className='inline-flex items-center h-11 px-6 rounded-full border border-black/15 bg-white text-sm font-medium hover:bg-black/5'>{locale==='fr'? 'Retour aux expériences':'Back to experiences'}</a>
-            <a href='/dashboard' className='inline-flex items-center h-11 px-6 rounded-full bg-[var(--primary)] text-white text-sm font-semibold hover:brightness-110'>{locale==='fr'? 'Mon tableau de bord':'My dashboard'}</a>
+            <a href={locale==='fr'? '/?lang=fr#experiences' : '/?lang=en#experiences'} className='inline-flex items-center h-11 px-6 rounded-full border border-black/15 bg-white text-sm font-medium hover:bg-black/5'>{locale==='fr'? 'Retour aux expériences':'Back to experiences'}</a>
+            <a href='/dashboard' className='inline-flex items-center h-11 px-6 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors'>{locale==='fr'? 'Mon tableau de bord':'My dashboard'}</a>
           </div>
         </div>
       </main>

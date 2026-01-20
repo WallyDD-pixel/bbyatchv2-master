@@ -93,7 +93,7 @@ export default async function AdminAgencyRequestsPage({ searchParams }: { search
                         <input type='hidden' name='id' value={r.id} />
                         {r.status==='pending' && <button name='action' value='approve' className='h-7 px-3 rounded-md bg-emerald-500 text-white text-[11px] hover:brightness-110'>✔</button>}
                         {r.status==='pending' && <button name='action' value='reject' className='h-7 px-3 rounded-md bg-red-500 text-white text-[11px] hover:brightness-110'>✖</button>}
-                        {r.status==='approved' && <button name='action' value='convert' className='h-7 px-3 rounded-md bg-[color:var(--primary)] text-white text-[11px] hover:brightness-110'>↺</button>}
+                        {r.status==='approved' && <button name='action' value='convert' className='h-7 px-3 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-[11px] transition-colors'>↺</button>}
                       </form>
                     </td>
                   </tr>

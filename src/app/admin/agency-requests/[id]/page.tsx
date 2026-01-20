@@ -264,7 +264,7 @@ export default async function AgencyRequestDetailPage(
                 <option value='rejected'>{locale==='fr'? 'Refusé':'rejected'}</option>
                 <option value='converted'>{locale==='fr'? 'Converti':'converted'}</option>
               </select>
-              <button className='h-10 px-5 rounded-full bg-[color:var(--primary)] text-white text-sm font-semibold hover:opacity-90'>{locale==='fr'? 'Mettre à jour':'Update'}</button>
+              <button className='h-10 px-5 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors'>{locale==='fr'? 'Mettre à jour':'Update'}</button>
             </form>
             {/* Remplacement du onSubmit par data-confirm + script global */}
             <form action={`/api/admin/agency-requests/${row.id}`} method='post' data-confirm={locale==='fr'? 'Supprimer ?':'Delete?'}>

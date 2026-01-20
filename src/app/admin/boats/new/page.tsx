@@ -191,13 +191,13 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
             <div className="grid gap-4">
               <label className="grid gap-1 text-sm">
                 <span>{locale === "fr" ? "Images (une ou plusieurs)" : "Images (one or many)"}</span>
-                <input name="imageFiles" id="imageFiles" type="file" multiple accept="image/*" className="h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[color:var(--primary)] file:text-white file:cursor-pointer" />
+                <input name="imageFiles" id="imageFiles" type="file" multiple accept="image/*" className="h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:hover:bg-blue-700 file:text-white file:cursor-pointer" />
                 <p className="text-xs text-black/60">{locale === "fr" ? "La première deviendra l'image principale." : "The first becomes the main image."}</p>
               </label>
               <div id="images-preview" className="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
               <label className="grid gap-1 text-sm">
                 <span>{locale === "fr" ? "Vidéos" : "Videos"}</span>
-                <input name="videoFiles" type="file" multiple accept="video/*" className="h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[color:var(--primary)] file:text-white file:cursor-pointer" />
+                <input name="videoFiles" type="file" multiple accept="video/*" className="h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:hover:bg-blue-700 file:text-white file:cursor-pointer" />
                 <p className="text-xs text-black/60">{locale === "fr" ? "Formats acceptés: MP4, WebM, OGG (max 100MB par fichier)" : "Accepted formats: MP4, WebM, OGG (max 100MB per file)"}</p>
               </label>
               <label className="grid gap-1 text-sm">
@@ -224,7 +224,7 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
           </div>
           <div className="flex justify-end gap-2">
             <Link href="/admin/boats" className="rounded-full h-10 px-4 border border-black/15 bg-white hover:bg-black/5">{locale === "fr" ? "Annuler" : "Cancel"}</Link>
-            <button className="rounded-full h-10 px-4 bg-[color:var(--primary)] text-white hover:opacity-90">{locale === "fr" ? "Créer" : "Create"}</button>
+            <button className="rounded-full h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white transition-colors">{locale === "fr" ? "Créer" : "Create"}</button>
           </div>
         </form>
       </main>

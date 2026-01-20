@@ -561,7 +561,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
           <div className="flex items-center justify-between px-2 py-1 text-xs text-black/60 bg-black/5">
             <span>{t.preview}</span>
             <label className="inline-flex items-center gap-2 cursor-pointer">
-              <span className="rounded-full bg-[color:var(--primary)] text-white px-3 h-7 inline-flex items-center text-[11px]">{uploading ? (locale==='fr'?'Chargement…':'Uploading…') : (locale==='fr'? 'Changer':'Change')}</span>
+              <span className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 h-7 inline-flex items-center text-[11px] transition-colors">{uploading ? (locale==='fr'?'Chargement…':'Uploading…') : (locale==='fr'? 'Changer':'Change')}</span>
               <input type="file" accept="image/*" onChange={onChangeMainImage} disabled={uploading} className="hidden" />
             </label>
           </div>
@@ -575,7 +575,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{t.photos}</h2>
           <label className="text-sm inline-flex items-center gap-2 cursor-pointer">
-            <span className="rounded-full bg-[color:var(--primary)] text-white px-4 h-9 inline-flex items-center">{uploading ? t.uploading : t.uploadNew}</span>
+            <span className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 h-9 inline-flex items-center transition-colors">{uploading ? t.uploading : t.uploadNew}</span>
             <input type="file" multiple accept="image/*" disabled={uploading} onChange={onUploadNew} className="hidden" />
           </label>
         </div>
@@ -659,7 +659,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
               <button
                 type="button"
                 onClick={addVideosUrlsFromText}
-                className="px-4 h-10 rounded-lg bg-[color:var(--primary)] text-white text-sm font-medium hover:opacity-90"
+                className="px-4 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
               >
                 {locale === "fr" ? "Ajouter" : "Add"}
               </button>
@@ -677,7 +677,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
           <label className="grid gap-2 text-sm">
             <span className="font-medium">{locale === "fr" ? "Uploader des fichiers vidéo" : "Upload video files"}</span>
             <label className="inline-flex items-center gap-2 cursor-pointer">
-              <span className="rounded-full bg-[color:var(--primary)] text-white px-4 h-10 inline-flex items-center text-sm">
+              <span className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 h-10 inline-flex items-center text-sm transition-colors">
                 {uploading ? (locale === 'fr' ? 'Téléversement…' : 'Uploading…') : (locale === 'fr' ? 'Choisir des fichiers vidéo' : 'Choose video files')}
               </span>
               <input
