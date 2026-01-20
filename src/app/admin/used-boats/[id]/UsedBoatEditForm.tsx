@@ -7,22 +7,22 @@ interface UsedBoatEditFormProps {
   boat: any;
   locale: 'fr' | 'en';
   photoList: string[];
-  children: React.ReactNode;
 }
 
-export default function UsedBoatEditForm({ boat, locale, photoList, children }: UsedBoatEditFormProps) {
+export default function UsedBoatEditForm({ boat, locale, photoList }: UsedBoatEditFormProps) {
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
 
   return (
     <>
+      <FormSubmitHandler newImageFiles={newImageFiles} />
+      
+      {/* Gestion images drag & drop */}
       <ImageGalleryManager 
         initialMainImage={boat.mainImage}
         initialPhotos={photoList}
         locale={locale}
         onNewFilesChange={setNewImageFiles}
       />
-      <FormSubmitHandler newImageFiles={newImageFiles} />
-      {children}
     </>
   );
 }

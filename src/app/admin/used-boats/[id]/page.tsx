@@ -29,6 +29,13 @@ export default async function EditUsedBoatPage({ params, searchParams }: { param
         </div>
         <form action="/api/admin/used-boats/update" method="post" className='mt-6 grid gap-6 rounded-2xl border border-black/10 bg-white p-6 shadow-sm' encType='multipart/form-data'>
           <input type='hidden' name='id' value={id} />
+          
+          <UsedBoatEditForm 
+            boat={boat}
+            photoList={photoList}
+            locale={locale as any}
+          />
+
           {/* Ligne Nom + Slug */}
           <div className='grid md:grid-cols-2 gap-5'>
             <label className='grid gap-1 text-sm'>
@@ -51,13 +58,6 @@ export default async function EditUsedBoatPage({ params, searchParams }: { param
             <label className='grid gap-1 text-sm'><span>Heures moteur</span><input name='engineHours' type='number' defaultValue={boat.engineHours??''} className='h-11 rounded-lg border border-black/15 px-3' /></label>
             <label className='grid gap-1 text-sm'><span>Carburant</span><input name='fuelType' defaultValue={boat.fuelType||''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='diesel' /></label>
           </div>
-
-          {/* Gestion images drag & drop */}
-          <UsedBoatEditForm 
-            boat={boat}
-            photoList={photoList}
-            locale={locale as any}
-          >
 
           {/* Vidéos */}
           <UsedBoatEditClient boat={boat} locale={locale as any} />
