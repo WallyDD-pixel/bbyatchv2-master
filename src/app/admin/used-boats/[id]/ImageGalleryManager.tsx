@@ -5,18 +5,21 @@ interface ImageItem {
   url: string;
   isMain: boolean;
   isTemp?: boolean; // Pour les nouvelles images ajoutées
+  file?: File; // Fichier original pour les nouvelles images
 }
 
 interface ImageGalleryManagerProps {
   initialMainImage?: string;
   initialPhotos: string[];
   locale: 'fr' | 'en';
+  onNewFilesChange?: (files: File[]) => void;
 }
 
 export default function ImageGalleryManager({ 
   initialMainImage, 
   initialPhotos, 
-  locale 
+  locale,
+  onNewFilesChange
 }: ImageGalleryManagerProps) {
   console.log('🖼️ ImageGalleryManager - initialMainImage:', initialMainImage);
   console.log('🖼️ ImageGalleryManager - initialPhotos:', initialPhotos);
@@ -63,7 +66,13 @@ export default function ImageGalleryManager({
       keepPhotosInputRef.current.value = JSON.stringify(otherImages.map(img => img.url));
       console.log('✅ keepPhotosInput mis à jour');
     }
-  }, [images]);
+
+    // Notifier les nouveaux fichiers
+    if (onNewFilesChange) {
+      const newFiles = images.filter(img => img.isTemp && img.file).map(img => img.file!);
+      onNewFilesChange(newFiles);
+    }
+  }, [images, onNewFilesChange]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -85,7 +94,7 @@ export default function ImageGalleryManager({
         if (url) {
           console.log('📷 Image convertie en Data URL, longueur:', url.length);
           setImages(prev => {
-            const newImages = [...prev, { url, isMain: false, isTemp: true }];
+            const newImages = [...prev, { url, isMain: false, isTemp: true, file }];
             console.log('📊 Nouvelles images dans l\'état:', newImages.length);
             return newImages;
           });
@@ -129,7 +138,7 @@ export default function ImageGalleryManager({
       reader.onload = (event) => {
         const url = event.target?.result as string;
         if (url) {
-          setImages(prev => [...prev, { url, isMain: false, isTemp: true }]);
+          setImages(prev => [...prev, { url, isMain: false, isTemp: true, file }]);
         }
       };
       reader.readAsDataURL(file);

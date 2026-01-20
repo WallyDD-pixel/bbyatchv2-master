@@ -6,7 +6,7 @@ import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import UsedBoatEditClient from './UsedBoatEditClient';
-import ImageGalleryManager from './ImageGalleryManager';
+import UsedBoatEditForm from './UsedBoatEditForm';
 
 export default async function EditUsedBoatPage({ params, searchParams }: { params:{ id:string }, searchParams?: { lang?: string } }){
   const session = await getServerSession(auth as any) as any;
@@ -53,11 +53,11 @@ export default async function EditUsedBoatPage({ params, searchParams }: { param
           </div>
 
           {/* Gestion images drag & drop */}
-          <ImageGalleryManager 
-            initialMainImage={boat.mainImage}
-            initialPhotos={photoList}
+          <UsedBoatEditForm 
+            boat={boat}
+            photoList={photoList}
             locale={locale as any}
-          />
+          >
 
           {/* Vidéos */}
           <UsedBoatEditClient boat={boat} locale={locale as any} />
