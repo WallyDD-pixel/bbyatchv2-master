@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     const experiences = await (prisma as any).experience.findMany({ select: { id:true, slug:true, titleFr:true, titleEn:true, imageUrl:true } });
     let slots: any[] = [];
     try {
-      slots = await (prisma as any).experienceAvailabilitySlot.findMany({ where: { date: { gte: start, lte: end } }, select: { id:true, experienceId:true, date:true, part:true, status:true, note:true } });
+      slots = await (prisma as any).experienceAvailabilitySlot.findMany({ where: { date: { gte: start, lte: end } }, select: { id:true, experienceId:true, boatId:true, date:true, part:true, status:true, note:true } });
     } catch {
       // Table absente (migration non appliquée) => on renvoie quand même les expériences
     }
@@ -47,26 +47,67 @@ export async function PATCH(req: Request) {
   } catch { return NextResponse.json({ error: 'failed' }, { status: 500 }); }
 }
 
-// POST toggle { experienceId, date:'YYYY-MM-DD', part }
+// POST toggle { experienceId, boatId?, date:'YYYY-MM-DD', part, note? }
 export async function POST(req: Request) {
   if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   let body: any = {}; try { body = await req.json(); } catch {}
-  const { experienceId, date, part, note } = body || {};
+  const { experienceId, boatId, date, part, note } = body || {};
   if (!experienceId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   if (!['AM','PM','FULL','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
   const day = new Date(date + 'T00:00:00');
   if (isNaN(day.getTime())) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
+  const expId = Number(experienceId);
+  const bId = boatId ? Number(boatId) : null;
+  
   try {
-    const existing = await (prisma as any).experienceAvailabilitySlot.findUnique({ where: { experienceId_date_part: { experienceId: Number(experienceId), date: day, part } } });
-    if (existing) { await (prisma as any).experienceAvailabilitySlot.delete({ where: { id: existing.id } }); return NextResponse.json({ toggled:'removed', id: existing.id }); }
-    if (part==='FULL') {
-      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: { experienceId: Number(experienceId), date: day, part: { in:['AM','PM','SUNSET'] } } });
-    } else if (part==='SUNSET') {
-      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: { experienceId: Number(experienceId), date: day, part: { in:['FULL','AM','PM'] } } });
-    } else {
-      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: { experienceId: Number(experienceId), date: day, part: { in:['FULL','SUNSET'] } } });
+    // Vérifier si un créneau existe déjà (avec ou sans boatId selon le cas)
+    let existing = null;
+    try {
+      if (bId !== null) {
+        // Chercher avec boatId spécifique
+        existing = await (prisma as any).experienceAvailabilitySlot.findFirst({ 
+          where: { experienceId: expId, boatId: bId, date: day, part } 
+        });
+      } else {
+        // Si pas de boatId, chercher un créneau sans boatId pour cette expérience
+        existing = await (prisma as any).experienceAvailabilitySlot.findFirst({ 
+          where: { experienceId: expId, boatId: null, date: day, part } 
+        });
+      }
+    } catch (e: any) {
+      console.error('Error finding existing slot:', e);
     }
-    const created = await (prisma as any).experienceAvailabilitySlot.create({ data: { experienceId: Number(experienceId), date: day, part, status:'available', note: note||null } });
+    
+    if (existing) { 
+      await (prisma as any).experienceAvailabilitySlot.delete({ where: { id: existing.id } }); 
+      return NextResponse.json({ toggled:'removed', id: existing.id }); 
+    }
+    
+    // Supprimer les créneaux incompatibles (même logique que pour les bateaux)
+    const deleteWhere: any = { experienceId: expId, date: day };
+    if (bId !== null) {
+      deleteWhere.boatId = bId;
+    } else {
+      deleteWhere.boatId = null;
+    }
+    
+    if (part==='FULL') {
+      deleteWhere.part = { in:['AM','PM','SUNSET'] };
+      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
+    } else if (part==='SUNSET') {
+      deleteWhere.part = { in:['FULL','AM','PM'] };
+      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
+    } else {
+      deleteWhere.part = { in:['FULL','SUNSET'] };
+      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
+    }
+    
+    const created = await (prisma as any).experienceAvailabilitySlot.create({ 
+      data: { experienceId: expId, boatId: bId, date: day, part, status:'available', note: note||null } 
+    });
     return NextResponse.json({ toggled:'added', slot: created });
-  } catch { return NextResponse.json({ error: 'failed' }, { status: 500 }); }
+  } catch (e: any) { 
+    console.error('Error creating experience slot:', e);
+    return NextResponse.json({ error: 'failed', details: e?.message }, { status: 500 }); 
+  }
 }

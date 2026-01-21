@@ -138,6 +138,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   const [experiences, setExperiences] = useState<any[]>([]);
   const [expSlots, setExpSlots] = useState<any[]>([]);
   const [selectedExperience, setSelectedExperience] = useState<number|null>(null);
+  const [boatExperiencesList, setBoatExperiencesList] = useState<any[]>([]); // Expériences liées au bateau sélectionné
   const [view, setView] = useState<View>(Views.MONTH);
   const [hoveredEvent, setHoveredEvent] = useState<any>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{x: number, y: number} | null>(null);
@@ -185,6 +186,21 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   }, []);
   useEffect(()=>{ load(date); }, [date, load]);
   useEffect(()=>{ setActiveDay(null); setSelectedExperience(null); }, [selectedBoat, showAll, date]);
+  
+  // Charger les expériences liées au bateau sélectionné
+  useEffect(() => {
+    if (selectedBoat) {
+      fetch(`/api/admin/boat-experiences?boatId=${selectedBoat}`)
+        .then(res => res.json())
+        .then(data => {
+          const expList = (data.boatExperiences || []).map((be: any) => be.experience);
+          setBoatExperiencesList(expList);
+        })
+        .catch(() => setBoatExperiencesList([]));
+    } else {
+      setBoatExperiencesList([]);
+    }
+  }, [selectedBoat]);
 
   const events = useMemo(()=> {
     const ev: any[] = [];
@@ -609,6 +625,13 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   }, [linkBoatId, showLinkManager]);
 
   async function addSlot(): Promise<void> {
+    if (selectedBoat && !selectedExperience) {
+      alert(locale === 'fr' 
+        ? 'Veuillez sélectionner une expérience pour ce bateau avant d\'ajouter un créneau.'
+        : 'Please select an experience for this boat before adding a slot.'
+      );
+      return;
+    }
     if (!selectedBoat && !selectedExperience) {
       alert(locale === 'fr' ? 'Sélectionnez un bateau ou une expérience' : 'Select a boat or experience');
       return;
@@ -641,12 +664,13 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           let res: Response;
           
           if (selectedExperience) {
-            // Créer un créneau d'expérience
+            // Créer un créneau d'expérience (avec boatId si un bateau est sélectionné)
             res = await fetch('/api/admin/availability/experiences', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 experienceId: selectedExperience,
+                boatId: selectedBoat || null, // Inclure boatId si un bateau est sélectionné
                 date: date,
                 part: newSlotPart,
                 note: newSlotNote.trim() || null,
@@ -1183,10 +1207,34 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
             </div>
           </div>
           <div>
-            <h3 className='font-semibold text-sm mb-1'>{locale==='fr'?'Expériences':'Experiences'}</h3>
+            <h3 className='font-semibold text-sm mb-1'>
+              {selectedBoat 
+                ? (locale==='fr'?'Expériences du bateau':'Boat experiences')
+                : (locale==='fr'?'Expériences':'Experiences')
+              }
+            </h3>
             <div className='grid grid-cols-1 gap-2 max-h-[32vh] overflow-auto pr-1'>
-              {experiences.map(e=>{ const stats = expAvail[e.id]; const active = selectedExperience===e.id && !showAll; const title = e[locale==='fr'?'titleFr':'titleEn']; return (
-                <button key={e.id} onClick={()=>{ setSelectedExperience(e.id); setSelectedBoat(null); setShowAll(false); }} className={'group relative text-left rounded-lg border p-2 flex items-center gap-3 transition shadow-sm hover:shadow focus:outline-none '+(active? 'border-purple-600 ring-2 ring-purple-400/40 bg-purple-50':'border-black/15 bg-white hover:bg-black/5')}>
+              {(selectedBoat ? boatExperiencesList : experiences).map(e=>{ 
+                const stats = expAvail[e.id]; 
+                const active = selectedExperience===e.id && !showAll; 
+                const title = e[locale==='fr'?'titleFr':'titleEn']; 
+                return (
+                <button 
+                  key={e.id} 
+                  onClick={()=>{ 
+                    if (selectedBoat) {
+                      // Si un bateau est sélectionné, on peut sélectionner une expérience sans désélectionner le bateau
+                      setSelectedExperience(e.id); 
+                      setShowAll(false); 
+                    } else {
+                      // Sinon, comportement normal
+                      setSelectedExperience(e.id); 
+                      setSelectedBoat(null); 
+                      setShowAll(false); 
+                    }
+                  }} 
+                  className={'group relative text-left rounded-lg border p-2 flex items-center gap-3 transition shadow-sm hover:shadow focus:outline-none '+(active? 'border-purple-600 ring-2 ring-purple-400/40 bg-purple-50':'border-black/15 bg-white hover:bg-black/5')}
+                >
                   {e.imageUrl && <img src={e.imageUrl} alt='' className='w-12 h-10 object-cover rounded-md border border-black/10' />}
                   {!e.imageUrl && <div className='w-12 h-10 flex items-center justify-center rounded-md border border-black/10 bg-black/5 text-[9px] font-medium'>EXP</div>}
                   <div className='flex-1 min-w-0'>
@@ -1194,8 +1242,16 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                     <p className='text-[8px] text-black/50'>{stats? stats.total:0} {locale==='fr'?'créneaux':'slots'}</p>
                   </div>
                   {active && <span className='text-[8px] px-2 py-1 rounded-full bg-purple-600 text-white font-semibold'>OK</span>}
-                </button> ); })}
-              {experiences.length===0 && <div className='text-xs text-black/50'>{locale==='fr'?'Aucune expérience':'No experiences'}</div>}
+                </button> ); 
+              })}
+              {(selectedBoat ? boatExperiencesList : experiences).length===0 && (
+                <div className='text-xs text-black/50'>
+                  {selectedBoat 
+                    ? (locale==='fr'?'Aucune expérience liée à ce bateau':'No experiences linked to this boat')
+                    : (locale==='fr'?'Aucune expérience':'No experiences')
+                  }
+                </div>
+              )}
             </div>
           </div>
           {(selectedBoat || selectedExperience) && !showAll && (
@@ -1207,24 +1263,54 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         {/* Section pour ajouter des créneaux */}
         {(selectedBoat || selectedExperience) && !showAll && (
           <div className={`p-4 rounded-xl border shadow-sm ${
-            selectedBoat 
+            selectedBoat && selectedExperience
+              ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200'
+              : selectedBoat 
               ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'
               : 'bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200'
           }`}>
             <div className='flex items-center justify-between mb-3'>
               <h3 className={`font-bold text-sm flex items-center gap-2 ${
-                selectedBoat ? 'text-green-800' : 'text-purple-800'
+                selectedBoat && selectedExperience
+                  ? 'text-blue-800'
+                  : selectedBoat 
+                  ? 'text-green-800' 
+                  : 'text-purple-800'
               }`}>
                 <span className="text-lg">➕</span>
-                {locale==='fr' ? 'Ajouter un créneau' : 'Add availability slot'}
+                {selectedBoat && selectedExperience
+                  ? (locale==='fr' ? 'Ajouter un créneau (Bateau + Expérience)' : 'Add slot (Boat + Experience)')
+                  : (locale==='fr' ? 'Ajouter un créneau' : 'Add availability slot')
+                }
               </h3>
             </div>
+            {selectedBoat && !selectedExperience && (
+              <div className='mb-3 p-2 rounded-lg bg-blue-50 border border-blue-200'>
+                <p className='text-xs text-blue-800'>
+                  {locale==='fr' 
+                    ? '💡 Sélectionnez une expérience ci-dessus pour créer un créneau spécifique à ce bateau et cette expérience.'
+                    : '💡 Select an experience above to create a slot specific to this boat and experience.'
+                  }
+                </p>
+              </div>
+            )}
             
             {!showAddSlot ? (
               <button 
-                onClick={() => setShowAddSlot(true)}
+                onClick={() => {
+                  if (selectedBoat && !selectedExperience) {
+                    alert(locale==='fr' 
+                      ? 'Veuillez d\'abord sélectionner une expérience pour ce bateau.'
+                      : 'Please first select an experience for this boat.'
+                    );
+                    return;
+                  }
+                  setShowAddSlot(true);
+                }}
                 className={`w-full h-10 rounded-lg text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-                  selectedBoat 
+                  selectedBoat && selectedExperience
+                    ? 'bg-blue-600 hover:bg-blue-700'
+                    : selectedBoat 
                     ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-purple-600 hover:bg-purple-700'
                 }`}

@@ -160,6 +160,7 @@ model Boat {
   // relations
   reservations Reservation[]
   availabilitySlots AvailabilitySlot[]
+  experienceAvailabilitySlots ExperienceAvailabilitySlot[] // créneaux d'expériences liés à ce bateau
   agencyRequests AgencyRequest[] // demandes agence liées
   options       BoatOption[]
 }
@@ -425,6 +426,7 @@ model BoatExperience {
 model ExperienceAvailabilitySlot {
   id           Int        @id @default(autoincrement())
   experienceId Int
+  boatId       Int?       // Optionnel : permet de lier un créneau à un bateau spécifique
   date         DateTime
   part         String               // 'AM' | 'PM' | 'FULL'
   status       String    @default("available")
@@ -435,7 +437,9 @@ model ExperienceAvailabilitySlot {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  boat         Boat?      @relation(fields: [boatId], references: [id], onDelete: SetNull)
 
-  @@unique([experienceId, date, part])
+  @@unique([experienceId, boatId, date, part])
   @@index([date])
+  @@index([boatId])
 }
