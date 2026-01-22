@@ -28,7 +28,7 @@ export async function POST(req:Request){
     const ctaLabelFr = String(data.get('ctaLabelFr')||'').trim()||null;
     const ctaLabelEn = String(data.get('ctaLabelEn')||'').trim()||null;
 
-    let imageUrl = String(data.get('imageUrl')||'').trim()||null; // hidden fallback
+    let imageUrl: string | null = String(data.get('imageUrl')||'').trim()||null; // hidden fallback
     const file = data.get('imageFile') as File | null;
     if(file && file.size>0 && (file as any).arrayBuffer){
       try {
@@ -44,12 +44,21 @@ export async function POST(req:Request){
 
     const sortRaw = String(data.get('sort')||'0');
     const sort = parseInt(sortRaw,10)||0;
+    
+    // Construire l'objet data en incluant imageUrl seulement s'il existe
+    const createData: any = { 
+      titleFr, titleEn, descFr, descEn, 
+      contentFr, contentEn, ctaUrl, ctaLabelFr, ctaLabelEn,
+      sort 
+    };
+    
+    // Ajouter imageUrl seulement s'il n'est pas null/undefined
+    if (imageUrl) {
+      createData.imageUrl = imageUrl;
+    }
+    
     const created = await (prisma as any).infoCard.create({ 
-      data:{ 
-        titleFr, titleEn, descFr, descEn, 
-        contentFr, contentEn, ctaUrl, ctaLabelFr, ctaLabelEn,
-        imageUrl, sort 
-      } 
+      data: createData
     });
     const redirectUrl = createRedirectUrl(`/admin/info-cards?created=${created.id}`, req);
     return NextResponse.redirect(redirectUrl,303);

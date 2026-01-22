@@ -24,19 +24,32 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
   const { data: session } = useSession();
   const userRole = (session?.user as any)?.role || 'user';
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [logoUrl, setLogoUrl] = useState<string>("/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png");
+  const defaultLogo = "/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png";
+  const [logoUrl, setLogoUrl] = useState<string>(defaultLogo);
   const [navbarItems, setNavbarItems] = useState<NavbarItem[]>([]);
 
   useEffect(() => {
     async function fetchLogo() {
       try {
-        const res = await fetch("/api/settings/logo");
+        // Ajouter un timestamp pour éviter le cache
+        const res = await fetch(`/api/settings/logo?t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.logoUrl) setLogoUrl(data.logoUrl);
+          // Ne mettre à jour que si on a une URL valide (non null, non vide)
+          if (data.logoUrl && data.logoUrl.trim() !== '' && data.logoUrl !== null) {
+            // Vérifier que l'URL est différente de l'actuelle pour éviter les re-renders inutiles
+            setLogoUrl(prev => {
+              if (prev !== data.logoUrl) {
+                return data.logoUrl;
+              }
+              return prev;
+            });
+          }
+          // Si logoUrl est null ou vide, on garde le logo actuel (ne pas réinitialiser)
         }
       } catch (e) {
-        // Fallback to default logo
+        // En cas d'erreur, garder le logo actuel (ne pas réinitialiser)
+        console.error('Error fetching logo:', e);
       }
     }
 
@@ -84,8 +97,25 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
         <div className="flex items-center gap-4 rounded-3xl bg-gradient-to-r from-white/96 via-white/92 to-white/96 dark:from-slate-900/95 dark:via-slate-800/95 dark:to-slate-900/95 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)] dark:shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)] px-4 sm:px-6 py-3 ring-1 ring-[color:var(--primary)]/15 hover:ring-[color:var(--primary)]/25 transition-all duration-300 group">
           {/* Logo avec animation sophistiquée */}
           <a href={homeBase} className="flex items-center group hover:scale-[1.02] transition-all duration-300 ease-out" aria-label={t.app_name}>
-            <div className="relative">
-              <Image src={logoUrl} alt="BB YACHTS" width={150} height={50} priority className="h-12 w-auto object-contain drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300" />
+            <div className="relative h-12 w-auto">
+              <img 
+                src={logoUrl} 
+                alt="BB YACHTS" 
+                className="h-12 w-auto object-contain drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300" 
+                key={logoUrl}
+                onError={(e) => {
+                  // En cas d'erreur de chargement, utiliser le logo par défaut
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== defaultLogo && !target.src.includes(defaultLogo)) {
+                    target.src = defaultLogo;
+                    setLogoUrl(defaultLogo);
+                  }
+                }}
+                onLoad={() => {
+                  // Vérifier que l'image s'est bien chargée
+                  console.log('Logo loaded:', logoUrl);
+                }}
+              />
             </div>
           </a>
 

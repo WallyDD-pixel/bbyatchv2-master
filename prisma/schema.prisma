@@ -11,104 +11,123 @@ datasource db {
 }
 
 model Experience {
-  id        Int      @id @default(autoincrement())
-  slug      String   @unique
-  titleFr   String
-  titleEn   String
-  descFr    String
-  descEn    String
-  timeFr    String?
-  timeEn    String?
-  imageUrl  String?
-  photoUrls String?  // JSON array
+  id                 Int      @id @default(autoincrement())
+  slug               String   @unique
+  titleFr            String
+  titleEn            String
+  descFr             String
+  descEn             String
+  timeFr             String?
+  timeEn             String?
+  imageUrl           String?
+  photoUrls          String? // JSON array
+  // Texte supplémentaire affiché sous la description principale
+  additionalTextFr   String? // Texte supplémentaire (FR)
+  additionalTextEn   String? // Texte supplémentaire (EN)
   // Horaires fixes pour événements (ex: feux d'artifice)
-  fixedDepartureTime String?  // Format HH:mm (ex: "20:30")
-  fixedReturnTime    String?  // Format HH:mm (ex: "23:00")
+  fixedDepartureTime String? // Format HH:mm (ex: "20:30")
+  fixedReturnTime    String? // Format HH:mm (ex: "23:00")
   hasFixedTimes      Boolean  @default(false) // Si true, les horaires sont fixes et non modifiables par le client
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  boatExperiences BoatExperience[]
+  boatExperiences   BoatExperience[]
   availabilitySlots ExperienceAvailabilitySlot[] // relation inverse pour ExperienceAvailabilitySlot
 }
 
 model Settings {
-  stripeTestPk  String?
-  stripeTestSk  String?
-  stripeLivePk  String?
-  stripeLiveSk  String?
-  id                 Int      @id @default(1)
-  experiencesHeadlineFr String?
-  experiencesHeadlineEn String?
-  experiencesTitleFr   String?
-  experiencesTitleEn   String?
-  stripeMode           String?
-  mainSliderTitle      String?
-  mainSliderSubtitle   String?
-  mainSliderText       String? // Ajouté pour texte sous le slider
-  mainSliderImageUrl   String? // Image de présentation du slider principal
-  mainSliderImageUrls  String? // JSON array d'images pour le slider principal
-  aboutUsText          String?
-  bbServiceText        String?
-  whyChooseTitle       String?
-  whyChooseList        String?
-  platformCommissionPct Int?     @default(0)       // % commission plateforme (base 100)
-  currency              String?  @default("eur")
-  updatedAt             DateTime? @updatedAt
-  whyChooseExpertise    String?
-  whyChooseService      String?
-  aboutUsTitle          String?
-  aboutUsSubtitle       String?
-  whyChooseImageUrl     String?
-  footerInstagram       String?
-  footerFacebook        String?
-  footerLinkedIn        String?
-  footerYouTube         String?
-  footerTikTok          String?
-  waterToysUrl          String?  // URL pour le lien des jeux d'eau
+  stripeTestPk                               String?
+  stripeTestSk                               String?
+  stripeLivePk                               String?
+  stripeLiveSk                               String?
+  id                                         Int       @id @default(1)
+  experiencesHeadlineFr                      String?
+  experiencesHeadlineEn                      String?
+  experiencesTitleFr                         String?
+  experiencesTitleEn                         String?
+  stripeMode                                 String?
+  mainSliderTitle                            String?
+  mainSliderSubtitle                         String?
+  mainSliderText                             String? // Ajouté pour texte sous le slider
+  mainSliderImageUrl                         String? // Image de présentation du slider principal
+  mainSliderImageUrls                        String? // JSON array d'images pour le slider principal
+  aboutUsText                                String?
+  bbServiceText                              String?
+  whyChooseTitle                             String?
+  whyChooseList                              String?
+  platformCommissionPct                      Int?      @default(0) // % commission plateforme (base 100)
+  currency                                   String?   @default("eur")
+  updatedAt                                  DateTime? @updatedAt
+  whyChooseExpertise                         String?
+  whyChooseService                           String?
+  aboutUsTitle                               String?
+  aboutUsSubtitle                            String?
+  whyChooseImageUrl                          String?
+  footerInstagram                            String?
+  footerFacebook                             String?
+  footerLinkedIn                             String?
+  footerYouTube                              String?
+  footerTikTok                               String?
+  waterToysUrl                               String? // URL pour le lien des jeux d'eau
   // Mapping des pages légales/footers -> slugs LegalPage
-  legalBaseSlug         String?
-  legalTermsSlug        String?
-  legalPrivacySlug      String?
+  legalBaseSlug                              String?
+  legalTermsSlug                             String?
+  legalPrivacySlug                           String?
   // Page À propos
-  aboutHistoryFr        String?
-  aboutHistoryEn        String?
-  aboutMissionFr        String?
-  aboutMissionEn        String?
-  aboutValuesFr         String?
-  aboutValuesEn         String?
-  aboutTeamFr           String?
-  aboutTeamEn           String?
-  aboutGalleryImageUrls String? // JSON array
+  aboutHistoryFr                             String?
+  aboutHistoryEn                             String?
+  aboutMissionFr                             String?
+  aboutMissionEn                             String?
+  aboutValuesFr                              String?
+  aboutValuesEn                              String?
+  aboutTeamFr                                String?
+  aboutTeamEn                                String?
+  aboutGalleryImageUrls                      String? // JSON array
   // Logo du site
-  logoUrl               String?
+  logoUrl                                    String?
   // Valeurs supplémentaires pour la page À propos
-  aboutValuesSafetyFr   String?
-  aboutValuesSafetyEn   String?
-  aboutValuesComfortFr  String?
-  aboutValuesComfortEn  String?
-  aboutValuesAuthFr     String?
-  aboutValuesAuthEn     String?
-  aboutValuesPleasureFr String?
-  aboutValuesPleasureEn String?
-  aboutImageUrls        String?  // JSON array d'images pour la galerie
-  aboutHistoryImageUrl  String?  // Image pour la section "Notre Histoire"
-  aboutTeamImageUrl     String?  // Image pour la section "Notre Équipe et Expertise"
+  aboutValuesSafetyFr                        String?
+  aboutValuesSafetyEn                        String?
+  aboutValuesComfortFr                       String?
+  aboutValuesComfortEn                       String?
+  aboutValuesAuthFr                          String?
+  aboutValuesAuthEn                          String?
+  aboutValuesPleasureFr                      String?
+  aboutValuesPleasureEn                      String?
+  aboutImageUrls                             String? // JSON array d'images pour la galerie
+  aboutHistoryImageUrl                       String? // Image pour la section "Notre Histoire"
+  aboutTeamImageUrl                          String? // Image pour la section "Notre Équipe et Expertise"
   // Page Bateaux d'occasion
-  usedSaleTitleFr       String?
-  usedSaleTitleEn       String?
-  usedSaleTextFr        String?
-  usedSaleTextEn        String?
+  usedSaleTitleFr                            String?
+  usedSaleTitleEn                            String?
+  usedSaleTextFr                             String?
+  usedSaleTextEn                             String?
   // Paramètres généraux
-  defaultSkipperPrice   Int?     @default(350) // Prix par défaut du skipper/jour
+  defaultSkipperPrice                        Int?      @default(350) // Prix par défaut du skipper/jour
+  // Notifications par email
+  notificationEmailEnabled                   Boolean   @default(true) // Activer/désactiver toutes les notifications
+  notificationEmailReservation               Boolean   @default(true) // Notification nouvelle réservation
+  notificationEmailReservationStatusChange   Boolean   @default(true) // Notification changement statut réservation
+  notificationEmailAgencyRequest             Boolean   @default(true) // Notification nouvelle demande agence
+  notificationEmailAgencyRequestStatusChange Boolean   @default(true) // Notification changement statut demande agence
+  notificationEmailContactMessage            Boolean   @default(true) // Notification nouveau message contact
+  notificationEmailPaymentReceived           Boolean   @default(true) // Notification paiement reçu
+  notificationEmailTo                        String? // Email destinataire des notifications (par défaut charter@bb-yachts.com)
+  // Configuration SMTP pour envoi d'emails
+  smtpHost                                   String? // Serveur SMTP (ex: smtp.gmail.com)
+  smtpPort                                   Int?      @default(587) // Port SMTP
+  smtpUser                                   String? // Utilisateur SMTP
+  smtpPassword                               String? // Mot de passe SMTP
+  smtpFromEmail                              String? // Email expéditeur (ex: noreply@bb-yachts.com)
+  smtpFromName                               String? // Nom expéditeur (ex: BB YACHTS)
 }
 
 model NavbarItem {
   id        Int      @id @default(autoincrement())
-  labelFr   String   // Label en français
-  labelEn   String   // Label en anglais
-  href      String   // URL du lien
-  icon      String?  // Emoji ou icône
+  labelFr   String // Label en français
+  labelEn   String // Label en anglais
+  href      String // URL du lien
+  icon      String? // Emoji ou icône
   order     Int      @default(0) // Ordre d'affichage
   visible   Boolean  @default(true) // Visibilité
   target    String?  @default("_self") // _self ou _blank
@@ -123,74 +142,74 @@ model City {
 }
 
 model Boat {
-  id           Int           @id @default(autoincrement())
-  slug         String        @unique
-  name         String
-  cityId       Int?
-  city         City?         @relation(fields: [cityId], references: [id])
-  capacity     Int // places
-  speedKn      Int // vitesse en noeuds
-  fuel         Int? // carburant (ex: conso ou réservoir)
-  enginePower  Int? // moteur (cv)
-  lengthM      Float?        // taille en mètres
-  pricePerDay  Int // prix en €
-  priceAm      Int? // prix matin (AM)
-  pricePm      Int? // prix après-midi (PM)
-  priceSunset  Int? // prix sunset (2h)
+  id                Int      @id @default(autoincrement())
+  slug              String   @unique
+  name              String
+  cityId            Int?
+  city              City?    @relation(fields: [cityId], references: [id])
+  capacity          Int // places
+  speedKn           Int // vitesse en noeuds
+  fuel              Int? // carburant (ex: conso ou réservoir)
+  enginePower       Int? // moteur (cv)
+  lengthM           Float? // taille en mètres
+  pricePerDay       Int // prix en €
+  priceAm           Int? // prix matin (AM)
+  pricePm           Int? // prix après-midi (PM)
+  priceSunset       Int? // prix sunset (2h)
   // Prix agence (différents des prix normaux)
   priceAgencyPerDay Int? // prix agence/jour
-  priceAgencyAm      Int? // prix agence matin
+  priceAgencyAm     Int? // prix agence matin
   priceAgencyPm     Int? // prix agence après-midi
   priceAgencySunset Int? // prix agence sunset
-  imageUrl     String?
-  videoUrls    String?       // JSON stringifié (array)
-  photoUrls    String?       // JSON stringifié (array)
-  available    Boolean       @default(true)
+  imageUrl          String?
+  videoUrls         String? // JSON stringifié (array)
+  photoUrls         String? // JSON stringifié (array)
+  available         Boolean  @default(true)
   // Nouveaux champs
-  avantagesFr       String?  // Points forts du bateau (FR)
-  avantagesEn       String?  // Points forts du bateau (EN)
-  optionsInclusesFr String?  // Options incluses dans le prix (FR)
-  optionsInclusesEn String?  // Options incluses dans le prix (EN)
+  avantagesFr       String? // Points forts du bateau (FR)
+  avantagesEn       String? // Points forts du bateau (EN)
+  optionsInclusesFr String? // Options incluses dans le prix (FR)
+  optionsInclusesEn String? // Options incluses dans le prix (EN)
   skipperRequired   Boolean  @default(false) // Skipper obligatoire
-  skipperPrice      Int?     // Prix du skipper (350€/jour par défaut)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  skipperPrice      Int? // Prix du skipper (350€/jour par défaut)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  boatExperiences BoatExperience[]
+  boatExperiences             BoatExperience[]
   // relations
-  reservations Reservation[]
-  availabilitySlots AvailabilitySlot[]
+  reservations                Reservation[]
+  availabilitySlots           AvailabilitySlot[]
   experienceAvailabilitySlots ExperienceAvailabilitySlot[] // créneaux d'expériences liés à ce bateau
-  agencyRequests AgencyRequest[] // demandes agence liées
-  options       BoatOption[]
+  agencyRequests              AgencyRequest[] // demandes agence liées
+  options                     BoatOption[]
 }
 
 model GalleryImage {
   id        Int      @id @default(autoincrement())
   imageUrl  String
-  videoUrl  String?  // URL vidéo (optionnel, si pas d'image)
+  videoUrl  String? // URL vidéo (optionnel, si pas d'image)
   titleFr   String?
   titleEn   String?
-  contentFr String?  // Texte détaillé (FR)
-  contentEn String?  // Texte détaillé (EN)
+  contentFr String? // Texte détaillé (FR)
+  contentEn String? // Texte détaillé (EN)
   sort      Int?     @default(0) // Ordre d'affichage
   createdAt DateTime @default(now())
 }
 
 model InfoCard {
-  id        Int      @id @default(autoincrement())
-  imageUrl  String
-  titleFr   String
-  titleEn   String
-  descFr    String?
-  descEn    String?
-  contentFr String?  // Texte détaillé (FR)
-  contentEn String?  // Texte détaillé (EN)
-  ctaUrl    String?  // URL du bouton CTA
+  id         Int      @id @default(autoincrement())
+  imageUrl   String?
+  titleFr    String
+  titleEn    String
+  descFr     String?
+  descEn     String?
+  contentFr  String? // Texte détaillé (FR)
+  contentEn  String? // Texte détaillé (EN)
+  ctaUrl     String? // URL du bouton CTA
   ctaLabelFr String? // Label du bouton CTA (FR)
   ctaLabelEn String? // Label du bouton CTA (EN)
-  sort      Int?     @default(0)
-  createdAt DateTime @default(now())
+  sort       Int?     @default(0)
+  createdAt  DateTime @default(now())
 }
 
 model LegalPage {
@@ -213,26 +232,26 @@ model LegalPage {
 }
 
 model User {
-  id            String        @id @default(cuid())
-  name          String?
-  firstName     String?
-  lastName      String?
-  email         String        @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          String        @default("user")
-  phone         String?
-  address       String?
-  city          String?
-  zip           String?
-  country       String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  accounts      Account[]
-  sessions      Session[]
+  id             String          @id @default(cuid())
+  name           String?
+  firstName      String?
+  lastName       String?
+  email          String          @unique
+  emailVerified  DateTime?
+  image          String?
+  password       String?
+  role           String          @default("user")
+  phone          String?
+  address        String?
+  city           String?
+  zip            String?
+  country        String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  accounts       Account[]
+  sessions       Session[]
   // relations
-  reservations  Reservation[]
+  reservations   Reservation[]
   agencyRequests AgencyRequest[] // nouvelles demandes agence
 }
 
@@ -271,42 +290,42 @@ model VerificationToken {
 }
 
 model Reservation {
-  id                   String   @id @default(cuid())
-  reference            String?  @unique             // Code humain (ex: RES-2025-ABC123)
-  userId               String
-  boatId               Int?
-  startDate            DateTime
-  endDate              DateTime
-  part                 String?                      // 'FULL' | 'AM' | 'PM'
-  passengers           Int?
-  status               String   @default("pending") // pending_deposit | deposit_paid | cancelled | completed
-  totalPrice           Int?
-  lockedPrice          Boolean? @default(true)      // fige le prix même si tarifs changent ensuite
-  depositPercent       Int?                          // copie de Settings au moment de la création
-  depositAmount        Int?
-  remainingAmount      Int?
-  commissionAmount     Int?                          // montant commission calculée
-  commissionRate       Int?                          // pourcentage (base 100) utilisé
-  refundAmount         Int?
-  finalFuelAmount      Int?                          // Montant final du carburant (ajusté manuellement par l'admin)
-  currency             String?  @default("eur")
-  stripeSessionId      String?
+  id                    String          @id @default(cuid())
+  reference             String?         @unique // Code humain (ex: RES-2025-ABC123)
+  userId                String
+  boatId                Int?
+  startDate             DateTime
+  endDate               DateTime
+  part                  String? // 'FULL' | 'AM' | 'PM'
+  passengers            Int?
+  status                String          @default("pending") // pending_deposit | deposit_paid | cancelled | completed
+  totalPrice            Int?
+  lockedPrice           Boolean?        @default(true) // fige le prix même si tarifs changent ensuite
+  depositPercent        Int? // copie de Settings au moment de la création
+  depositAmount         Int?
+  remainingAmount       Int?
+  commissionAmount      Int? // montant commission calculée
+  commissionRate        Int? // pourcentage (base 100) utilisé
+  refundAmount          Int?
+  finalFuelAmount       Int? // Montant final du carburant (ajusté manuellement par l'admin)
+  currency              String?         @default("eur")
+  stripeSessionId       String?
   stripePaymentIntentId String?
-  stripeCustomerId     String?
-  stripeInvoiceId      String?
-  stripeRefundId       String?
-  depositPaidAt        DateTime?
-  completedAt          DateTime?
-  canceledAt           DateTime?
-  cancellationReason   String?
-  notesInternal        String?                      // notes admin
-  metadata             String?                      // JSON stringifié (SQLite ne supporte pas Json natif)
-  locale               String?                      // fr/en au moment de la réservation
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  boat       Boat?    @relation(fields: [boatId], references: [id], onDelete: SetNull)
-  agencyRequests AgencyRequest[] // lien inverse si conversion
+  stripeCustomerId      String?
+  stripeInvoiceId       String?
+  stripeRefundId        String?
+  depositPaidAt         DateTime?
+  completedAt           DateTime?
+  canceledAt            DateTime?
+  cancellationReason    String?
+  notesInternal         String? // notes admin
+  metadata              String? // JSON stringifié (SQLite ne supporte pas Json natif)
+  locale                String? // fr/en au moment de la réservation
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boat                  Boat?           @relation(fields: [boatId], references: [id], onDelete: SetNull)
+  agencyRequests        AgencyRequest[] // lien inverse si conversion
 
   @@index([boatId])
   @@index([startDate])
@@ -316,8 +335,8 @@ model Reservation {
 model AvailabilitySlot {
   id        Int      @id @default(autoincrement())
   boatId    Int
-  date      DateTime            // Jour (stocké à minuit UTC)
-  part      String              // 'AM' | 'PM' | 'FULL'
+  date      DateTime // Jour (stocké à minuit UTC)
+  part      String // 'AM' | 'PM' | 'FULL'
   status    String   @default("available") // future extension: 'blocked'
   note      String?
   createdAt DateTime @default(now())
@@ -330,25 +349,25 @@ model AvailabilitySlot {
 
 // Nouvelle table pour demandes d'agence
 model AgencyRequest {
-  id             String       @id @default(cuid())
-  userId         String
-  boatId         Int?
-  reservationId  String?      // si convertie en réservation réelle
-  startDate      DateTime
-  endDate        DateTime
-  part           String?      // FULL | AM | PM
-  passengers     Int?
-  status         String       @default("pending") // pending | approved | rejected | converted
-  totalPrice     Int?
-  currency       String?      @default("eur")
-  locale         String?
-  notesInternal  String?
-  metadata       String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  boat           Boat?        @relation(fields: [boatId], references: [id], onDelete: SetNull)
-  reservation    Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  id            String       @id @default(cuid())
+  userId        String
+  boatId        Int?
+  reservationId String? // si convertie en réservation réelle
+  startDate     DateTime
+  endDate       DateTime
+  part          String? // FULL | AM | PM
+  passengers    Int?
+  status        String       @default("pending") // pending | approved | rejected | converted
+  totalPrice    Int?
+  currency      String?      @default("eur")
+  locale        String?
+  notesInternal String?
+  metadata      String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boat          Boat?        @relation(fields: [boatId], references: [id], onDelete: SetNull)
+  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
 
   @@index([boatId])
   @@index([startDate])
@@ -356,27 +375,27 @@ model AgencyRequest {
 }
 
 model UsedBoat {
-  id             Int      @id @default(autoincrement())
-  slug           String   @unique
-  titleFr        String
-  titleEn        String
-  summaryFr      String?
-  summaryEn      String?
-  descriptionFr  String?
-  descriptionEn  String?
-  year           Int
-  lengthM        Float
-  engineHours    Int?
-  engines        String?
-  fuelType       String?   // diesel | essence | hybride
-  priceEur       Int?      // Nullable pour "nous consulter"
-  status         String    @default("listed") // listed | sold | hidden
-  mainImage      String?
-  photoUrls      String?   // JSON array
-  videoUrls      String?   // JSON array
-  sort           Int?      @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id              Int              @id @default(autoincrement())
+  slug            String           @unique
+  titleFr         String
+  titleEn         String
+  summaryFr       String?
+  summaryEn       String?
+  descriptionFr   String?
+  descriptionEn   String?
+  year            Int
+  lengthM         Float
+  engineHours     Int?
+  engines         String?
+  fuelType        String? // diesel | essence | hybride
+  priceEur        Int? // Nullable pour "nous consulter"
+  status          String           @default("listed") // listed | sold | hidden
+  mainImage       String?
+  photoUrls       String? // JSON array
+  videoUrls       String? // JSON array
+  sort            Int?             @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   contactMessages ContactMessage[]
 
   @@index([status])
@@ -384,17 +403,17 @@ model UsedBoat {
 }
 
 model ContactMessage {
-  id          Int       @id @default(autoincrement())
-  name        String
-  email       String
-  phone       String?
-  message     String
-  usedBoatId  Int?
-  usedBoat    UsedBoat? @relation(fields: [usedBoatId], references: [id], onDelete: SetNull)
-  locale      String?
-  sourcePage  String?   // slug ou URL
-  createdAt   DateTime  @default(now())
-  readAt      DateTime?
+  id         Int       @id @default(autoincrement())
+  name       String
+  email      String
+  phone      String?
+  message    String
+  usedBoatId Int?
+  usedBoat   UsedBoat? @relation(fields: [usedBoatId], references: [id], onDelete: SetNull)
+  locale     String?
+  sourcePage String? // slug ou URL
+  createdAt  DateTime  @default(now())
+  readAt     DateTime?
 
   @@index([createdAt])
   @@index([usedBoatId])
@@ -404,9 +423,9 @@ model BoatOption {
   id        Int      @id @default(autoincrement())
   boatId    Int
   label     String
-  price     Int?      // prix en € (optionnel)
-  createdAt DateTime  @default(now())
-  boat      Boat      @relation(fields: [boatId], references: [id], onDelete: Cascade)
+  price     Int? // prix en € (optionnel)
+  createdAt DateTime @default(now())
+  boat      Boat     @relation(fields: [boatId], references: [id], onDelete: Cascade)
 
   @@index([boatId])
 }
@@ -415,29 +434,30 @@ model BoatExperience {
   boatId       Int
   experienceId Int
   price        Int?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   boat         Boat       @relation(fields: [boatId], references: [id], onDelete: Cascade)
   experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
   @@id([boatId, experienceId])
   @@index([experienceId])
 }
 
 model ExperienceAvailabilitySlot {
-  id           Int        @id @default(autoincrement())
-  experienceId Int
-  boatId       Int?       // Optionnel : permet de lier un créneau à un bateau spécifique
-  date         DateTime
-  part         String               // 'AM' | 'PM' | 'FULL'
-  status       String    @default("available")
-  note         String?
+  id                 Int        @id @default(autoincrement())
+  experienceId       Int
+  boatId             Int? // Optionnel : permet de lier un créneau à un bateau spécifique
+  date               DateTime
+  part               String // 'AM' | 'PM' | 'FULL'
+  status             String     @default("available")
+  note               String?
   // Horaires fixes spécifiques à ce slot (override ceux de l'expérience si définis)
-  fixedDepartureTime String?  // Format HH:mm (ex: "20:30")
-  fixedReturnTime    String?  // Format HH:mm (ex: "23:00")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
-  boat         Boat?      @relation(fields: [boatId], references: [id], onDelete: SetNull)
+  fixedDepartureTime String? // Format HH:mm (ex: "20:30")
+  fixedReturnTime    String? // Format HH:mm (ex: "23:00")
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  experience         Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  boat               Boat?      @relation(fields: [boatId], references: [id], onDelete: SetNull)
 
   @@unique([experienceId, boatId, date, part])
   @@index([date])

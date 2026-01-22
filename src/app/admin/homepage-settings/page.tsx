@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Toast from "@/components/Toast";
 import { submitForm } from "@/lib/form-utils";
+import AdminInstructions from "@/components/AdminInstructions";
 
 export default function AdminHomepageSettingsPage() {
   const router = useRouter();

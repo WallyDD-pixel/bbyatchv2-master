@@ -12,19 +12,32 @@ export async function GET(req: Request) {
   const from = searchParams.get('from');
   const to = searchParams.get('to');
   if (!from || !to) return NextResponse.json({ error: 'missing_range' }, { status: 400 });
-  const start = new Date(from + 'T00:00:00');
-  const end = new Date(to + 'T23:59:59');
+  
+  // Normaliser les dates en UTC pour correspondre au format de stockage
+  const fromMatch = from.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const toMatch = to.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!fromMatch || !toMatch) {
+    return NextResponse.json({ error: 'bad_range' }, { status: 400 });
+  }
+  
+  const [, fromYear, fromMonth, fromDay] = fromMatch.map(Number);
+  const [, toYear, toMonth, toDay] = toMatch.map(Number);
+  
+  const start = new Date(Date.UTC(fromYear, fromMonth - 1, fromDay, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(toYear, toMonth - 1, toDay, 23, 59, 59, 999));
+  
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return NextResponse.json({ error: 'bad_range' }, { status: 400 });
   try {
     const slots: { date: Date; boatId: number; part: string }[] = await (prisma as any).availabilitySlot.findMany({
       where: { date: { gte: start, lte: end }, status: 'available' },
       select: { date: true, boatId: true, part: true }
     });
-    // Regrouper par boatId -> date -> parts
+    // Regrouper par boatId -> date -> parts (utiliser UTC pour extraire les dates)
     const byBoat: Record<number, Record<string, { AM?: boolean; PM?: boolean; FULL?: boolean }>> = {};
     for (const s of slots) {
       const d = new Date(s.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      // Utiliser UTC pour correspondre au format de stockage
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
       (byBoat[s.boatId] ||= {});
       (byBoat[s.boatId][key] ||= {});
       (byBoat[s.boatId][key] as any)[s.part] = true;

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import AdminInstructions from "@/components/AdminInstructions";
 
 interface NavbarItem {
   id: number;
@@ -263,10 +264,33 @@ export default function AdminNavbarPage() {
           >
             <span>←</span> Retour
           </button>
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">🧭 Administration de la Navigation</h1>
-          <p className="text-sm text-black/60">
-            Gérez les éléments de la barre de navigation : contenu, ordre et visibilité.
-          </p>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-4">🧭 Administration de la Navigation</h1>
+          <AdminInstructions
+            locale="fr"
+            title="Comment gérer la navigation"
+            instructions={[
+              {
+                title: "Réorganiser les éléments",
+                description: "Glissez-déposez les éléments pour changer leur ordre d'affichage dans la barre de navigation."
+              },
+              {
+                title: "Modifier les titres",
+                description: "Cliquez sur l'icône ✏️ pour modifier les titres en français et en anglais d'un élément de navigation."
+              },
+              {
+                title: "Masquer/Afficher",
+                description: "Cliquez sur l'icône 👁️ pour masquer ou afficher un élément sans le supprimer. Les éléments masqués apparaissent en grisé."
+              },
+              {
+                title: "Supprimer un élément",
+                description: "Cliquez sur l'icône 🗑️ pour supprimer définitivement un élément de navigation."
+              },
+              {
+                title: "Restaurer les valeurs par défaut",
+                description: "Si aucun élément n'est configuré, utilisez le bouton 'Restaurer les boutons par défaut' pour créer les éléments de base."
+              }
+            ]}
+          />
         </div>
 
         {/* Boutons d'action */}

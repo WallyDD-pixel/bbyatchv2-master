@@ -24,8 +24,17 @@ export async function GET(req: Request) {
   const from = searchParams.get('from');
   const to = searchParams.get('to');
   if (!from || !to) return NextResponse.json({ error: 'missing_range' }, { status: 400 });
-  const start = new Date(from + 'T00:00:00');
-  const end = new Date(to + 'T23:59:59');
+  
+  // Normaliser les dates en UTC pour correspondre au format de stockage
+  const fromMatch = from.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const toMatch = to.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!fromMatch || !toMatch) return NextResponse.json({ error: 'bad_range' }, { status: 400 });
+  
+  const [, fromYear, fromMonth, fromDay] = fromMatch.map(Number);
+  const [, toYear, toMonth, toDay] = toMatch.map(Number);
+  
+  const start = new Date(Date.UTC(fromYear, fromMonth - 1, fromDay, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(toYear, toMonth - 1, toDay, 23, 59, 59, 999));
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return NextResponse.json({ error: 'bad_range' }, { status: 400 });
   try {
     const [boats, slots, reservations] = await Promise.all([
@@ -69,8 +78,21 @@ export async function POST(req: Request) {
   const { boatId, date, part, note } = body || {};
   if (!boatId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   if (!['AM','PM','FULL','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
-  const day = new Date(date + 'T00:00:00');
+  
+  // Normaliser la date en UTC pour correspondre à la recherche
+  // Parser la date depuis la chaîne YYYY-MM-DD
+  const dateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!dateMatch) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
+  const [, yearStr, monthStr, dayStr] = dateMatch;
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const dayNum = parseInt(dayStr, 10);
+  
+  // Créer la date en UTC à minuit pour correspondre au format de recherche
+  const day = new Date(Date.UTC(year, month - 1, dayNum, 0, 0, 0, 0));
   if (isNaN(day.getTime())) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
+  
+  console.log(`[availability] Creating slot: boatId=${boatId}, date=${date} -> UTC: ${day.toISOString()}`);
 
   try {
     // toggle logic: if exists -> delete; else create

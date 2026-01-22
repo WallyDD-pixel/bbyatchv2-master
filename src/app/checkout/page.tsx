@@ -12,11 +12,11 @@ interface BoatOption {
   price: number | null;
 }
 
-export default async function CheckoutPage({ searchParams }: { searchParams?: { lang?: string; boat?: string; start?: string; end?: string; part?: string; pax?: string; opts?: string; waterToys?: string; children?: string; specialNeeds?: string; excursion?: string; } } ) {
-  const sp = searchParams || {};
+export default async function CheckoutPage({ searchParams }: { searchParams?: Promise<{ lang?: string; boat?: string; start?: string; end?: string; part?: string; pax?: string; opts?: string; waterToys?: string; children?: string; specialNeeds?: string; excursion?: string; }> } ) {
+  const sp = (await searchParams) || {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
-  const { boat: boatSlug, start, end, part, pax, opts, waterToys, children, specialNeeds, excursion } = sp || {};
+  const { boat: boatSlug, start, end, part, pax, opts, waterToys, children, specialNeeds, excursion } = sp;
   const slot = (part==='AM'||part==='PM'||part==='FULL'||part==='SUNSET')? part : 'FULL';
   let boat: any = null;
   if (boatSlug) {

@@ -281,9 +281,9 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
               </div>
             </div>
           </div>
-          <div className="flex justify-between pt-2">
+          <div className="flex justify-between items-center pt-4 mt-4 border-t border-black/10 relative z-10">
             <Link href="/" className="text-xs text-black/50 hover:text-black underline">← Retour</Link>
-            <button type="submit" disabled={!ville || !experience || !message || !email || !part || !rgpd || !startDate} className="px-6 h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Envoyer</button>
+            <button type="submit" disabled={!ville || !experience || !message || !email || !part || !rgpd || !startDate} className="px-6 h-11 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm hover:shadow disabled:shadow-none">Envoyer</button>
           </div>
 
           {/* Popover calendrier */}
@@ -320,11 +320,25 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
                   );
                 })}
               </div>
-              <div className="flex items-center justify-between mt-3 gap-3">
-                <p className="text-[10px] text-black/50">{part==='FULL' ? (tempStart? 'Clique une date de fin (max 7 jours, peut être sans dispo)' : 'Clique une date de début (doit être dispo)') : 'Clique un jour (½ journée)'}.</p>
+              <div className="flex items-center justify-between mt-3 gap-3 pt-3 border-t border-black/10">
+                <p className="text-[10px] text-black/50 flex-1">{part==='FULL' ? (tempStart? 'Clique une date de fin (max 7 jours, peut être sans dispo)' : 'Clique une date de début (doit être dispo)') : 'Clique un jour (½ journée)'}.</p>
                 <div className="flex items-center gap-2">
-                  {startDate && <button type="button" onClick={()=>{ setStartDate(''); setEndDate(''); setTempStart(null); setRangeError(null); }} className="text-[10px] px-2 py-1 rounded bg-black/5 hover:bg-black/10">Reset</button>}
-                  <button type="button" onClick={()=>setPickerOpen(false)} className="text-[10px] px-2 py-1 rounded bg-[var(--primary)] text-white hover:brightness-110">OK</button>
+                  {startDate && (
+                    <button 
+                      type="button" 
+                      onClick={()=>{ setStartDate(''); setEndDate(''); setTempStart(null); setRangeError(null); }} 
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium border border-gray-300 transition-colors"
+                    >
+                      Reset
+                    </button>
+                  )}
+                  <button 
+                    type="button" 
+                    onClick={()=>setPickerOpen(false)} 
+                    className="text-[11px] px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold transition-colors shadow-sm hover:shadow"
+                  >
+                    OK
+                  </button>
                 </div>
               </div>
               {rangeError && <p className="mt-2 text-[10px] text-red-600 font-medium">{rangeError}</p>}

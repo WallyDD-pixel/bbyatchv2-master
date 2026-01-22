@@ -2,11 +2,10 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import HeaderBar from '@/components/HeaderBar';
-import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 import Link from 'next/link';
 import MessageViewClient from './MessageViewClient';
+import AdminInstructions from '@/components/AdminInstructions';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,11 +33,34 @@ export default async function AdminMessagesPage({ searchParams }: { searchParams
 
   return (
     <div className='min-h-screen flex flex-col'>
-      <HeaderBar initialLocale={locale} />
-      <main className='flex-1 max-w-7xl mx-auto w-full px-4 py-10'>
-        <div className='flex items-center justify-between mb-8'>
-          <h1 className='text-2xl font-bold'>{locale==='fr'? 'Messages':'Messages'}</h1>
-          <Link href='/admin' className='text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5'>← {locale==='fr'? 'Retour':'Back'}</Link>
+      <main className='flex-1 max-w-7xl mx-auto w-full px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-10'>
+        <div className='mb-4 sm:mb-6'>
+          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4'>
+            <h1 className='text-xl sm:text-2xl font-bold'>{locale==='fr'? 'Messages':'Messages'}</h1>
+            <Link href='/admin' className='text-xs sm:text-sm rounded-full border border-black/15 px-3 sm:px-4 h-8 sm:h-9 inline-flex items-center hover:bg-black/5 transition-colors whitespace-nowrap self-start sm:self-auto'>← {locale==='fr'? 'Retour':'Back'}</Link>
+          </div>
+          <AdminInstructions
+            locale={locale}
+            title={locale==='fr'?'Comment gérer les messages':'How to manage messages'}
+            instructions={[
+              {
+                title: locale==='fr'?'Voir les messages':'View messages',
+                description: locale==='fr'?'Le tableau affiche tous les messages de contact reçus, y compris les demandes "Autre ville". Cliquez sur "Voir" pour afficher le message complet.':'The table displays all contact messages received, including "Other city" requests. Click on "View" to display the full message.'
+              },
+              {
+                title: locale==='fr'?'Types de messages':'Message types',
+                description: locale==='fr'?'Les messages peuvent provenir de la page de contact, des demandes de bateaux d\'occasion ou des demandes "Autre ville". Les demandes "Autre ville" sont marquées avec un badge spécial.':'Messages can come from the contact page, used boat requests or "Other city" requests. "Other city" requests are marked with a special badge.'
+              },
+              {
+                title: locale==='fr'?'Contacter le client':'Contact the client',
+                description: locale==='fr'?'Cliquez sur l\'email dans le tableau pour ouvrir votre client de messagerie et répondre directement au client.':'Click on the email in the table to open your email client and reply directly to the client.'
+              },
+              {
+                title: locale==='fr'?'Voir les détails':'View details',
+                description: locale==='fr'?'Cliquez sur "Voir" pour afficher toutes les informations du message dans une modal détaillée, y compris le bateau concerné si applicable.':'Click on "View" to display all message information in a detailed modal, including the related boat if applicable.'
+              }
+            ]}
+          />
         </div>
 
         <div className='rounded-2xl border border-black/10 bg-white p-5 shadow-sm overflow-x-auto'>

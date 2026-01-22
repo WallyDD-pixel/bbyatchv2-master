@@ -4,8 +4,8 @@ import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 import Image from 'next/image';
 
-export default async function AboutPage({ searchParams }: { searchParams?: { lang?: string } }) {
-  const sp = searchParams || {};
+export default async function AboutPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
+  const sp = (await searchParams) || {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
 

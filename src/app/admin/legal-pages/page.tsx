@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { messages, type Locale } from '@/i18n/messages';
+import AdminInstructions from "@/components/AdminInstructions";
 
 // Définir les slugs des pages légales standard correspondant aux liens du footer
 const LEGAL_PAGES = [
@@ -34,11 +35,35 @@ export default async function AdminLegalPages({ searchParams }: { searchParams?:
 
   return (
     <div className='p-6 md:p-8 lg:p-10'>
-      <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold'>{locale==='fr'? 'Pages légales':'Legal pages'}</h1>
-        <Link href='/admin' className='text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5 cursor-pointer'>
-          ← {locale==='fr'? 'Retour':'Back'}
-        </Link>
+      <div className='mb-6'>
+        <div className='flex items-center justify-between mb-4'>
+          <h1 className='text-2xl font-bold'>{locale==='fr'? 'Pages légales':'Legal pages'}</h1>
+          <Link href='/admin' className='text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5 cursor-pointer'>
+            ← {locale==='fr'? 'Retour':'Back'}
+          </Link>
+        </div>
+        <AdminInstructions
+          locale={locale}
+          title={locale==='fr'?'Comment gérer les pages légales':'How to manage legal pages'}
+          instructions={[
+            {
+              title: locale==='fr'?'Créer ou modifier une page':'Create or edit a page',
+              description: locale==='fr'?'Cliquez sur une carte de page légale pour la créer (si elle n\'existe pas) ou la modifier (si elle existe déjà). Les pages avec un badge vert "Existe" sont déjà créées.':'Click on a legal page card to create it (if it doesn\'t exist) or edit it (if it already exists). Pages with a green "Exists" badge are already created.'
+            },
+            {
+              title: locale==='fr'?'Pages standard':'Standard pages',
+              description: locale==='fr'?'Les pages légales standard (CGU, Confidentialité, Conditions de paiement, etc.) sont pré-configurées. Il suffit de cliquer dessus pour les créer ou les modifier.':'Standard legal pages (Terms, Privacy, Payment Terms, etc.) are pre-configured. Just click on them to create or edit.'
+            },
+            {
+              title: locale==='fr'?'Contenu bilingue':'Bilingual content',
+              description: locale==='fr'?'Chaque page doit avoir un contenu en français et en anglais. Utilisez les onglets pour basculer entre les deux langues lors de l\'édition.':'Each page must have content in French and English. Use tabs to switch between the two languages when editing.'
+            },
+            {
+              title: locale==='fr'?'Affichage sur le site':'Display on site',
+              description: locale==='fr'?'Les pages légales sont accessibles depuis le footer du site. Elles sont automatiquement liées aux pages correspondantes.':'Legal pages are accessible from the site footer. They are automatically linked to corresponding pages.'
+            }
+          ]}
+        />
       </div>
 
       <div className='grid sm:grid-cols-2 gap-4'>

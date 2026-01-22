@@ -48,7 +48,6 @@ export default function AdminSidebar({ locale: initialLocale, stats }: AdminSide
     { href: "/admin/users", labelFr: "Utilisateurs", labelEn: "Users", icon: "👥", badge: stats?.users },
     { href: "/admin/messages", labelFr: "Messages", labelEn: "Messages", icon: "✉️" },
     { href: "/admin/agency-requests", labelFr: "Demandes agence", labelEn: "Agency Requests", icon: "🏢" },
-    { href: "/admin/gallery", labelFr: "Galerie", labelEn: "Gallery", icon: "🖼️", badge: stats?.gallery },
     { href: "/admin/info-cards", labelFr: "Cartes d'info", labelEn: "Info Cards", icon: "ℹ️", badge: stats?.infoCards },
     { href: "/admin/homepage-settings", labelFr: "Page d'accueil", labelEn: "Homepage", icon: "🏠" },
     { href: "/admin/about-settings", labelFr: "Page À propos", labelEn: "About Page", icon: "ℹ️" },
@@ -56,6 +55,7 @@ export default function AdminSidebar({ locale: initialLocale, stats }: AdminSide
     { href: "/admin/legal-pages", labelFr: "Pages légales", labelEn: "Legal Pages", icon: "📄" },
     { href: "/admin/social-media", labelFr: "Réseaux sociaux", labelEn: "Social Media", icon: "📱" },
     { href: "/admin/general-settings", labelFr: "Paramètres généraux", labelEn: "General Settings", icon: "⚙️" },
+    { href: "/admin/notifications", labelFr: "Notifications", labelEn: "Notifications", icon: "📧" },
     { href: "/admin/stripe", labelFr: "Stripe", labelEn: "Stripe", icon: "💳" },
     { href: "/admin/seo-tracking", labelFr: "SEO & Tracking", labelEn: "SEO & Tracking", icon: "📊" },
     { href: "/admin/used-sale-settings", labelFr: "LP Occasions", labelEn: "Used Sale LP", icon: "📄" },
@@ -73,7 +73,7 @@ export default function AdminSidebar({ locale: initialLocale, stats }: AdminSide
       {/* Bouton menu mobile */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 lg:hidden bg-slate-900 text-white p-2 rounded-lg shadow-lg hover:bg-slate-800 transition-colors"
+        className="fixed top-3 left-3 sm:top-4 sm:left-4 z-50 lg:hidden bg-slate-900 text-white p-2.5 sm:p-2 rounded-lg shadow-lg hover:bg-slate-800 transition-colors touch-manipulation"
         aria-label="Toggle menu"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

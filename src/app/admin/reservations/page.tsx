@@ -2,12 +2,11 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import HeaderBar from "@/components/HeaderBar";
-import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import ReservationsTableClient from './ReservationsTableClient';
+import AdminInstructions from "@/components/AdminInstructions";
 
 // Action serveur pour changer le statut
 async function updateReservationStatus(formData: FormData){
@@ -116,15 +115,46 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
 
   return (
     <div className="min-h-screen flex flex-col">
-      <HeaderBar initialLocale={locale} />
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{locale === "fr" ? "Réservations" : "Reservations"}</h1>
-          <div className="flex items-center gap-2">
-            <Link href={`/admin/reservations/new${locale==='en'? '?lang=en':''}`} className="text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 h-9 inline-flex items-center transition-colors">➕ {locale==='fr'? 'Créer réservation agence':'Create agency reservation'}</Link>
-            <Link href={`/admin/agency-requests${locale==='en'? '?lang=en':''}`} className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">🤝 {locale==='fr'? 'Demandes agence':'Agency requests'}</Link>
-            <Link href="/admin" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale === "fr" ? "Retour" : "Back"}</Link>
+      <main className="flex-1 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-10 w-full">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+            <h1 className="text-xl sm:text-2xl font-bold">{locale === "fr" ? "Réservations" : "Reservations"}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link href={`/admin/reservations/new${locale==='en'? '?lang=en':''}`} className="text-xs sm:text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 h-8 sm:h-9 inline-flex items-center transition-colors whitespace-nowrap font-medium">➕ {locale==='fr'? 'Créer réservation agence':'Create agency reservation'}</Link>
+              <Link href={`/admin/agency-requests${locale==='en'? '?lang=en':''}`} className="text-xs sm:text-sm rounded-full border border-black/15 px-3 sm:px-4 h-8 sm:h-9 inline-flex items-center hover:bg-black/5 transition-colors whitespace-nowrap">🤝 {locale==='fr'? 'Demandes agence':'Agency requests'}</Link>
+              <Link href="/admin" className="text-xs sm:text-sm rounded-full border border-black/15 px-3 sm:px-4 h-8 sm:h-9 inline-flex items-center hover:bg-black/5 transition-colors whitespace-nowrap">← {locale === "fr" ? "Retour" : "Back"}</Link>
+            </div>
           </div>
+          <AdminInstructions
+            locale={locale}
+            title={locale==='fr'?'Comment gérer les réservations':'How to manage reservations'}
+            instructions={[
+              {
+                title: locale==='fr'?'Voir les réservations':'View reservations',
+                description: locale==='fr'?'Le tableau affiche toutes les réservations avec les informations principales (bateau, client, dates, prix, statut).':'The table displays all reservations with main information (boat, client, dates, price, status).'
+              },
+              {
+                title: locale==='fr'?'Filtrer et rechercher':'Filter and search',
+                description: locale==='fr'?'Utilisez les filtres pour rechercher par date, bateau, client ou statut.':'Use filters to search by date, boat, client or status.'
+              },
+              {
+                title: locale==='fr'?'Modifier le statut':'Modify status',
+                description: locale==='fr'?'Cliquez sur le statut d\'une réservation pour le modifier (en attente, confirmée, payée, terminée, annulée).':'Click on a reservation status to modify it (pending, confirmed, paid, completed, cancelled).'
+              },
+              {
+                title: locale==='fr'?'Gérer le carburant final':'Manage final fuel',
+                description: locale==='fr'?'Pour les réservations terminées, vous pouvez ajouter le montant du carburant final qui sera ajouté au prix total.':'For completed reservations, you can add the final fuel amount which will be added to the total price.'
+              },
+              {
+                title: locale==='fr'?'Créer une réservation agence':'Create agency reservation',
+                description: locale==='fr'?'Utilisez le bouton "Créer réservation agence" pour créer manuellement une réservation pour une agence partenaire.':'Use the "Create agency reservation" button to manually create a reservation for a partner agency.'
+              },
+              {
+                title: locale==='fr'?'Supprimer des réservations':'Delete reservations',
+                description: locale==='fr'?'Sélectionnez plusieurs réservations et utilisez le bouton de suppression en masse. Attention : cette action est irréversible.':'Select multiple reservations and use the bulk delete button. Warning: this action is irreversible.'
+              }
+            ]}
+          />
         </div>
 
         {/* Bloc gestion bateaux d'occasion */}
@@ -160,7 +190,6 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
           deleteReservations={deleteReservations}
         />
       </main>
-      <Footer locale={locale} t={t} />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { type Locale } from "@/i18n/messages";
 // Type local tant que les types Prisma ne sont pas rafraîchis
 type InfoCard = {
   id?: number;
-  imageUrl: string;
+  imageUrl?: string | null;
   titleFr: string;
   titleEn: string;
   descFr?: string | null;
@@ -86,7 +86,11 @@ export default async function InfoCardsSection({ locale }: { locale: Locale }) {
           const hasDetailPage = (c.contentFr || c.contentEn) || (c.ctaUrl && (c.contentFr || c.contentEn));
           const cardContent = (
             <article className={`relative overflow-hidden rounded-2xl border border-black/10 bg-white h-40 sm:h-48 ${hasDetailPage ? 'cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02]' : ''}`}>
-              <Image src={c.imageUrl} alt={locale === "fr" ? c.titleFr : c.titleEn} fill className="object-cover" />
+              {c.imageUrl && c.imageUrl.trim() ? (
+                <Image src={c.imageUrl} alt={locale === "fr" ? c.titleFr : c.titleEn} fill className="object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-blue-200" />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
               <div className="absolute inset-0 p-4 flex flex-col justify-end text-left">
                 <h3 className="font-aviano font-bold text-lg text-white">{locale === "fr" ? c.titleFr : c.titleEn}</h3>

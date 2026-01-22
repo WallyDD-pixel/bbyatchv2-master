@@ -5,16 +5,18 @@ import { redirect, notFound } from 'next/navigation';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import ImageUploadClient from '../ImageUploadClient';
 
-export default async function AdminInfoCardEditPage({ params, searchParams }: { params:{ id:string }, searchParams?: { lang?: string } }){
+export default async function AdminInfoCardEditPage({ params, searchParams }: { params: Promise<{ id:string }>, searchParams?: Promise<{ lang?: string }> }){
+  const { id: idStr } = await params;
+  const id = parseInt(idStr,10); if(isNaN(id)) notFound();
   const session = await getServerSession(auth as any) as any;
   if(!session?.user) redirect('/signin');
   const role = (session.user as any)?.role||'user';
   if(role!=='admin') redirect('/dashboard');
-  const id = parseInt(params.id,10); if(isNaN(id)) notFound();
   const card = await (prisma as any).infoCard.findUnique({ where:{ id } });
   if(!card) notFound();
-  const sp = searchParams || {};
+  const sp = (await searchParams) || {};
   const locale = sp.lang==='en'? 'en':'fr';
 
   return (
@@ -42,21 +44,7 @@ export default async function AdminInfoCardEditPage({ params, searchParams }: { 
             <label className='grid gap-1 text-sm mt-3'><span>{locale==='fr'? 'Label du bouton (FR)':'Button label (FR)'}</span><input name='ctaLabelFr' defaultValue={card.ctaLabelFr||''} className='h-11 rounded-lg border border-black/15 px-3' placeholder={locale==='fr'? 'En savoir plus':'Learn more'} /></label>
             <label className='grid gap-1 text-sm mt-3'><span>{locale==='fr'? 'Label du bouton (EN)':'Button label (EN)'}</span><input name='ctaLabelEn' defaultValue={card.ctaLabelEn||''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='Learn more' /></label>
           </div>
-          <div className='grid gap-2 text-sm'>
-            <span>{locale==='fr'? 'Image':'Image'}</span>
-            <input type='hidden' name='imageUrl' defaultValue={card.imageUrl||''} />
-            <div id='dropZone' className='relative h-48 rounded-lg border border-dashed border-black/25 flex flex-col items-center justify-center text-xs text-black/60 cursor-pointer bg-black/[0.02] hover:bg-black/[0.04] transition'>
-              <input id='fileInput' name='imageFile' type='file' accept='image/*' className='absolute inset-0 opacity-0 cursor-pointer' />
-              <div className='pointer-events-none flex flex-col items-center px-4 text-center' id='placeholder'>
-                <svg width='30' height='30' viewBox='0 0 24 24' className='mb-2 text-black/40'><path fill='currentColor' d='M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7M14 3v2h3.59l-9.83 9.83l1.41 1.41L19 6.41V10h2V3h-7Z'/></svg>
-                <span>{locale==='fr'? 'Glisser-déposer ou cliquer pour changer':'Drag & drop or click to change'}</span>
-                <span className='mt-1 text-[11px] text-black/40'>{locale==='fr'? 'PNG/JPG, max ~5MB':'PNG/JPG, max ~5MB'}</span>
-                {card.imageUrl && <span className='mt-2 text-[11px] text-black/50'>{locale==='fr'? 'Image actuelle conservée si aucun fichier':'Current image kept if no new file'}</span>}
-              </div>
-              <img id='previewImg' alt='' className={`${card.imageUrl? '' : 'hidden'} absolute inset-0 w-full h-full object-cover rounded-lg`} src={card.imageUrl||''} />
-              <div id='removeBtn' className={`${card.imageUrl ? '' : 'hidden'} absolute top-2 right-2 bg-white/80 backdrop-blur px-2 py-0.5 rounded text-[10px] font-medium shadow border border-black/10 cursor-pointer`}>×</div>
-            </div>
-          </div>
+          <ImageUploadClient locale={locale} existingImageUrl={card.imageUrl} />
           <label className='grid gap-1 text-sm'><span>Ordre (sort)</span><input type='number' name='sort' defaultValue={card.sort??0} className='h-11 rounded-lg border border-black/15 px-3' /></label>
           <div className='flex justify-end gap-2 pt-4 border-t border-black/10 mt-4'>
             <Link href='/admin/info-cards' className='rounded-full h-11 px-6 border-2 border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium inline-flex items-center transition-colors duration-200'>{locale==='fr'? 'Annuler':'Cancel'}</Link>
@@ -69,7 +57,7 @@ export default async function AdminInfoCardEditPage({ params, searchParams }: { 
         <input type='hidden' name='_method' value='DELETE' />
         <button id='delCardBtn' type='submit' className='h-11 px-5 rounded-full bg-red-600 text-white text-sm font-semibold shadow hover:brightness-110'>{locale==='fr'? 'Supprimer':'Delete'}</button>
       </form>
-      <script dangerouslySetInnerHTML={{ __html:`document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('delCardBtn'); if(b){ b.addEventListener('click',e=>{ if(!confirm('${locale==='fr'? 'Supprimer cette carte ?':'Delete this card?'}')) e.preventDefault(); }); } const dz=document.getElementById('dropZone'); const fi=document.getElementById('fileInput'); const pv=document.getElementById('previewImg'); const rm=document.getElementById('removeBtn'); const ph=document.getElementById('placeholder'); if(!dz||!fi||!pv||!rm) return; function showPreview(file){ const url=URL.createObjectURL(file); pv.src=url; pv.classList.remove('hidden'); rm.classList.remove('hidden'); if(ph) ph.classList.add('opacity-0'); } function clear(){ fi.value=''; pv.src=''; pv.classList.add('hidden'); rm.classList.add('hidden'); if(ph) ph.classList.remove('opacity-0'); } fi.addEventListener('change',()=>{ const f=fi.files&&fi.files[0]; if(f) showPreview(f); else if(!pv.getAttribute('src')) clear(); }); rm.addEventListener('click',e=>{ e.preventDefault(); clear(); }); dz.addEventListener('dragover',e=>{ e.preventDefault(); dz.classList.add('ring','ring-[color:var(--primary)]'); }); dz.addEventListener('dragleave',()=>{ dz.classList.remove('ring','ring-[color:var(--primary)]'); }); dz.addEventListener('drop',e=>{ e.preventDefault(); dz.classList.remove('ring','ring-[color:var(--primary)]'); const files=e.dataTransfer.files; if(files&&files[0]){ fi.files=files; const ev=new Event('change'); fi.dispatchEvent(ev); } }); });` }} />
+      <script dangerouslySetInnerHTML={{ __html:`document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('delCardBtn'); if(b){ b.addEventListener('click',e=>{ if(!confirm('${locale==='fr'? 'Supprimer cette carte ?':'Delete this card?'}')) e.preventDefault(); }); } });` }} />
     </div>
   );
 }

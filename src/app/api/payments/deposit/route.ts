@@ -8,7 +8,11 @@ export async function POST(req: Request){
   try {
     const body = await req.json();
     const { boatSlug, start, end, part, pax, locale='fr', waterToys, children, specialNeeds, excursion } = body || {};
-    if(!boatSlug || !start || !part) return NextResponse.json({ error: 'missing_params' }, { status: 400 });
+    console.log('[deposit] Request received:', { boatSlug, start, end, part, pax });
+    if(!boatSlug || !start || !part) {
+      console.log('[deposit] Missing params:', { boatSlug: !!boatSlug, start: !!start, part: !!part });
+      return NextResponse.json({ error: 'missing_params' }, { status: 400 });
+    }
     
     // Traiter les données supplémentaires
     const waterToysBool = waterToys === '1' || waterToys === true;
@@ -29,7 +33,96 @@ export async function POST(req: Request){
     }
 
     const boat = await (prisma as any).boat.findUnique({ where: { slug: boatSlug }, select: { id: true, name: true, slug: true, skipperRequired: true, skipperPrice: true, capacity: true, lengthM: true, speedKn: true } });
-    if(!boat) return NextResponse.json({ error: 'boat_not_found' }, { status: 404 });
+    if(!boat) {
+      console.log('[deposit] Boat not found:', boatSlug);
+      return NextResponse.json({ error: 'boat_not_found' }, { status: 404 });
+    }
+    console.log('[deposit] Boat found:', boat.id, boat.name);
+    
+    // Debug: Vérifier tous les slots pour ce bateau autour de la date demandée
+    // Normaliser la date de recherche en UTC
+    const [startYear, startMonth, startDay] = start.split('-').map(Number);
+    const debugDateUTC = new Date(Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0));
+    const debugStart = new Date(debugDateUTC.getTime() - 2 * 24 * 60 * 60 * 1000); // 2 jours avant
+    const debugEnd = new Date(debugDateUTC.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 jours après
+    
+    // Vérifier TOUS les slots pour ce bateau (pas seulement les 50 premiers)
+    const allSlots = await prisma.availabilitySlot.findMany({
+      where: {
+        boatId: boat.id,
+        status: 'available'
+      },
+      select: { id: true, date: true, part: true },
+      orderBy: { date: 'asc' }
+    });
+    
+    // Vérifier aussi les slots de TOUS les bateaux pour la date demandée
+    const allBoatsSlotsForDate = await prisma.availabilitySlot.findMany({
+      where: {
+        date: { gte: debugStart, lte: debugEnd },
+        status: 'available'
+      },
+      select: { id: true, boatId: true, date: true, part: true },
+      orderBy: { date: 'asc' }
+    });
+    
+    // Récupérer les noms des bateaux pour les logs
+    const boatIds = [...new Set(allBoatsSlotsForDate.map(s => s.boatId))];
+    const boatsInfo = await prisma.boat.findMany({
+      where: { id: { in: boatIds } },
+      select: { id: true, name: true }
+    });
+    const boatNamesMap = new Map(boatsInfo.map(b => [b.id, b.name]));
+    
+    console.log(`[deposit] Debug: Total slots for boat ${boat.id} (${boat.name}):`, allSlots.length);
+    console.log(`[deposit] Debug: All slots for date ${start} across ALL boats:`, allBoatsSlotsForDate.length);
+    if (allBoatsSlotsForDate.length > 0) {
+      console.log(`[deposit] Debug: Slots by boat for date ${start}:`, allBoatsSlotsForDate.map(s => ({
+        boatId: s.boatId,
+        boatName: boatNamesMap.get(s.boatId) || 'unknown',
+        date: s.date.toISOString(),
+        dateStr: s.date.toISOString().split('T')[0],
+        part: s.part
+      })));
+    } else {
+      console.log(`[deposit] Debug: NO SLOTS FOUND for date ${start} for ANY boat! This means slots need to be created in the admin calendar.`);
+    }
+    
+    // Analyser les dates pour voir s'il y a une différence entre janvier et mars
+    const januarySlots = allSlots.filter(s => {
+      const d = new Date(s.date);
+      return d.getUTCMonth() === 0; // Janvier = mois 0
+    });
+    const marchSlots = allSlots.filter(s => {
+      const d = new Date(s.date);
+      return d.getUTCMonth() === 2; // Mars = mois 2
+    });
+    
+    console.log(`[deposit] Debug: January slots (${januarySlots.length}):`, januarySlots.slice(0, 5).map(s => ({
+      date: s.date.toISOString(),
+      dateStr: s.date.toISOString().split('T')[0],
+      part: s.part
+    })));
+    console.log(`[deposit] Debug: March slots (${marchSlots.length}):`, marchSlots.slice(0, 5).map(s => ({
+      date: s.date.toISOString(),
+      dateStr: s.date.toISOString().split('T')[0],
+      part: s.part
+    })));
+    
+    const debugSlots = await prisma.availabilitySlot.findMany({
+      where: {
+        boatId: boat.id,
+        date: { gte: debugStart, lte: debugEnd },
+        status: 'available'
+      },
+      select: { id: true, date: true, part: true },
+      orderBy: { date: 'asc' }
+    });
+    console.log(`[deposit] Debug slots for boat ${boat.id} (${boat.name}) around ${start} (UTC range: ${debugStart.toISOString()} to ${debugEnd.toISOString()}):`, debugSlots.map(s => ({ 
+      date: s.date.toISOString(), 
+      part: s.part,
+      dateStr: s.date.toISOString().split('T')[0]
+    })));
     // Dates validation
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if(!dateRegex.test(start) || (end && !dateRegex.test(end))) return NextResponse.json({ error: 'invalid_date' }, { status: 400 });
@@ -91,46 +184,98 @@ export async function POST(req: Request){
     // Vérification de disponibilité pour tous les jours de la plage
     // IMPORTANT: Pour les agences, on saute cette vérification (demande sera examinée par l'admin)
     if(userRole !== 'agency') {
+      // Fonction helper pour normaliser une date au début de la journée en UTC
+      // Les slots sont stockés en UTC à minuit (ex: 2026-01-31T00:00:00.000Z)
+      // On doit donc chercher en UTC pour correspondre exactement
+      const normalizeDate = (dateStr: string): { start: Date, end: Date } => {
+        // Parser la date directement depuis la chaîne YYYY-MM-DD
+        const [year, month, day] = dateStr.split('-').map(Number);
+        
+        // Créer les dates en UTC à minuit pour correspondre au stockage des slots
+        const start = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        const end = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+        
+        console.log(`[deposit] Normalizing date ${dateStr} -> UTC start: ${start.toISOString()}, end: ${end.toISOString()}`);
+        return { start, end };
+      };
+
       if(part==='FULL' || part==='SUNSET'){
         // Pour les réservations multi-jours, vérifier tous les jours
-        const requiredDays: Date[] = [];
-        let current = new Date(s);
-        while(current <= e){
-          requiredDays.push(new Date(current));
-          current = new Date(current.getTime() + 86400000);
+        // Travailler directement avec les chaînes de dates en UTC pour correspondre au stockage des slots
+        const requiredDays: string[] = [];
+        const endDateStr = end || start;
+        
+        // Parser les dates directement depuis les chaînes (format YYYY-MM-DD)
+        const [startYear, startMonth, startDay] = start.split('-').map(Number);
+        const [endYear, endMonth, endDay] = endDateStr.split('-').map(Number);
+        
+        // Créer des dates en UTC pour correspondre au stockage des slots
+        const startDateObj = new Date(Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0));
+        const endDateObj = new Date(Date.UTC(endYear, endMonth - 1, endDay, 0, 0, 0, 0));
+        
+        let currentDateObj = new Date(startDateObj);
+        while(currentDateObj <= endDateObj){
+          // Extraire la date en UTC pour correspondre au format de stockage
+          const year = currentDateObj.getUTCFullYear();
+          const month = String(currentDateObj.getUTCMonth() + 1).padStart(2, '0');
+          const day = String(currentDateObj.getUTCDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${day}`;
+          requiredDays.push(dateStr);
+          // Ajouter un jour (86400000 ms = 24 heures)
+          currentDateObj = new Date(currentDateObj.getTime() + 86400000);
         }
         
         // Vérifier chaque jour
-        for(const day of requiredDays){
-          const daySlots = await prisma.availabilitySlot.findMany({ 
+        for(const dateStr of requiredDays){
+          const { start: dayStart, end: dayEnd } = normalizeDate(dateStr);
+          
+          // Chercher tous les slots pour ce bateau dans une plage plus large pour le débogage
+          const allSlotsDebug = await prisma.availabilitySlot.findMany({ 
             where: { 
-              boat: { slug: boatSlug }, 
-              date: { gte: day, lte: day }, 
+              boatId: boat.id, 
               status: 'available' 
             }, 
-            select: { part: true } 
+            select: { part: true, date: true },
+            take: 10,
+            orderBy: { date: 'desc' }
           });
+          console.log(`[deposit] Debug: Last 10 slots for boat ${boat.id}:`, allSlotsDebug.map(s => ({ part: s.part, date: s.date.toISOString() })));
+          
+          const daySlots = await prisma.availabilitySlot.findMany({ 
+            where: { 
+              boatId: boat.id, 
+              date: { gte: dayStart, lte: dayEnd }, 
+              status: 'available' 
+            }, 
+            select: { part: true, date: true } 
+          });
+          console.log(`[deposit] Checking slots for boat ${boat.id} on ${dateStr} (range: ${dayStart.toISOString()} to ${dayEnd.toISOString()}): found ${daySlots.length} slot(s)`, daySlots.map(s => ({ part: s.part, date: s.date.toISOString() })));
           const partsSet = new Set(daySlots.map(s=>s.part));
           const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
           if(!hasFullEquivalent){
+            console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${dateStr}, parts found:`, Array.from(partsSet));
             return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
           }
         }
       } else {
         // Pour les demi-journées, vérifier seulement le jour de départ
+        const { start: dayStart, end: dayEnd } = normalizeDate(start);
+        
         const startSlots = await prisma.availabilitySlot.findMany({ 
           where: { 
-            boat: { slug: boatSlug }, 
-            date: { gte: s, lte: s }, 
+            boatId: boat.id, 
+            date: { gte: dayStart, lte: dayEnd }, 
             status: 'available' 
           }, 
           select: { part: true } 
         });
         const partsSet = new Set(startSlots.map(s=>s.part));
         if(part==='AM' && !(partsSet.has('AM') || partsSet.has('FULL'))){
+          console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${start} for AM, parts found:`, Array.from(partsSet));
           return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
         }
         if(part==='PM' && !(partsSet.has('PM') || partsSet.has('FULL'))){
+          console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${start} for PM, parts found:`, Array.from(partsSet));
           return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
         }
       }
@@ -238,16 +383,33 @@ Prix total: ${grandTotal.toLocaleString('fr-FR')} €
 Détails complets disponibles dans le tableau de bord admin.
 `;
         
-        // Envoyer via API route d'email (à créer ou utiliser service externe)
-        await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/send-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: 'charter@bb-yachts.com',
-            subject: `Nouvelle demande agence - ${boat.name} - ${start}`,
-            text: emailBody,
-          }),
-        }).catch(err => console.error('Error sending email:', err));
+        // Envoyer une notification par email pour la nouvelle demande d'agence
+        const { sendEmail, getNotificationEmail, isNotificationEnabled } = await import('@/lib/email');
+        const { newAgencyRequestEmail } = await import('@/lib/email-templates');
+        
+        if (await isNotificationEnabled('agencyRequest')) {
+          const emailData = {
+            id: agencyReq.id,
+            userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || user.email || 'Agence',
+            userEmail: user.email,
+            boatName: boat.name,
+            startDate: start,
+            endDate: end || start,
+            part,
+            passengers: pax ? Number(pax) : undefined,
+            totalPrice: grandTotal,
+            status: agencyReq.status,
+          };
+          
+          const { subject, html } = newAgencyRequestEmail(emailData, locale as 'fr' | 'en');
+          const notificationEmail = await getNotificationEmail();
+          
+          await sendEmail({
+            to: notificationEmail,
+            subject,
+            html,
+          });
+        }
       } catch (emailErr) {
         console.error('Error sending notification email for agency request:', emailErr);
         // Ne pas bloquer la création de la demande si l'email échoue
@@ -311,6 +473,48 @@ Détails complets disponibles dans le tableau de bord admin.
     });
 
     await prisma.reservation.update({ where:{ id: reservation.id }, data:{ stripeSessionId: checkoutSession.id } });
+
+    // Envoyer une notification par email pour la nouvelle réservation
+    try {
+      const { sendEmail, getNotificationEmail, isNotificationEnabled } = await import('@/lib/email');
+      const { newReservationEmail } = await import('@/lib/email-templates');
+      
+      if (await isNotificationEnabled('reservation')) {
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, firstName: true, lastName: true, email: true } });
+        const userName = user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Client';
+        
+        const meta = JSON.parse(reservation.metadata || '{}');
+        const experienceTitle = meta.experienceTitleFr || meta.experienceTitleEn || undefined;
+        
+        const emailData = {
+          id: reservation.id,
+          reference: reservation.reference,
+          boatName: boat.name,
+          userName,
+          userEmail: user?.email || '',
+          startDate: start,
+          endDate: end || start,
+          part,
+          passengers: reservation.passengers,
+          totalPrice: reservation.totalPrice,
+          depositAmount: reservation.depositAmount,
+          status: reservation.status,
+          experienceTitle,
+        };
+        
+        const { subject, html } = newReservationEmail(emailData, locale as 'fr' | 'en');
+        const notificationEmail = await getNotificationEmail();
+        
+        await sendEmail({
+          to: notificationEmail,
+          subject,
+          html,
+        });
+      }
+    } catch (emailErr) {
+      console.error('Error sending reservation notification email:', emailErr);
+      // Ne pas bloquer la création de la réservation si l'email échoue
+    }
 
     return NextResponse.json({ url: checkoutSession.url, reservationId: reservation.id });
   } catch (e:any) {

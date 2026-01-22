@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
+import AdminInstructions from "@/components/AdminInstructions";
 
 export default function AdminCitiesPage(){
     const [cities, setCities] = useState<{name:string}[]>([]);
@@ -45,9 +46,33 @@ export default function AdminCitiesPage(){
 
     return (
         <div className="max-w-2xl mx-auto py-8">
-            <div className="mb-6 flex items-center gap-3">
-                <button type="button" onClick={()=>history.back()} className="px-3 py-1.5 rounded border">← Retour</button>
-                <h1 className="text-xl font-bold">Villes proposées</h1>
+            <div className="mb-6">
+                <div className="mb-4 flex items-center gap-3">
+                    <button type="button" onClick={()=>history.back()} className="px-3 py-1.5 rounded border">← Retour</button>
+                    <h1 className="text-xl font-bold">Villes proposées</h1>
+                </div>
+                <AdminInstructions
+                    locale="fr"
+                    title="Comment gérer les villes"
+                    instructions={[
+                        {
+                            title: "Ajouter une ville",
+                            description: "Tapez le nom de la ville dans le champ et cliquez sur 'Ajouter'. La ville sera disponible pour la sélection lors de la création de bateaux."
+                        },
+                        {
+                            title: "Renommer une ville",
+                            description: "Cliquez sur 'Renommer' pour modifier le nom d'une ville existante. Cette action mettra à jour tous les bateaux associés."
+                        },
+                        {
+                            title: "Supprimer une ville",
+                            description: "Cliquez sur 'Supprimer' pour retirer une ville. Attention : les bateaux associés à cette ville ne pourront plus l'utiliser."
+                        },
+                        {
+                            title: "Utilisation",
+                            description: "Les villes sont utilisées pour filtrer les bateaux lors de la recherche et pour définir le port de départ des réservations."
+                        }
+                    ]}
+                />
             </div>
             <div className="flex gap-2 mb-4">
                 <input className="border rounded px-3 py-2 flex-1" placeholder="Nouvelle ville" value={name} onChange={e=>setName(e.target.value)} />

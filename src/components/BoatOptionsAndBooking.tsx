@@ -60,72 +60,7 @@ export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalL
 
   return (
     <div className='space-y-8'>
-      {/* Carte Options */}
-      <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
-        <h2 className='text-lg font-semibold mb-4'>{t.boat_options}</h2>
-        {options.length===0 && (
-          <p className='text-xs text-black/50 mb-0'>{t.boat_options_coming}</p>
-        )}
-        {options.length>0 && (
-          <ul className='space-y-2 text-sm text-black/70'>
-            {options.map(o=>{
-              const checked = selected.has(o.id);
-              return (
-                <li key={o.id} className={`flex items-center justify-between rounded-lg px-3 py-2 border border-black/10 ${checked? 'bg-[var(--primary)]/10 ring-1 ring-[var(--primary)]/40':'bg-black/5'}`}> 
-                  <label className='flex items-center gap-2 cursor-pointer select-none'>
-                    <input type='checkbox' checked={checked} onChange={()=>toggle(o.id)} className='h-4 w-4 accent-[var(--primary)]' />
-                    <span className='font-medium'>{o.label}</span>
-                  </label>
-                  <span className='text-black/60 text-xs'>{o.price!=null? o.price.toLocaleString(locale==='fr'? 'fr-FR':'en-US') + ' €' : (locale==='fr'? 'Inclus':'Included')}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {options.length>0 && (
-          <div className='mt-3 text-[11px] text-black/50 flex items-center justify-between'>
-            <span>{locale==='fr'? 'Total options sélectionnées':'Selected options total'}</span>
-            <span className='font-semibold text-black/70'>{optionsTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
-          </div>
-        )}
-      </section>
-
-      {/* Gestion du Skipper pour les agences */}
-      {isAgency && skipperRequired && (
-        <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
-          <h2 className='text-lg font-semibold mb-4'>{locale === 'fr' ? 'Skipper' : 'Skipper'}</h2>
-          <div className='space-y-3'>
-            <label className='flex items-center gap-3 cursor-pointer'>
-              <input
-                type='checkbox'
-                checked={needsSkipper}
-                onChange={(e) => setNeedsSkipper(e.target.checked)}
-                className='h-4 w-4 accent-[var(--primary)]'
-              />
-              <div className='flex-1'>
-                <span className='text-sm font-medium text-black/80'>
-                  {locale === 'fr' 
-                    ? 'Besoin d\'un skipper'
-                    : 'Need a skipper'}
-                </span>
-                <p className='text-xs text-black/50 mt-0.5'>
-                  {locale === 'fr' 
-                    ? 'Si notre skipper = 350€ HT/jour (sans TVA). Si skipper de l\'agence = Aucun coût supplémentaire.'
-                    : 'If our skipper = 350€ HT/day (no VAT). If agency skipper = No additional cost.'}
-                </p>
-              </div>
-            </label>
-            {needsSkipper && (
-              <div className='ml-7 text-sm text-black/70 bg-blue-50 rounded-lg px-3 py-2'>
-                <span className='font-medium'>{locale === 'fr' ? 'Skipper BB SERVICES' : 'BB SERVICES Skipper'}: </span>
-                <span>{skipperPrice}€ HT {locale === 'fr' ? 'par jour' : 'per day'} × {part === 'FULL' ? nbJours : 1} = {skipperTotal}€ HT</span>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Informations complémentaires */}
+      {/* Informations complémentaires - Déplacé en premier pour meilleure visibilité */}
       <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
         <h2 className='text-lg font-semibold mb-4'>{locale === 'fr' ? 'Informations complémentaires' : 'Additional Information'}</h2>
         <div className='space-y-4'>
@@ -203,6 +138,71 @@ export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalL
           </div>
         </div>
       </section>
+
+      {/* Carte Options */}
+      <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
+        <h2 className='text-lg font-semibold mb-4'>{t.boat_options}</h2>
+        {options.length===0 && (
+          <p className='text-xs text-black/50 mb-0'>{t.boat_options_coming}</p>
+        )}
+        {options.length>0 && (
+          <ul className='space-y-2 text-sm text-black/70'>
+            {options.map(o=>{
+              const checked = selected.has(o.id);
+              return (
+                <li key={o.id} className={`flex items-center justify-between rounded-lg px-3 py-2 border border-black/10 ${checked? 'bg-[var(--primary)]/10 ring-1 ring-[var(--primary)]/40':'bg-black/5'}`}> 
+                  <label className='flex items-center gap-2 cursor-pointer select-none'>
+                    <input type='checkbox' checked={checked} onChange={()=>toggle(o.id)} className='h-4 w-4 accent-[var(--primary)]' />
+                    <span className='font-medium'>{o.label}</span>
+                  </label>
+                  <span className='text-black/60 text-xs'>{o.price!=null? o.price.toLocaleString(locale==='fr'? 'fr-FR':'en-US') + ' €' : (locale==='fr'? 'Inclus':'Included')}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {options.length>0 && (
+          <div className='mt-3 text-[11px] text-black/50 flex items-center justify-between'>
+            <span>{locale==='fr'? 'Total options sélectionnées':'Selected options total'}</span>
+            <span className='font-semibold text-black/70'>{optionsTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
+          </div>
+        )}
+      </section>
+
+      {/* Gestion du Skipper pour les agences */}
+      {isAgency && skipperRequired && (
+        <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
+          <h2 className='text-lg font-semibold mb-4'>{locale === 'fr' ? 'Skipper' : 'Skipper'}</h2>
+          <div className='space-y-3'>
+            <label className='flex items-center gap-3 cursor-pointer'>
+              <input
+                type='checkbox'
+                checked={needsSkipper}
+                onChange={(e) => setNeedsSkipper(e.target.checked)}
+                className='h-4 w-4 accent-[var(--primary)]'
+              />
+              <div className='flex-1'>
+                <span className='text-sm font-medium text-black/80'>
+                  {locale === 'fr' 
+                    ? 'Besoin d\'un skipper'
+                    : 'Need a skipper'}
+                </span>
+                <p className='text-xs text-black/50 mt-0.5'>
+                  {locale === 'fr' 
+                    ? 'Si notre skipper = 350€ HT/jour (sans TVA). Si skipper de l\'agence = Aucun coût supplémentaire.'
+                    : 'If our skipper = 350€ HT/day (no VAT). If agency skipper = No additional cost.'}
+                </p>
+              </div>
+            </label>
+            {needsSkipper && (
+              <div className='ml-7 text-sm text-black/70 bg-blue-50 rounded-lg px-3 py-2'>
+                <span className='font-medium'>{locale === 'fr' ? 'Skipper BB SERVICES' : 'BB SERVICES Skipper'}: </span>
+                <span>{skipperPrice}€ HT {locale === 'fr' ? 'par jour' : 'per day'} × {part === 'FULL' ? nbJours : 1} = {skipperTotal}€ HT</span>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Carte Récap + action */}
       <section className='rounded-2xl border border-black/10 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm flex flex-col gap-4'>

@@ -48,7 +48,7 @@ export default async function AdminLayout({
       <AdminSidebar locale={locale} stats={stats} />
       
       {/* Main content */}
-      <main className="lg:ml-64 flex-1">
+      <main className="lg:ml-64 flex-1 pt-12 lg:pt-0">
         {children}
       </main>
     </div>

@@ -149,6 +149,46 @@ export async function POST(req: Request) {
     });
 
     await prisma.reservation.update({ where: { id: reservation.id }, data: { stripeSessionId: checkoutSession.id } });
+    
+    // Envoyer une notification par email pour la nouvelle réservation d'expérience
+    try {
+      const { sendEmail, getNotificationEmail, isNotificationEnabled } = await import('@/lib/email');
+      const { newReservationEmail } = await import('@/lib/email-templates');
+      
+      if (await isNotificationEnabled('reservation')) {
+        const userData = await prisma.user.findUnique({ where: { id: user.id }, select: { name: true, firstName: true, lastName: true, email: true } });
+        const userName = userData?.name || `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || userData?.email || 'Client';
+        
+        const emailData = {
+          id: reservation.id,
+          reference: reservation.reference,
+          boatName: boat.name,
+          userName,
+          userEmail: userData?.email || '',
+          startDate: start,
+          endDate: end || start,
+          part,
+          passengers: undefined,
+          totalPrice: reservation.totalPrice,
+          depositAmount: reservation.depositAmount,
+          status: reservation.status,
+          experienceTitle: locale === 'fr' ? experience.titleFr : experience.titleEn,
+        };
+        
+        const { subject, html } = newReservationEmail(emailData, locale as 'fr' | 'en');
+        const notificationEmail = await getNotificationEmail();
+        
+        await sendEmail({
+          to: notificationEmail,
+          subject,
+          html,
+        });
+      }
+    } catch (emailErr) {
+      console.error('Error sending experience reservation notification email:', emailErr);
+      // Ne pas bloquer la création de la réservation si l'email échoue
+    }
+    
     return NextResponse.json({ url: checkoutSession.url, reservationId: reservation.id });
   } catch (e) {
     console.error(e);

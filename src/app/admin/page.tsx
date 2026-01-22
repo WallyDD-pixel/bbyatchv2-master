@@ -41,15 +41,15 @@ export default async function AdminPage({ searchParams }: { searchParams?: { lan
   }
 
   return (
-    <div className="p-6 md:p-8 lg:p-10">
+    <div className="p-4 sm:p-6 md:p-8 lg:p-10">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">{locale === "fr" ? "Tableau de bord" : "Dashboard"}</h1>
-        <p className="mt-2 text-gray-600">{locale === "fr" ? "Bienvenue," : "Welcome,"} {session.user?.name ?? session.user?.email}</p>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{locale === "fr" ? "Tableau de bord" : "Dashboard"}</h1>
+        <p className="mt-2 text-sm sm:text-base text-gray-600">{locale === "fr" ? "Bienvenue," : "Welcome,"} {session.user?.name ?? session.user?.email}</p>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-3 sm:gap-4 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
         {/* Stats Cards */}
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition">
           <div className="text-sm text-gray-600 mb-1">{locale === "fr" ? "Utilisateurs" : "Users"}</div>
@@ -70,9 +70,9 @@ export default async function AdminPage({ searchParams }: { searchParams?: { lan
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">{locale === "fr" ? "Actions rapides" : "Quick Actions"}</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{locale === "fr" ? "Actions rapides" : "Quick Actions"}</h2>
+        <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <Link href="/admin/boats/new" className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 hover:border-[color:var(--primary)] hover:bg-[color:var(--primary)]/5 transition-colors group">
             <span className="text-2xl">🛥️</span>
             <div>

@@ -11,13 +11,13 @@ import { getServerSession } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { getLabelsWithSettings } from '@/lib/settings';
 
-interface Props { params: { slug: string }; searchParams?: { lang?: string; start?: string; end?: string; startTime?: string; endTime?: string; part?: string; } }
+interface Props { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; start?: string; end?: string; startTime?: string; endTime?: string; part?: string; }> }
 
 export default async function BoatDetailPage({ params, searchParams }: Props){
-  const { slug } = params;
-  const sp = searchParams || {};
-  const { start, end, part: rawPart } = sp || {};
-  const part = (rawPart==='AM' || rawPart==='PM' || rawPart==='FULL') ? rawPart : 'FULL';
+  const { slug } = await params;
+  const sp = (await searchParams) || {};
+  const { start, end, part: rawPart } = sp;
+  const part = (rawPart==='AM' || rawPart==='PM' || rawPart==='FULL' || rawPart==='SUNSET') ? rawPart : 'FULL';
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
   type BoatType = {
@@ -142,20 +142,69 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
         invalidDates = true;
       }
     }
-    // Vérifier existence d'un slot correspondant pour le jour de départ
+    // Vérifier existence d'un slot correspondant pour TOUS les jours de la plage
     if (!invalidDates) {
       const sD = new Date(start+'T00:00:00');
-      const slots = await prisma.availabilitySlot.findMany({
-        where: { date: { gte: sD, lte: sD }, boat: { slug }, status: 'available' },
-        select: { part: true }
-      });
-      const parts = new Set(slots.map(s=>s.part));
-      if (part==='FULL') {
-        if (!parts.has('FULL')) invalidSlot = true; // règle: besoin d'un slot FULL
-      } else if (part==='AM') {
-        if (!(parts.has('AM') || parts.has('FULL'))) invalidSlot = true;
-      } else if (part==='PM') {
-        if (!(parts.has('PM') || parts.has('FULL'))) invalidSlot = true;
+      const eD = new Date((end||start)+'T00:00:00');
+      
+      // Pour FULL: vérifier tous les jours de la plage
+      // Pour AM/PM: vérifier uniquement le jour de départ
+      const checkEndDate = part === 'FULL' ? eD : sD;
+      
+      // Vérifier chaque jour individuellement pour éviter les problèmes de timezone
+      let currentDate = new Date(sD);
+      currentDate.setHours(0, 0, 0, 0);
+      const finalDate = new Date(checkEndDate);
+      finalDate.setHours(0, 0, 0, 0);
+      
+      while (currentDate <= finalDate) {
+        // Créer les dates de début et fin de journée pour ce jour précis
+        const dayStart = new Date(currentDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(currentDate);
+        dayEnd.setHours(23, 59, 59, 999);
+        
+        // Récupérer les slots pour ce jour précis
+        const daySlots = await prisma.availabilitySlot.findMany({
+          where: { 
+            boatId: boat.id,
+            date: { gte: dayStart, lte: dayEnd }, 
+            status: 'available' 
+          },
+          select: { part: true }
+        });
+        
+        const parts = new Set(daySlots.map(s => s.part));
+        
+        let dayValid = false;
+        if (part === 'FULL') {
+          // Pour FULL: besoin d'un slot FULL ou (AM + PM)
+          dayValid = parts.has('FULL') || (parts.has('AM') && parts.has('PM'));
+        } else if (part === 'AM') {
+          // Pour AM: besoin d'un slot AM ou FULL
+          dayValid = parts.has('AM') || parts.has('FULL');
+        } else if (part === 'PM') {
+          // Pour PM: besoin d'un slot PM ou FULL
+          dayValid = parts.has('PM') || parts.has('FULL');
+        } else if (part === 'SUNSET') {
+          // Pour SUNSET: besoin d'un slot SUNSET ou FULL
+          dayValid = parts.has('SUNSET') || parts.has('FULL');
+        }
+        
+        if (!dayValid) {
+          const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+          console.log(`[Boat ${boat.slug}] Day ${dateKey} is invalid:`, {
+            requiredPart: part,
+            availableParts: Array.from(parts),
+            dayValid,
+            daySlotsCount: daySlots.length
+          });
+          invalidSlot = true;
+          break; // Arrêter dès qu'un jour n'est pas disponible
+        }
+        
+        // Passer au jour suivant
+        currentDate = new Date(currentDate.getTime() + 86400000);
       }
     }
   }

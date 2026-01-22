@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import AdminInstructions from '@/components/AdminInstructions';
 
 export default async function StripeSettingsPage(){
   const session = (await getServerSession(auth as any)) as any;
@@ -17,8 +18,35 @@ export default async function StripeSettingsPage(){
 
   return (
     <div className='max-w-3xl mx-auto w-full py-10 px-4'>
-      <h1 className='text-2xl font-bold mb-6'>Stripe</h1>
-      <p className='text-sm text-black/60 mb-6'>Configurer les clés Stripe test & live et choisir le mode actif.</p>
+      <div className='mb-6'>
+        <h1 className='text-2xl font-bold mb-4'>Stripe</h1>
+        <AdminInstructions
+          locale="fr"
+          title="Comment configurer Stripe"
+          instructions={[
+            {
+              title: "Mode Test vs Live",
+              description: "Sélectionnez 'Test' pour les paiements de test avec des cartes de test, ou 'Live' pour les paiements réels en production."
+            },
+            {
+              title: "Clés de test",
+              description: "Les clés de test (pk_test_... et sk_test_...) sont utilisées en mode test. Vous pouvez les obtenir depuis votre tableau de bord Stripe en mode test."
+            },
+            {
+              title: "Clés de production",
+              description: "Les clés de production (pk_live_... et sk_live_...) sont utilisées en mode live. Ne les utilisez qu'en production et gardez-les secrètes."
+            },
+            {
+              title: "Sécurité",
+              description: "Les clés secrètes (sk_...) ne doivent jamais être exposées côté client. Elles sont stockées côté serveur uniquement."
+            },
+            {
+              title: "Tester les paiements",
+              description: "En mode test, utilisez les cartes de test Stripe (ex: 4242 4242 4242 4242) pour simuler des paiements sans frais réels."
+            }
+          ]}
+        />
+      </div>
       <form action={async (formData: FormData)=>{
         'use server';
         const mode = formData.get('mode') as string | null;

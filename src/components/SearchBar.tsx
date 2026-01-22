@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from 'next/link';
+import TimePicker from './TimePicker';
 
 export type SearchValues = {
   city: string;
@@ -176,12 +177,41 @@ export default function SearchBar({
         const days = Object.values(map);
         setMonthCache(prev=>{ const n = new Map(prev); n.set(key, days); return n; });
       } else {
-        const res = await fetch(`/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}`);
+        // Si boatSlug est fourni, utiliser l'API spécifique au bateau
+        const apiUrl = boatSlug 
+          ? `/api/boats/${boatSlug}/availability?from=${fmtDate(first)}&to=${fmtDate(last)}`
+          : `/api/availability/days?from=${fmtDate(first)}&to=${fmtDate(last)}`;
+        console.log(`[SearchBar] Fetching availability from: ${apiUrl}`);
+        console.log(`[SearchBar] Month being loaded: ${y}-${String(m+1).padStart(2,'0')}, first day: ${fmtDate(first)}, last day: ${fmtDate(last)}`);
+        const res = await fetch(apiUrl);
         const data = await res.json();
+        console.log(`[SearchBar] Received data:`, { 
+          daysCount: data.days?.length || 0, 
+          error: data.error, 
+          sampleDays: data.days?.slice(0, 5),
+          allDates: data.days?.map((d:any) => d.date)
+        });
+        
+        // Vérifier si les dates correspondent
+        if (data.days && data.days.length > 0) {
+          const expectedDates: string[] = [];
+          let cur = new Date(first);
+          while (cur <= last) {
+            expectedDates.push(fmtDate(cur));
+            cur = new Date(cur.getTime() + 86400000);
+          }
+          const receivedDates = data.days.map((d:any) => d.date);
+          const missingDates = expectedDates.filter(d => !receivedDates.includes(d));
+          const extraDates = receivedDates.filter((d: string) => !expectedDates.includes(d));
+          if (missingDates.length > 0 || extraDates.length > 0) {
+            console.log(`[SearchBar] Date mismatch! Missing:`, missingDates.slice(0, 5), `Extra:`, extraDates.slice(0, 5));
+          }
+        }
+        
         setMonthCache(prev=>{ const n = new Map(prev); n.set(key, data.days||[]); return n; });
       }
     } catch { /* ignore */ } finally { setLoadingMonth(false); }
-  },[monthCache, mode, experienceSlug]);
+  },[monthCache, mode, experienceSlug, boatSlug]);
 
   useEffect(()=>{ ensureMonth(calMonth.y, calMonth.m); },[calMonth, ensureMonth]);
 
@@ -252,7 +282,8 @@ export default function SearchBar({
   const openPicker = () => {
     const hasCity = mode==='experience'? true : values.city.trim().length>0;
     if(!hasCity){ setCityHint(true); return; }
-    // Permettre d'ouvrir le calendrier même sans créneau sélectionné
+    // Vérifier que le créneau est sélectionné (sauf si partFixed)
+    if(!partFixed && !part){ setPartHint(true); return; }
     const ref = values.startDate || values.endDate || fmtDate(new Date());
     const d = new Date(ref + 'T00:00:00');
     setCalMonth({ y: d.getFullYear(), m: d.getMonth() });
@@ -275,8 +306,17 @@ export default function SearchBar({
     const end = values.endDate || values.startDate;
     return d >= start && d <= end;
   };
-  const selectDay = (d: string) => {
+  const selectDay = (d: string, stats?: { full: number; amOnly: number; pmOnly: number }) => {
     setDateHint(false);
+    
+    // Si on a sélectionné "Journée complète" mais que la date n'a que des demi-journées disponibles,
+    // changer automatiquement le créneau à "Demi-journée"
+    if ((part === 'FULL' || part === 'SUNSET') && stats && stats.full === 0 && (stats.amOnly > 0 || stats.pmOnly > 0)) {
+      if (!partFixed) {
+        applyPart('HALF');
+      }
+    }
+    
     if (part === 'FULL' || part === 'SUNSET') {
       if (!tempStart) {
         // Premier clic: on initialise la plage
@@ -344,7 +384,12 @@ export default function SearchBar({
         setPickerOpen(false);
       }}
     >
-      {/* Ville (cachée en mode expérience) */}
+      {/* Suppression du bloc slug / créneau explicatif en mode expérience */}
+      {mode==='experience' && partFixed && (
+        <div className="hidden" />
+      )}
+      
+      {/* Ville de départ - EN PREMIER (nécessaire pour débloquer le calendrier) */}
       {!hideCity && mode!=='experience' && (
         <div className="col-span-1">
           <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
@@ -375,7 +420,6 @@ export default function SearchBar({
               }}
               autoComplete="off"
             />
-            {/* Icône de dropdown */}
             <button
               type="button"
               onClick={() => setCityDropdownOpen(!cityDropdownOpen)}
@@ -387,7 +431,6 @@ export default function SearchBar({
               </svg>
             </button>
             {!values.city.trim() && cityHint && <p className="mt-1 text-[10px] text-red-600">{labels.search_hint_city_first}</p>}
-            {/* Dropdown personnalisé */}
             {cityDropdownOpen && cities.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#1c2a35] border border-black/15 dark:border-white/20 rounded-lg shadow-lg z-[10000] max-h-60 overflow-y-auto">
                 {cities
@@ -423,49 +466,8 @@ export default function SearchBar({
           </div>
         </div>
       )}
-      {/* Suppression du bloc slug / créneau explicatif en mode expérience */}
-      {mode==='experience' && partFixed && (
-        <div className="hidden" />
-      )}
       
-      {/* Date début - AFFICHÉE EN PREMIER */}
-      <div>
-        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-          {labels.search_start_date}
-        </label>
-        <input
-          type="text"
-          readOnly
-          onClick={openPicker}
-          onFocus={openPicker}
-          placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : 'Sélectionner...') : 'Sélectionner...'}
-          className={baseInput + ' ' + ((needsCity && !values.city.trim())? 'opacity-50 cursor-not-allowed':'cursor-pointer')}
-          value={values.startDate}
-          disabled={needsCity && !values.city.trim()}
-        />
-        {dateHint && !values.startDate && <p className="mt-1 text-[10px] text-red-600">Choisis une date.</p>}
-      </div>
-      {/* Date fin (multi-jours seulement si FULL) */}
-      <div>
-        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-          {labels.search_end_date}
-          {(part !== "FULL" && part !== "SUNSET") && (
-            <span className="text-[10px] font-normal text-black dark:text-white">(= début)</span>
-          )}
-        </label>
-        <input
-          type="text"
-          readOnly
-          onClick={()=> openPicker()}
-          onFocus={()=> openPicker()}
-          placeholder={(part==='FULL' || part==='SUNSET' || !part)? (needsCity ? (!values.city.trim()? 'Choisir la ville' : 'Sélectionner...') : 'Sélectionner...') : (values.startDate? values.startDate : '')}
-          className={baseInput + ' ' + ((needsCity && !values.city.trim())? 'opacity-50 cursor-not-allowed': ((part !== "FULL" && part !== "SUNSET" && part) ? "opacity-60" : "cursor-pointer"))}
-          value={values.endDate}
-          disabled={needsCity && !values.city.trim() || (part && part !== "FULL" && part !== "SUNSET")}
-        />
-      </div>
-      
-      {/* Sélecteur de créneau uniquement si pas de partFixed - APRÈS LES DATES */}
+      {/* Sélecteur de créneau - EN DEUXIÈME (nécessaire pour débloquer le calendrier) */}
       {(!partFixed) && (
         <div>
           <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
@@ -489,52 +491,103 @@ export default function SearchBar({
         </div>
       )}
       
+      {/* Date début - APRÈS ville et créneau */}
+      <div>
+        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+          {labels.search_start_date}
+        </label>
+        <input
+          type="text"
+          readOnly
+          onClick={openPicker}
+          onFocus={openPicker}
+          placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part && !partFixed ? 'Choisir le créneau' : 'Sélectionner...')) : (!part && !partFixed ? 'Choisir le créneau' : 'Sélectionner...')}
+          className={baseInput + ' ' + ((needsCity && !values.city.trim()) || (!part && !partFixed) ? 'opacity-50 cursor-not-allowed':'cursor-pointer')}
+          value={values.startDate}
+          disabled={(needsCity && !values.city.trim()) || (!part && !partFixed)}
+        />
+        {dateHint && !values.startDate && <p className="mt-1 text-[10px] text-red-600">Choisis une date.</p>}
+      </div>
+      {/* Date fin (multi-jours seulement si FULL) */}
+      <div>
+        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+          {labels.search_end_date}
+          {(part !== "FULL" && part !== "SUNSET") && (
+            <span className="text-[10px] font-normal text-black dark:text-white">(= début)</span>
+          )}
+        </label>
+        <input
+          type="text"
+          readOnly
+          onClick={()=> openPicker()}
+          onFocus={()=> openPicker()}
+          placeholder={(part==='FULL' || part==='SUNSET' || !part)? (needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part && !partFixed ? 'Choisir le créneau' : 'Sélectionner...')) : (!part && !partFixed ? 'Choisir le créneau' : 'Sélectionner...')) : (values.startDate? values.startDate : '')}
+          className={baseInput + ' ' + ((needsCity && !values.city.trim()) || (!part && !partFixed) ? 'opacity-50 cursor-not-allowed': ((part !== "FULL" && part !== "SUNSET" && part) ? "opacity-60" : "cursor-pointer"))}
+          value={values.endDate}
+          disabled={(needsCity && !values.city.trim()) || (!part && !partFixed) || (part && part !== "FULL" && part !== "SUNSET")}
+        />
+      </div>
+      
       {/* Horaires personnalisés si créneau flexible et sélectionné (pas pour expériences - horaires demandés dans le formulaire après) */}
       {part && PARTS.find(p => p.key === part)?.flexible && mode !== 'experience' && (
         <div className="col-span-full grid grid-cols-2 gap-3 pt-2 border-t border-black/10">
-          <div>
-            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-              {labels.search_custom_start_time || (currentLocale === 'fr' ? 'Heure de début' : 'Start time')}
-            </label>
-            <input
-              type="time"
-              value={customStartTime}
-              onChange={(e) => {
-                const startTime = e.target.value;
-                setCustomStartTime(startTime);
-                if (startTime && part === 'HALF') {
-                  // Calculer automatiquement l'heure de fin (début + 4h)
-                  const [startHour, startMin] = startTime.split(':').map(Number);
-                  const endHour = (startHour + 4) % 24;
-                  const endTime = `${String(endHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`;
-                  setCustomEndTime(endTime);
-                  setValues(v => ({ ...v, startTime: startTime, endTime: endTime }));
-                } else if (startTime) {
-                  setValues(v => ({ ...v, startTime: startTime }));
-                }
-              }}
-              className={baseInput}
-              placeholder={PARTS.find(p => p.key === part)?.start}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
-              {labels.search_custom_end_time || (currentLocale === 'fr' ? 'Heure de fin' : 'End time')}
-            </label>
-            <input
-              type="time"
-              value={customEndTime}
-              onChange={(e) => {
-                setCustomEndTime(e.target.value);
-                if (e.target.value) {
-                  setValues(v => ({ ...v, endTime: e.target.value }));
-                }
-              }}
-              className={baseInput}
-              placeholder={PARTS.find(p => p.key === part)?.end}
-              disabled={part === 'HALF' && !!customStartTime}
-            />
-          </div>
+          <TimePicker
+            label={labels.search_custom_start_time || (currentLocale === 'fr' ? 'Heure de début' : 'Start time')}
+            value={customStartTime}
+            onChange={(startTime) => {
+              setCustomStartTime(startTime);
+              if (startTime && part === 'HALF') {
+                // Calculer automatiquement l'heure de fin (début + 4h)
+                const [startHour, startMin] = startTime.split(':').map(Number);
+                const endHour = (startHour + 4) % 24;
+                const endTime = `${String(endHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`;
+                setCustomEndTime(endTime);
+                setValues(v => ({ ...v, startTime: startTime, endTime: endTime }));
+              } else if (startTime) {
+                setValues(v => ({ ...v, startTime: startTime }));
+              }
+            }}
+            placeholder={PARTS.find(p => p.key === part)?.start}
+            min={(() => {
+              const selectedPart = PARTS.find(p => p.key === part);
+              return selectedPart?.start || '00:00';
+            })()}
+            max={(() => {
+              const selectedPart = PARTS.find(p => p.key === part);
+              if (selectedPart?.key === 'FULL') return '18:00';
+              if (selectedPart?.key === 'HALF') return '13:00';
+              if (selectedPart?.key === 'SUNSET') return '22:00';
+              return '23:59';
+            })()}
+            partType={part as 'FULL' | 'HALF' | 'SUNSET'}
+            isStartTime={true}
+          />
+          <TimePicker
+            label={labels.search_custom_end_time || (currentLocale === 'fr' ? 'Heure de fin' : 'End time')}
+            value={customEndTime}
+            onChange={(endTime) => {
+              setCustomEndTime(endTime);
+              if (endTime) {
+                setValues(v => ({ ...v, endTime: endTime }));
+              }
+            }}
+            placeholder={PARTS.find(p => p.key === part)?.end}
+            disabled={part === 'HALF' && !!customStartTime}
+            min={(() => {
+              if (part === 'HALF' && customStartTime) {
+                // Pour HALF, l'heure de fin est calculée automatiquement
+                return customStartTime;
+              }
+              const selectedPart = PARTS.find(p => p.key === part);
+              return selectedPart?.start || '00:00';
+            })()}
+            max={(() => {
+              const selectedPart = PARTS.find(p => p.key === part);
+              return selectedPart?.end || '23:59';
+            })()}
+            partType={part as 'FULL' | 'HALF' | 'SUNSET'}
+            isStartTime={false}
+          />
           <p className="col-span-2 text-[10px] text-black/50 dark:text-white/50">
             {part === 'HALF' 
               ? (labels.search_half_day_note || (currentLocale === 'fr' 
@@ -601,7 +654,7 @@ export default function SearchBar({
         <div className="fixed inset-0 z-[180] bg-black/65 backdrop-blur-md animate-fadeIn" onClick={()=>setPickerOpen(false)} />
       )}
       {/* Popover calendrier */}
-      {pickerOpen && part && (mode==='experience' || values.city.trim()) && (
+      {pickerOpen && (part || partFixed) && (mode==='experience' || values.city.trim()) && (
         <div className="fixed inset-0 z-[200] flex items-start lg:items-center justify-center pt-24 sm:pt-32 lg:pt-0 px-4">
           <div ref={popRef} className="relative w-full max-w-2xl p-6 sm:p-7 rounded-3xl card-popover text-slate-900 dark:text-slate-100 border dark:border-white/10 shadow-[0_24px_80px_-18px_rgba(0,0,0,0.6)] animate-fadeIn max-h-[85vh] overflow-auto">
             <button type="button" onClick={()=>setPickerOpen(false)} className="absolute top-2 right-2 h-8 w-8 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10">✕</button>
@@ -688,7 +741,7 @@ export default function SearchBar({
                       e.preventDefault();
                       e.stopPropagation();
                       if(!c.date || !isClickable || unavailable) return; 
-                      selectDay(c.date); 
+                      selectDay(c.date, stats); 
                     }}
                     onMouseDown={(e)=>{
                       // Empêcher le clic si la date est indisponible

@@ -79,7 +79,58 @@ export async function PATCH(req: Request){
     if(!id || !status) return NextResponse.json({ error: 'missing_params' }, { status:400 });
     const allowed = new Set(['pending','approved','rejected','converted']);
     if(!allowed.has(status)) return NextResponse.json({ error: 'invalid_status' }, { status:400 });
-    const updated = await prisma.agencyRequest.update({ where:{ id }, data:{ status } });
+    
+    // Récupérer l'ancien statut
+    const oldRequest = await prisma.agencyRequest.findUnique({ 
+      where: { id },
+      include: { boat: { select: { name: true } }, user: { select: { name: true, firstName: true, lastName: true, email: true } } }
+    });
+    const oldStatus = oldRequest?.status || 'pending';
+    
+    const updated = await prisma.agencyRequest.update({ 
+      where:{ id }, 
+      data:{ status },
+      include: { boat: { select: { name: true } }, user: { select: { name: true, firstName: true, lastName: true, email: true } } }
+    });
+    
+    // Envoyer une notification pour le changement de statut
+    if (oldStatus !== status && updated) {
+      try {
+        const { sendEmail, getNotificationEmail, isNotificationEnabled } = await import('@/lib/email');
+        const { agencyRequestStatusChangeEmail } = await import('@/lib/email-templates');
+        
+        if (await isNotificationEnabled('agencyRequestStatusChange')) {
+          const userName = updated.user?.name || `${updated.user?.firstName || ''} ${updated.user?.lastName || ''}`.trim() || updated.user?.email || 'Agence';
+          const locale = (updated.locale as 'fr' | 'en') || 'fr';
+          
+          const emailData = {
+            id: updated.id,
+            userName,
+            userEmail: updated.user?.email || '',
+            boatName: updated.boat?.name || 'N/A',
+            startDate: updated.startDate.toISOString().split('T')[0],
+            endDate: updated.endDate.toISOString().split('T')[0],
+            part: updated.part || 'FULL',
+            passengers: updated.passengers,
+            totalPrice: updated.totalPrice,
+            status: updated.status,
+          };
+          
+          const { subject, html } = agencyRequestStatusChangeEmail(emailData, status, locale);
+          const notificationEmail = await getNotificationEmail();
+          
+          await sendEmail({
+            to: notificationEmail,
+            subject,
+            html,
+          });
+        }
+      } catch (emailErr) {
+        console.error('Error sending agency request status change notification:', emailErr);
+        // Ne pas bloquer la mise à jour si l'email échoue
+      }
+    }
+    
     return NextResponse.json({ status: 'updated', request: updated });
   } catch(e){ console.error(e); return NextResponse.json({ error:'server_error' }, { status:500 }); }
 }

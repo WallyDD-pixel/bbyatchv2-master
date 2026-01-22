@@ -12,8 +12,8 @@ export const dynamic = 'force-dynamic';
 
 function money(v:number|null|undefined, locale:Locale){ if(v==null) return '—'; return (v/1).toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €'; }
 
-export default async function BookingExperiencePage({ searchParams }:{ searchParams?: Record<string,string|undefined> }) {
-  const sp = (searchParams || {}) as Record<string,string|undefined>;
+export default async function BookingExperiencePage({ searchParams }:{ searchParams?: Promise<Record<string,string|undefined>> }) {
+  const sp = ((await searchParams) || {}) as Record<string,string|undefined>;
   const locale: Locale = sp.lang==='en'? 'en':'fr';
   const t = messages[locale];
 

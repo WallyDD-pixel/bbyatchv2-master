@@ -5,9 +5,13 @@ import Footer from "@/components/Footer";
 import ExperienceBoatSelector from "@/components/ExperienceBoatSelector";
 import BoatMediaCarousel from "@/components/BoatMediaCarousel";
 
-export default async function ExperienceDetailPage({ params, searchParams }: { params: { slug: string }; searchParams?: { lang?: string } }) {
+export default async function ExperienceDetailPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string }> }) {
+  // Next.js 15 : params et searchParams sont maintenant des Promises
+  const { slug: slugParam } = await params;
+  const sp = await (searchParams || Promise.resolve({}));
+  
   // Décoder le slug de l'URL (Next.js le décode déjà, mais on s'assure)
-  let { slug } = params;
+  let slug = slugParam;
   try {
     // Décoder au cas où il y aurait un double encodage
     slug = decodeURIComponent(slug);
@@ -15,7 +19,6 @@ export default async function ExperienceDetailPage({ params, searchParams }: { p
     // Si le décodage échoue, utiliser le slug tel quel
   }
   
-  const sp = searchParams || {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
 

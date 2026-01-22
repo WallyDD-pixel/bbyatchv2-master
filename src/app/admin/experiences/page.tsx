@@ -2,11 +2,10 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import HeaderBar from "@/components/HeaderBar";
-import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from "next/link";
 import DeleteExperienceButton from './DeleteExperienceButton';
+import AdminInstructions from "@/components/AdminInstructions";
 
 export default async function AdminExperiencesPage({ searchParams }: { searchParams?: { lang?: string } }) {
   const session = (await getServerSession(auth as any)) as any;
@@ -25,14 +24,37 @@ export default async function AdminExperiencesPage({ searchParams }: { searchPar
 
   return (
     <div className="min-h-screen flex flex-col">
-      <HeaderBar initialLocale={locale} />
-      <main className="flex-1 max-w-6xl mx-auto px-4 py-10 w-full">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{locale === "fr" ? "Expériences" : "Experiences"}</h1>
-          <div className="flex items-center gap-2">
-            <Link href="/admin" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale === "fr" ? "Retour" : "Back"}</Link>
-            <Link href="/admin/experiences/new" className="text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 h-9 inline-flex items-center transition-colors">{locale === "fr" ? "Nouveau" : "New"}</Link>
+      <main className="flex-1 max-w-6xl mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 md:py-10 w-full">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+            <h1 className="text-xl sm:text-2xl font-bold">{locale === "fr" ? "Expériences" : "Experiences"}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link href="/admin" className="text-xs sm:text-sm rounded-full border border-black/15 px-3 sm:px-4 h-8 sm:h-9 inline-flex items-center hover:bg-black/5 transition-colors whitespace-nowrap">← {locale === "fr" ? "Retour" : "Back"}</Link>
+              <Link href="/admin/experiences/new" className="text-xs sm:text-sm rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 h-8 sm:h-9 inline-flex items-center transition-colors whitespace-nowrap font-medium">{locale === "fr" ? "Nouveau" : "New"}</Link>
+            </div>
           </div>
+          <AdminInstructions
+            locale={locale}
+            title={locale==='fr'?'Comment gérer les expériences':'How to manage experiences'}
+            instructions={[
+              {
+                title: locale==='fr'?'Créer une expérience':'Create an experience',
+                description: locale==='fr'?'Cliquez sur "Nouveau" pour créer une nouvelle expérience. Remplissez les titres en français et anglais, ajoutez une description et une photo.':'Click on "New" to create a new experience. Fill in titles in French and English, add a description and a photo.'
+              },
+              {
+                title: locale==='fr'?'Modifier une expérience':'Edit an experience',
+                description: locale==='fr'?'Cliquez sur "Éditer" dans le tableau pour modifier toutes les informations d\'une expérience.':'Click on "Edit" in the table to modify all information of an experience.'
+              },
+              {
+                title: locale==='fr'?'Gérer les disponibilités':'Manage availability',
+                description: locale==='fr'?'Les expériences peuvent avoir des créneaux de disponibilité définis dans le calendrier. Sélectionnez l\'expérience dans le calendrier pour voir ses créneaux.':'Experiences can have availability slots defined in the calendar. Select the experience in the calendar to see its slots.'
+              },
+              {
+                title: locale==='fr'?'Supprimer une expérience':'Delete an experience',
+                description: locale==='fr'?'Utilisez le bouton "Supprimer" dans le tableau. Attention : cette action est irréversible.':'Use the "Delete" button in the table. Warning: this action is irreversible.'
+              }
+            ]}
+          />
         </div>
         <div className="mt-6 rounded-2xl border border-black/10 bg-white p-5 shadow-sm overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -64,7 +86,6 @@ export default async function AdminExperiencesPage({ searchParams }: { searchPar
           </table>
         </div>
       </main>
-      <Footer locale={locale} t={t} />
     </div>
   );
 }

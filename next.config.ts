@@ -13,14 +13,13 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "plus.unsplash.com" },
+      { protocol: "https", hostname: "*.supabase.co" },
+      { protocol: "https", hostname: "nbovypcvctbtwxflbkmh.supabase.co" },
     ],
     // Désactiver l'optimisation pour les images locales (servies directement par Nginx)
     unoptimized: true,
   },
-  // Permet de ne pas bloquer le build par les erreurs ESLint (on les corrigera progressivement)
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // Note: eslint configuration moved to eslint.config.mjs in Next.js 16
 };
 
 export default nextConfig;

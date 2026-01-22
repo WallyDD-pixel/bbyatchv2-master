@@ -35,15 +35,32 @@ export async function uploadToSupabase(
     }
 
     // Upload vers Supabase Storage
+    console.log(`📤 Uploading to bucket: ${STORAGE_BUCKET}, path: ${filePath}, size: ${buffer.length} bytes`);
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(filePath, buffer, {
-        contentType: file.type,
+        contentType: file.type || 'image/jpeg',
         upsert: false, // Ne pas écraser les fichiers existants
+        cacheControl: '3600',
       });
 
     if (error) {
-      console.error('Error uploading to Supabase Storage:', error);
+      console.error('❌ Error uploading to Supabase Storage:', error);
+      console.error('  - Error code:', error.statusCode);
+      console.error('  - Error message:', error.message);
+      console.error('  - Bucket:', STORAGE_BUCKET);
+      console.error('  - File path:', filePath);
+      // Vérifier si le bucket existe
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      if (listError) {
+        console.error('  - Cannot list buckets (permission issue?):', listError);
+      } else {
+        const bucketExists = buckets?.some(b => b.name === STORAGE_BUCKET);
+        console.error('  - Bucket exists:', bucketExists ? 'YES' : 'NO');
+        if (buckets && buckets.length > 0) {
+          console.error('  - Available buckets:', buckets.map(b => b.name).join(', '));
+        }
+      }
       return null;
     }
 

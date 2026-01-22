@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Toast from "@/components/Toast";
 import { submitForm } from "@/lib/form-utils";
+import AdminInstructions from "@/components/AdminInstructions";
 
 export default function AdminAboutSettingsPage() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export default function AdminAboutSettingsPage() {
   const [settings, setSettings] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [fileInputKeys, setFileInputKeys] = useState<number[]>([0]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]); // Stocker les fichiers réels pour l'upload
   const [historyImagePreview, setHistoryImagePreview] = useState<string | null>(null);
   const [teamImagePreview, setTeamImagePreview] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
@@ -36,8 +37,16 @@ export default function AdminAboutSettingsPage() {
       if (s?.aboutImageUrls) {
         try {
           const arr = JSON.parse(s.aboutImageUrls);
-          if (Array.isArray(arr)) setImagePreviews(arr);
+          if (Array.isArray(arr)) {
+            setImagePreviews(arr);
+            // Réinitialiser les fichiers car ce sont des URLs existantes
+            setImageFiles([]);
+          }
         } catch {}
+      } else {
+        // Pas d'images existantes, réinitialiser
+        setImagePreviews([]);
+        setImageFiles([]);
       }
       // Charger les images Histoire et Équipe
       if (s?.aboutHistoryImageUrl) setHistoryImagePreview(s.aboutHistoryImageUrl);
@@ -46,38 +55,72 @@ export default function AdminAboutSettingsPage() {
     fetchSettings();
   }, []);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const newPreviews = [...imagePreviews];
-      if (index >= newPreviews.length) {
-        newPreviews.push(reader.result as string);
-      } else {
-        newPreviews[index] = reader.result as string;
+    const fileArray = Array.from(files);
+    const newPreviews: string[] = [...imagePreviews];
+    const newFiles: File[] = [...imageFiles];
+    let loadedCount = 0;
+    const totalToLoad = fileArray.length;
+    
+    console.log(`📸 Adding ${totalToLoad} new image(s)...`);
+    
+    fileArray.forEach((file) => {
+      // Vérifier la taille (max 10MB par fichier)
+      if (file.size > 10 * 1024 * 1024) {
+        console.warn(`⚠️ File ${file.name} is too large (${(file.size / 1024 / 1024).toFixed(2)}MB), skipping`);
+        loadedCount++;
+        if (loadedCount === totalToLoad) {
+          setImagePreviews([...newPreviews]);
+          setImageFiles([...newFiles]);
+        }
+        return;
       }
-      setImagePreviews(newPreviews);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const addImageSlot = () => {
-    setImagePreviews([...imagePreviews, '']);
-    setFileInputKeys([...fileInputKeys, Date.now()]);
+      
+      // Stocker le fichier réel
+      newFiles.push(file);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        newPreviews.push(reader.result as string);
+        loadedCount++;
+        
+        // Mettre à jour l'état après chaque fichier chargé pour un feedback immédiat
+        setImagePreviews([...newPreviews]);
+        setImageFiles([...newFiles]);
+        
+        if (loadedCount === totalToLoad) {
+          console.log(`✅ Added ${loadedCount} image(s) to preview and files array`);
+        }
+      };
+      reader.onerror = () => {
+        console.error(`❌ Error reading file: ${file.name}`);
+        // Retirer le fichier en cas d'erreur
+        const index = newFiles.indexOf(file);
+        if (index > -1) {
+          newFiles.splice(index, 1);
+        }
+        loadedCount++;
+        if (loadedCount === totalToLoad) {
+          setImagePreviews([...newPreviews]);
+          setImageFiles([...newFiles]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    // Réinitialiser l'input pour permettre de sélectionner les mêmes fichiers à nouveau
+    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    const newFiles = imageFiles.filter((_, i) => i !== index);
     setImagePreviews(newPreviews);
-    const newKeys = fileInputKeys.filter((_, i) => i !== index);
-    if (newKeys.length === 0) {
-      setFileInputKeys([Date.now()]);
-      setImagePreviews([]);
-    } else {
-      setFileInputKeys(newKeys);
-    }
+    setImageFiles(newFiles);
+    console.log(`🗑️ Removed image at index ${index}, ${newPreviews.length} image(s) remaining`);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -93,63 +136,155 @@ export default function AdminAboutSettingsPage() {
     
     // Séparer les nouvelles images (data URLs) et les existantes
     const existingImages: string[] = [];
-    imagePreviews.forEach((url) => {
-      if (url && !url.startsWith('data:')) {
+    const galleryInput = e.currentTarget.querySelector<HTMLInputElement>('input[type="file"][name="imageFiles"]');
+    
+    console.log('🔍 Analyzing image previews...');
+    console.log('  - Total imagePreviews:', imagePreviews.length);
+    
+    // Parcourir les previews et déterminer quelles images existantes conserver
+    imagePreviews.forEach((url, index) => {
+      // Si c'est une URL existante (pas un data URL ou blob URL) = déjà sauvegardée dans Supabase
+      if (url && !url.startsWith('data:') && !url.startsWith('blob:')) {
         existingImages.push(url);
+        console.log(`  ✓ Keeping existing image ${index}:`, url.substring(0, 80) + '...');
+      } else if (url && (url.startsWith('data:') || url.startsWith('blob:'))) {
+        console.log(`  📸 Preview ${index} is a data/blob URL (new image to upload)`);
       }
     });
-    existingImages.forEach(url => formData.append('existingImages', url));
+    
+    // Ajouter les images existantes à conserver
+    existingImages.forEach(url => {
+      if (url && url.trim()) {
+        formData.append('existingImages', url);
+      }
+    });
+    console.log('  - Existing images to keep:', existingImages.length);
     
     // Ajouter les fichiers d'images spécifiques (Histoire et Équipe)
     const historyImageInput = e.currentTarget.querySelector<HTMLInputElement>('input[name="aboutHistoryImageFile"]');
     if (historyImageInput?.files && historyImageInput.files[0]) {
       formData.append('aboutHistoryImageFile', historyImageInput.files[0]);
+      console.log('  📷 History image file:', historyImageInput.files[0].name);
     }
     
     const teamImageInput = e.currentTarget.querySelector<HTMLInputElement>('input[name="aboutTeamImageFile"]');
     if (teamImageInput?.files && teamImageInput.files[0]) {
       formData.append('aboutTeamImageFile', teamImageInput.files[0]);
+      console.log('  📷 Team image file:', teamImageInput.files[0].name);
     }
     
-    // Ajouter les autres fichiers d'images (galerie)
-    const imageInputs = e.currentTarget.querySelectorAll<HTMLInputElement>('input[type="file"]:not([name="aboutHistoryImageFile"]):not([name="aboutTeamImageFile"])');
-    imageInputs.forEach((input) => {
-      if (input.files && input.files[0]) {
-        formData.append('imageFiles', input.files[0]);
+    // Ajouter TOUS les fichiers stockés dans l'état (plus fiable que de lire depuis l'input)
+    let newFilesCount = 0;
+    imageFiles.forEach((file, index) => {
+      if (file && file.size > 0) {
+        formData.append('imageFiles', file);
+        newFilesCount++;
+        console.log(`  ✅ Adding file ${newFilesCount} from state:`, file.name, `(${(file.size / 1024).toFixed(2)} KB)`, file.type || 'no type');
       }
     });
+    
+    // Si pas de fichiers dans l'état, essayer de lire depuis l'input (fallback)
+    if (newFilesCount === 0 && galleryInput && galleryInput.files && galleryInput.files.length > 0) {
+      for (let i = 0; i < galleryInput.files.length; i++) {
+        const file = galleryInput.files[i];
+        if (file && file.size > 0) {
+          formData.append('imageFiles', file);
+          newFilesCount++;
+          console.log(`  ✅ Adding file ${newFilesCount} from input (fallback):`, file.name, `(${(file.size / 1024).toFixed(2)} KB)`);
+        }
+      }
+    }
+    
+    // Compter aussi les nouvelles images (data URLs) qui n'ont pas encore de fichier associé
+    const newDataUrls = imagePreviews.filter(url => url && (url.startsWith('data:') || url.startsWith('blob:')));
+    console.log('  - New data URLs (previews):', newDataUrls.length);
+    console.log('  - Files in state:', imageFiles.length);
+    
+    console.log('📤 Form submission summary:');
+    console.log('  - Existing images to keep:', existingImages.length);
+    console.log('  - New files to upload:', newFilesCount);
+    console.log('  - New data URL previews:', newDataUrls.length);
+    
+    // Vérifier que les fichiers sont bien dans le FormData
+    const allFiles = formData.getAll('imageFiles');
+    console.log('  - Files in FormData:', allFiles.length);
+    if (allFiles.length === 0 && existingImages.length === 0) {
+      console.warn('  ⚠️ WARNING: No images to save! (no existing + no new files)');
+    }
 
-    const result = await submitForm("/api/admin/about-settings", formData, {
-      successMessage: "Paramètres sauvegardés avec succès",
-      errorMessage: "Erreur lors de la sauvegarde",
-      redirectUrl: "/admin/about-settings?success=1",
-    });
+    try {
+      const result = await submitForm("/api/admin/about-settings", formData, {
+        successMessage: "Paramètres sauvegardés avec succès",
+        errorMessage: "Erreur lors de la sauvegarde",
+        redirectUrl: "/admin/about-settings?success=1",
+      });
 
-    if (result.success) {
-      // Si redirection demandée
-      if (result.data?.redirect) {
-        // Attendre un peu pour que l'utilisateur voie le feedback
-        setTimeout(() => {
-          router.push(result.data.url);
-          router.refresh();
-        }, 500);
-      } else {
+      if (result.success) {
         // Afficher le message de succès
         setToast({ message: "Paramètres sauvegardés avec succès", type: "success" });
-        // Recharger les données après un court délai
-        setTimeout(() => {
+        
+        // Recharger immédiatement les données pour voir les nouvelles images
+        try {
+          const res = await fetch("/api/admin/about-settings");
+          const s = await res.json();
+          setSettings(s);
+          
+          // Recharger les images existantes depuis la base de données
+          if (s?.aboutImageUrls) {
+            try {
+              const arr = JSON.parse(s.aboutImageUrls);
+              if (Array.isArray(arr) && arr.length > 0) {
+                setImagePreviews(arr);
+                // Réinitialiser les fichiers car ce sont maintenant des URLs sauvegardées
+                setImageFiles([]);
+                console.log('✅ Reloaded', arr.length, 'images from database:', arr);
+              } else {
+                setImagePreviews([]);
+                setImageFiles([]);
+                console.log('⚠️ aboutImageUrls is empty array');
+              }
+            } catch (e) {
+              console.error('❌ Error parsing aboutImageUrls:', e);
+              setImagePreviews([]);
+              setImageFiles([]);
+            }
+          } else {
+            setImagePreviews([]);
+            setImageFiles([]);
+            console.log('⚠️ No aboutImageUrls in settings after save');
+          }
+          
+          // Recharger aussi les images Histoire et Équipe
+          if (s?.aboutHistoryImageUrl) {
+            setHistoryImagePreview(s.aboutHistoryImageUrl);
+          }
+          if (s?.aboutTeamImageUrl) {
+            setTeamImagePreview(s.aboutTeamImageUrl);
+          }
+          
           router.refresh();
-        }, 1000);
+        } catch (error) {
+          console.error('❌ Error reloading settings:', error);
+          setToast({ message: "Paramètres sauvegardés mais erreur lors du rechargement", type: "error" });
+        }
+      } else {
+        // Afficher l'erreur
+        const errorMsg = result.error || result.details || "Erreur lors de la sauvegarde";
+        setToast({ 
+          message: errorMsg, 
+          type: "error" 
+        });
+        console.error('❌ Save failed:', result);
       }
-    } else {
-      // Afficher l'erreur
+    } catch (error: any) {
+      console.error('❌ Error in handleSubmit:', error);
       setToast({ 
-        message: result.error || "Erreur lors de la sauvegarde", 
+        message: error?.message || "Erreur lors de la sauvegarde", 
         type: "error" 
       });
+    } finally {
+      setSaving(false);
     }
-    
-    setSaving(false);
   };
 
   if (!settings) return <div className="max-w-3xl mx-auto py-8">Chargement…</div>;
@@ -172,8 +307,33 @@ export default function AdminAboutSettingsPage() {
       </Link>
       
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Paramètres de la page "À propos"</h1>
-        <p className="text-sm text-black/60 mt-1">Gérez le contenu de la page À propos</p>
+        <h1 className="text-2xl font-bold mb-4">Paramètres de la page "À propos"</h1>
+        <AdminInstructions
+          locale="fr"
+          title="Comment modifier la page À propos"
+          instructions={[
+            {
+              title: "Galerie d'images",
+              description: "Ajoutez plusieurs images pour la section principale. Vous pouvez télécharger plusieurs images à la fois et les supprimer individuellement."
+            },
+            {
+              title: "Section Histoire",
+              description: "Modifiez le titre, le contenu et l'image de la section qui raconte l'histoire de votre entreprise."
+            },
+            {
+              title: "Section Équipe",
+              description: "Modifiez le titre, le contenu et l'image de la section qui présente votre équipe."
+            },
+            {
+              title: "Gérer les images",
+              description: "Toutes les images sont stockées sur Supabase Storage. Les images existantes sont conservées, seules les nouvelles sont téléchargées."
+            },
+            {
+              title: "Sauvegarder",
+              description: "N'oubliez pas de cliquer sur 'Enregistrer' après avoir effectué vos modifications pour qu'elles soient prises en compte."
+            }
+          ]}
+        />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
@@ -408,48 +568,67 @@ export default function AdminAboutSettingsPage() {
         {/* Galerie d'images */}
         <section className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Galerie d'images</h2>
-          <div className="space-y-4">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {imagePreviews.length > 0 ? (
-                imagePreviews.map((url, index) => (
+          <div>
+            {/* Zone de drop et input multiple */}
+            <div className="mb-4">
+              <label className="block mb-2">
+                <div className="border-2 border-dashed border-black/20 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition-colors">
+                  <input
+                    type="file"
+                    name="imageFiles"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="gallery-image-input"
+                  />
+                  <label htmlFor="gallery-image-input" className="cursor-pointer">
+                    <svg className="mx-auto h-12 w-12 text-black/40 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <p className="text-sm font-medium text-black/70">Cliquez pour sélectionner ou glissez-déposez</p>
+                    <p className="text-xs text-black/50 mt-1">Vous pouvez sélectionner plusieurs images à la fois</p>
+                  </label>
+                </div>
+              </label>
+            </div>
+
+            {/* Prévisualisation des images */}
+            {imagePreviews.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {imagePreviews.map((url, index) => (
                   <div key={index} className="relative group">
-                    <div className="relative h-32 rounded-lg overflow-hidden border border-black/10 bg-black/5">
+                    <div className="aspect-square rounded-lg border border-black/10 bg-black/5 overflow-hidden">
                       {url ? (
-                        <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                        <img 
+                          src={url} 
+                          alt={`Preview ${index + 1}`} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error('Error loading image:', url);
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-black/30 text-xs">Aucune image</div>
                       )}
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg"
+                        title="Supprimer cette image"
                       >
                         ✕
                       </button>
                     </div>
-                    <input
-                      key={fileInputKeys[index] || index}
-                      type="file"
-                      name="imageFiles"
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(e, index)}
-                      className="mt-2 w-full text-xs"
-                    />
                   </div>
-                ))
-              ) : (
-                <div className="col-span-full text-center text-sm text-black/50 py-8">
-                  Aucune image. Cliquez sur "Ajouter une image" pour commencer.
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={addImageSlot}
-              className="px-4 h-10 rounded-lg border border-black/15 bg-white hover:bg-black/5 text-sm font-medium"
-            >
-              + Ajouter une image
-            </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-sm text-black/50 py-8 border border-dashed border-black/20 rounded-lg">
+                Aucune image. Sélectionnez des images ci-dessus pour commencer.
+              </div>
+            )}
           </div>
         </section>
 

@@ -20,35 +20,32 @@ export async function POST(req: Request){
     const sourcePage = slug || 'contact';
     await (prisma as any).contactMessage.create({ data:{ name, email, phone, message, usedBoatId, locale, sourcePage } });
     
-    // Envoyer un email à charter@bb-yachts.com pour les messages "autre" (sans usedBoatId, donc page contact générale)
-    if (!usedBoatId && (sourcePage === 'contact' || sourcePage === 'autre' || slug === 'autre')) {
-      try {
-        const emailBody = `Nouveau message de contact reçu
-
-Nom: ${name}
-Email: ${email}
-Téléphone: ${phone || 'Non renseigné'}
-Message:
-${message}
-
-Source: ${sourcePage}
-Date: ${new Date().toLocaleString('fr-FR')}
-`;
+    // Envoyer une notification par email pour tous les messages de contact
+    try {
+      const { sendEmail, getNotificationEmail, isNotificationEnabled } = await import('@/lib/email');
+      const { newContactMessageEmail } = await import('@/lib/email-templates');
+      
+      if (await isNotificationEnabled('contactMessage')) {
+        const emailData = {
+          name,
+          email,
+          phone: phone || null,
+          message,
+          sourcePage: sourcePage || null,
+        };
         
-        // Envoyer via API route d'email (à créer ou utiliser service externe)
-        await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/send-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: 'charter@bb-yachts.com',
-            subject: `Nouveau message de contact - ${name}`,
-            text: emailBody,
-          }),
-        }).catch(err => console.error('Error sending email:', err));
-      } catch (emailErr) {
-        console.error('Error sending notification email for contact message:', emailErr);
-        // Ne pas bloquer la création du message si l'email échoue
+        const { subject, html } = newContactMessageEmail(emailData, (locale as 'fr' | 'en') || 'fr');
+        const notificationEmail = await getNotificationEmail();
+        
+        await sendEmail({
+          to: notificationEmail,
+          subject,
+          html,
+        });
       }
+    } catch (emailErr) {
+      console.error('Error sending contact message notification email:', emailErr);
+      // Ne pas bloquer l'enregistrement du message si l'email échoue
     }
     
     // Si c'est un message depuis la page contact (pas de slug), rediriger vers /contact

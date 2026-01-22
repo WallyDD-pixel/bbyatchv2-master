@@ -17,14 +17,15 @@ export async function generateStaticParams(){
   }
 }
 
-export default async function UsedBoatDetail({ params, searchParams }: { params:{ slug:string }, searchParams?: { lang?: string, sent?: string } }){
-  const sp = searchParams || {};
+export default async function UsedBoatDetail({ params, searchParams }: { params: Promise<{ slug:string }>, searchParams?: Promise<{ lang?: string, sent?: string }> }){
+  const { slug } = await params;
+  const sp = (await searchParams) || {};
   const locale: Locale = sp?.lang==='en' ? 'en':'fr';
   const sent = sp?.sent === '1' || sp?.sent === 'true';
   const t = messages[locale];
   let boat: any = null;
   try {
-    boat = await (prisma as any).usedBoat.findUnique({ where:{ slug: params.slug }});
+    boat = await (prisma as any).usedBoat.findUnique({ where:{ slug }});
   } catch (e) {
     // Impossible d'accéder à la DB pendant le build -> 404
     notFound();

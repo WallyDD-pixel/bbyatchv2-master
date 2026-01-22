@@ -2,7 +2,6 @@ import { getServerSession } from "next-auth";
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import HeaderBar from "@/components/HeaderBar";
 import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import BoatEditClient from "./BoatEditClient";
@@ -34,7 +33,6 @@ export default async function AdminBoatDetailPage({ params, searchParams }: { pa
 
   return (
     <div className="min-h-screen flex flex-col">
-      <HeaderBar initialLocale={locale} />
       <main className="flex-1 max-w-3xl mx-auto px-4 py-10 w-full">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{locale === "fr" ? "Bateau" : "Boat"}</h1>
@@ -45,7 +43,6 @@ export default async function AdminBoatDetailPage({ params, searchParams }: { pa
           <BoatEditClient boat={{...boat, boatExperiences: rawBoat.boatExperiences, allExperiences: experiences}} locale={locale} />
         </div>
       </main>
-      <Footer locale={locale} t={t} />
     </div>
   );
 }

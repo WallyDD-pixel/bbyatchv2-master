@@ -7,8 +7,8 @@ import Image from 'next/image';
 
 export const dynamic = 'force-dynamic';
 
-export default async function UsedSalePage({ searchParams }: { searchParams?: { lang?: string } }){
-  const sp = searchParams || {};
+export default async function UsedSalePage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }){
+  const sp = (await searchParams) || {};
   const locale: Locale = sp?.lang==='en' ? 'en':'fr';
   const t = messages[locale];
   const boats = await (prisma as any).usedBoat.findMany({ orderBy:[{ sort:'asc' }, { createdAt:'desc' }] });

@@ -49,38 +49,105 @@ export async function POST(req: Request) {
   const aboutValuesPleasureFr = (data.get('aboutValuesPleasureFr') || '').toString().trim();
   const aboutValuesPleasureEn = (data.get('aboutValuesPleasureEn') || '').toString().trim();
 
-  // Gestion des images
-  const imageFiles = data.getAll('imageFiles') as File[];
+  // Gestion des images - extraire correctement les fichiers
+  const imageFiles: File[] = [];
+  data.getAll('imageFiles').forEach((value) => {
+    if (value instanceof File) {
+      imageFiles.push(value);
+      console.log(`  ✓ Extracted file: ${value.name} (${value.size} bytes, ${value.type})`);
+    } else {
+      console.warn(`  ⚠️ Skipping non-File value for imageFiles:`, typeof value, value);
+    }
+  });
+  
   const historyImageFile = data.get('aboutHistoryImageFile') as File | null;
   const teamImageFile = data.get('aboutTeamImageFile') as File | null;
   const existingImagesRaw = data.getAll('existingImages');
   const existingImages: string[] = Array.isArray(existingImagesRaw) 
-    ? existingImagesRaw.map((img: any) => img.toString()).filter((url: string) => url && !url.startsWith('data:'))
+    ? existingImagesRaw.map((img: any) => img.toString()).filter((url: string) => url && !url.startsWith('data:') && !url.startsWith('blob:'))
     : [];
+  
+  console.log('About settings API - Received:', {
+    imageFilesCount: imageFiles.length,
+    existingImagesCount: existingImages.length,
+    historyImageFile: historyImageFile ? `${historyImageFile.name} (${historyImageFile.size} bytes)` : 'none',
+    teamImageFile: teamImageFile ? `${teamImageFile.name} (${teamImageFile.size} bytes)` : 'none'
+  });
+  
+  // Log détaillé des fichiers reçus
+  imageFiles.forEach((file, index) => {
+    console.log(`  File ${index + 1}:`, file.name, file.size, 'bytes', file.type, file instanceof File ? 'is File' : 'NOT a File');
+  });
   
   const uploadedUrls: string[] = [];
   let historyImageUrl: string | null = null;
   let teamImageUrl: string | null = null;
 
   // Upload vers Supabase Storage (comme pour les expériences et bateaux)
+  console.log('Received imageFiles:', imageFiles.length);
   if (imageFiles.length > 0) {
     try {
       const validFiles = imageFiles.filter(f => {
-        if (!f || f.size === 0) return false;
-        const mime = (f as any).type;
-        const allowedImages = ['image/jpeg','image/png','image/webp','image/gif','image/avif'];
-        return allowedImages.includes(mime);
+        if (!f || !(f instanceof File)) {
+          console.log('Skipping invalid file (not a File instance):', f);
+          return false;
+        }
+        if (f.size === 0) {
+          console.log('Skipping empty file:', f.name);
+          return false;
+        }
+        const mime = f.type || '';
+        // Accepter tous les types d'images (plus permissif)
+        const isImage = mime.startsWith('image/') || 
+                       ['image/jpeg','image/jpg','image/png','image/webp','image/gif','image/avif','image/svg+xml'].includes(mime) ||
+                       !mime; // Si pas de type MIME, on accepte quand même (certains navigateurs ne le fournissent pas)
+        if (!isImage && mime) {
+          console.log('Skipping non-image file:', mime, f.name);
+          return false;
+        }
+        console.log('Valid file to upload:', f.name, f.size, 'bytes', mime || 'no mime type');
+        return true;
       });
       
+      console.log('Valid files to upload:', validFiles.length, 'out of', imageFiles.length);
       if (validFiles.length > 0) {
-        const urls = await uploadMultipleToSupabase(validFiles, 'about');
-        uploadedUrls.push(...urls);
-        console.log('Uploaded', uploadedUrls.length, 'image(s) to Supabase for about page');
+        console.log('🚀 Starting upload to Supabase for', validFiles.length, 'file(s)...');
+        try {
+          const urls = await uploadMultipleToSupabase(validFiles, 'about');
+          console.log('📤 Upload result from Supabase:', urls ? `${urls.length} URLs` : 'null/undefined');
+          if (urls && urls.length > 0) {
+            uploadedUrls.push(...urls);
+            console.log('✅ Successfully uploaded', uploadedUrls.length, 'image(s) to Supabase for about page');
+            urls.forEach((url, i) => {
+              console.log(`  URL ${i + 1}:`, url.substring(0, 100) + '...');
+            });
+          } else {
+            console.error('❌ Upload returned no URLs. Files may not have been uploaded.');
+            console.error('  - validFiles count:', validFiles.length);
+            console.error('  - uploadMultipleToSupabase returned:', urls);
+            // Ne pas retourner d'erreur ici, continuer pour voir si c'est un problème d'upload ou de sauvegarde
+          }
+        } catch (uploadError: any) {
+          console.error('❌ Error during uploadMultipleToSupabase:', uploadError);
+          console.error('  - Error message:', uploadError?.message);
+          console.error('  - Error stack:', uploadError?.stack);
+          throw uploadError; // Re-throw pour être capturé par le catch externe
+        }
+      } else {
+        console.warn('⚠️ No valid image files found after filtering');
       }
-    } catch (e) {
-      console.error('Error uploading to Supabase Storage:', e);
-      // Continuer même si l'upload échoue
+    } catch (e: any) {
+      console.error('❌ Error uploading to Supabase Storage:', e?.message || e);
+      console.error('Stack:', e?.stack);
+      // Ne pas continuer si l'upload échoue - retourner une erreur
+      return NextResponse.json({ 
+        error: 'upload_failed', 
+        details: e?.message || 'Failed to upload images to Supabase',
+        message: 'Erreur lors de l\'upload des images vers Supabase' 
+      }, { status: 500 });
     }
+  } else {
+    console.log('ℹ️ No imageFiles received (this is OK if only updating existing images)');
   }
 
   // Upload image Histoire
@@ -135,72 +202,129 @@ export async function POST(req: Request) {
 
   // Combiner les images existantes et les nouvelles, en évitant les doublons
   const allImagesSet = new Set<string>();
-  // Ajouter d'abord les images existantes
+  
+  // Ajouter d'abord les images existantes (celles qui n'ont pas été remplacées)
   existingImages.forEach(url => {
-    if (url && url.trim() && !url.startsWith('data:')) {
-      allImagesSet.add(url.trim());
+    if (url && url.trim() && !url.startsWith('data:') && !url.startsWith('blob:')) {
+      // Normaliser l'URL pour éviter les doublons avec des variations
+      const normalizedUrl = url.trim();
+      allImagesSet.add(normalizedUrl);
+      console.log('  ✓ Keeping existing image:', normalizedUrl);
     }
   });
+  
   // Ajouter les nouvelles images uploadées
   uploadedUrls.forEach(url => {
     if (url && url.trim()) {
-      allImagesSet.add(url.trim());
+      const normalizedUrl = url.trim();
+      // Si l'URL existe déjà (cas improbable mais possible), ne pas l'ajouter
+      if (!allImagesSet.has(normalizedUrl)) {
+        allImagesSet.add(normalizedUrl);
+        console.log('  ✓ Adding new uploaded image:', normalizedUrl);
+      } else {
+        console.log('  ⚠ Skipping duplicate URL:', normalizedUrl);
+      }
     }
   });
+  
   const allImages = Array.from(allImagesSet);
   const aboutImageUrls = allImages.length > 0 ? JSON.stringify(allImages) : null;
+  
+  console.log('📊 About images summary:');
+  console.log('  - Existing images received:', existingImages.length);
+  console.log('  - New uploaded images:', uploadedUrls.length);
+  console.log('  - Total unique images:', allImages.length);
+  console.log('  - aboutImageUrls will be:', aboutImageUrls ? `${allImages.length} images` : 'NULL');
+  if (allImages.length > 0) {
+    console.log('  - Image URLs:', allImages);
+  } else {
+    console.warn('  ⚠️ WARNING: No images to save!');
+    if (existingImages.length === 0 && uploadedUrls.length === 0) {
+      console.warn('  ⚠️ No existing images AND no new uploads - this will clear all images!');
+    }
+  }
 
   // Mettre à jour les settings
   try {
-    await prisma.settings.update({
+    const updateData: any = {
+      aboutHistoryFr,
+      aboutHistoryEn,
+      aboutMissionFr,
+      aboutMissionEn,
+      aboutTeamFr,
+      aboutTeamEn,
+      aboutValuesSafetyFr,
+      aboutValuesSafetyEn,
+      aboutValuesComfortFr,
+      aboutValuesComfortEn,
+      aboutValuesAuthFr,
+      aboutValuesAuthEn,
+      aboutValuesPleasureFr,
+      aboutValuesPleasureEn,
+    };
+    
+    // Toujours mettre à jour aboutImageUrls, même si null (pour effacer)
+    updateData.aboutImageUrls = aboutImageUrls;
+    
+    if (historyImageUrl !== undefined) {
+      updateData.aboutHistoryImageUrl = historyImageUrl;
+    }
+    if (teamImageUrl !== undefined) {
+      updateData.aboutTeamImageUrl = teamImageUrl;
+    }
+    
+    console.log('💾 Updating settings with image URLs...');
+    const updated = await prisma.settings.update({
       where: { id: 1 },
-      data: {
-        aboutHistoryFr,
-        aboutHistoryEn,
-        aboutMissionFr,
-        aboutMissionEn,
-        aboutTeamFr,
-        aboutTeamEn,
-        aboutValuesSafetyFr,
-        aboutValuesSafetyEn,
-        aboutValuesComfortFr,
-        aboutValuesComfortEn,
-        aboutValuesAuthFr,
-        aboutValuesAuthEn,
-        aboutValuesPleasureFr,
-        aboutValuesPleasureEn,
-        aboutImageUrls,
-        aboutHistoryImageUrl: historyImageUrl !== undefined ? historyImageUrl : undefined,
-        aboutTeamImageUrl: teamImageUrl !== undefined ? teamImageUrl : undefined,
-      } as any,
+      data: updateData,
     });
+    
+    console.log('✅ Settings updated successfully');
+    console.log('  - aboutImageUrls saved:', updated.aboutImageUrls ? 'YES' : 'NO');
+    if (updated.aboutImageUrls) {
+      try {
+        const savedImages = JSON.parse(updated.aboutImageUrls);
+        console.log('  - Number of images in DB:', Array.isArray(savedImages) ? savedImages.length : 'not an array');
+      } catch (e) {
+        console.error('  - Error parsing saved aboutImageUrls:', e);
+      }
+    }
   } catch (updateError: any) {
     console.error('Error updating settings:', updateError);
     // Si Settings n'existe pas, créer l'enregistrement
     if (updateError?.code === 'P2025' || updateError?.code === 'P2018') {
       try {
+        const createData: any = {
+          id: 1,
+          aboutHistoryFr,
+          aboutHistoryEn,
+          aboutMissionFr,
+          aboutMissionEn,
+          aboutTeamFr,
+          aboutTeamEn,
+          aboutValuesSafetyFr,
+          aboutValuesSafetyEn,
+          aboutValuesComfortFr,
+          aboutValuesComfortEn,
+          aboutValuesAuthFr,
+          aboutValuesAuthEn,
+          aboutValuesPleasureFr,
+          aboutValuesPleasureEn,
+          aboutImageUrls,
+        };
+        
+        if (historyImageUrl !== undefined) {
+          createData.aboutHistoryImageUrl = historyImageUrl;
+        }
+        if (teamImageUrl !== undefined) {
+          createData.aboutTeamImageUrl = teamImageUrl;
+        }
+        
+        console.log('💾 Creating new settings record with image URLs...');
         await prisma.settings.create({
-          data: {
-            id: 1,
-            aboutHistoryFr,
-            aboutHistoryEn,
-            aboutMissionFr,
-            aboutMissionEn,
-            aboutTeamFr,
-            aboutTeamEn,
-            aboutValuesSafetyFr,
-            aboutValuesSafetyEn,
-            aboutValuesComfortFr,
-            aboutValuesComfortEn,
-            aboutValuesAuthFr,
-            aboutValuesAuthEn,
-            aboutValuesPleasureFr,
-            aboutValuesPleasureEn,
-            aboutImageUrls,
-            aboutHistoryImageUrl: historyImageUrl || null,
-            aboutTeamImageUrl: teamImageUrl || null,
-          } as any,
+          data: createData,
         });
+        console.log('✅ Settings created successfully');
       } catch (createError) {
         console.error('Error creating settings:', createError);
         return NextResponse.json({ error: 'server_error', details: createError }, { status: 500 });
@@ -210,18 +334,19 @@ export async function POST(req: Request) {
     }
   }
 
-  // Vérifier si c'est une requête AJAX (fetch) ou un formulaire HTML classique
+  // Toujours retourner JSON pour les requêtes AJAX (depuis submitForm)
+  // Cela permet au client de gérer la réponse correctement
   const acceptHeader = req.headers.get('accept') || '';
   const isAjaxRequest = acceptHeader.includes('application/json') || 
                         req.headers.get('x-requested-with') === 'XMLHttpRequest';
   
-  // Si c'est une requête AJAX, retourner JSON pour éviter les problèmes de redirection
-  if (isAjaxRequest || !req.headers.get('content-type')?.includes('multipart/form-data')) {
-    return NextResponse.json({ ok: true, message: 'Settings updated successfully' });
-  }
-  
-  // Sinon, rediriger après sauvegarde normale
-  const redirectUrl = createRedirectUrl('/admin/about-settings?success=1', req);
-  return NextResponse.redirect(redirectUrl, 303);
+  // Retourner JSON avec les informations de sauvegarde
+  return NextResponse.json({ 
+    ok: true, 
+    success: true,
+    message: 'Settings updated successfully',
+    aboutImageUrls: aboutImageUrls,
+    imageCount: allImages.length
+  });
 }
 

@@ -7,15 +7,17 @@ import Footer from '@/components/Footer';
 import Link from 'next/link';
 import ExperienceEditClient from './ExperienceEditClient';
 
-export default async function AdminExperienceEditPage({ params, searchParams }: { params:{ id:string }, searchParams?: { lang?: string } }){
+export default async function AdminExperienceEditPage({ params, searchParams }: { params: Promise<{ id:string }>, searchParams?: Promise<{ lang?: string }> }){
   const session = await getServerSession(auth as any) as any;
   if(!session?.user) redirect('/signin');
   const role = (session.user as any)?.role||'user';
   if(role!=='admin') redirect('/dashboard');
-  const id = parseInt(params.id,10); if(isNaN(id)) notFound();
+  // Next.js 15 : params et searchParams sont maintenant des Promises
+  const { id: idParam } = await params;
+  const sp = await (searchParams || Promise.resolve({}));
+  const id = parseInt(idParam,10); if(isNaN(id)) notFound();
   const exp = await (prisma as any).experience.findUnique({ where:{ id } });
   if(!exp) notFound();
-  const sp = searchParams || {};
   const locale = sp.lang==='en'? 'en':'fr';
 
   return (

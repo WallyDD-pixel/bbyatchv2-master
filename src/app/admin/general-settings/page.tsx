@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import AdminInstructions from "@/components/AdminInstructions";
 
 export default function AdminGeneralSettingsPage() {
   const router = useRouter();
@@ -56,10 +57,29 @@ export default function AdminGeneralSettingsPage() {
           >
             <span>←</span> Retour
           </button>
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Paramètres généraux</h1>
-          <p className="text-sm text-black/60">
-            Gérez le logo du site et le prix par défaut du skipper.
-          </p>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-4">Paramètres généraux</h1>
+          <AdminInstructions
+            locale="fr"
+            title="Comment gérer les paramètres généraux"
+            instructions={[
+              {
+                title: "Logo du site",
+                description: "Téléchargez le logo qui apparaîtra dans la navigation et sur toutes les pages. Formats recommandés : PNG avec fond transparent."
+              },
+              {
+                title: "Prix du skipper par défaut",
+                description: "Définissez le prix par défaut du skipper qui sera utilisé pour tous les bateaux, sauf si un prix spécifique est défini pour un bateau particulier."
+              },
+              {
+                title: "Jeux d'eau",
+                description: "Configurez l'URL du catalogue des jeux d'eau. Cette URL sera affichée dans le formulaire de réservation lorsque les clients sélectionnent les jeux d'eau."
+              },
+              {
+                title: "Sauvegarder",
+                description: "N'oubliez pas de cliquer sur 'Enregistrer' après avoir modifié les paramètres pour qu'ils soient pris en compte."
+              }
+            ]}
+          />
         </div>
 
         {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('success') === '1' && (
