@@ -87,7 +87,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props){
           </section>
           <div className='flex flex-wrap gap-3'>
             <a href='/search' className='inline-flex items-center h-11 px-6 rounded-full border border-black/15 bg-white text-sm font-medium hover:bg-black/5'>{t.checkout_success_back_fleet}</a>
-            <a href='/dashboard' className='inline-flex items-center h-11 px-6 rounded-full bg-[var(--primary)] text-white text-sm font-semibold hover:brightness-110'>{t.checkout_success_go_dashboard}</a>
+            <a href='/dashboard' className='inline-flex items-center h-11 px-6 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors'>{t.checkout_success_go_dashboard}</a>
           </div>
         </div>
       </main>
