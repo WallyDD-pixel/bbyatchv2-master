@@ -50,6 +50,31 @@ export async function POST(req: Request) {
     });
     console.log('Autre-ville message created with ID:', created.id);
     
+    // Envoyer un email à charter@bb-yachts.com pour notifier d'un nouveau message "autre"
+    try {
+      const { sendEmail } = await import('@/lib/email');
+      const { newContactMessageEmail } = await import('@/lib/email-templates');
+      
+      const emailData = {
+        name: ville,
+        email,
+        phone: tel || null,
+        message: structuredMessage,
+        sourcePage: 'autre-ville',
+      };
+      
+      const { subject, html } = newContactMessageEmail(emailData, 'fr');
+      
+      await sendEmail({
+        to: 'charter@bb-yachts.com',
+        subject,
+        html,
+      });
+    } catch (emailErr) {
+      console.error('Error sending autre-ville notification email:', emailErr);
+      // Ne pas bloquer la création du message si l'email échoue
+    }
+    
     // Redirection vers la page d'accueil avec un message de succès
     const redirectUrl = createRedirectUrl('/?autre-ville-sent=1', req);
     return NextResponse.redirect(redirectUrl, 303);

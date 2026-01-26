@@ -43,9 +43,29 @@ export async function POST(req: Request){
     let days = 1;
     if(part==='FULL') days = Math.round((e.getTime()-s.getTime())/86400000)+1; else if(end && end!==start) return NextResponse.json({ error: 'halfday_range' }, { status: 400 });
 
-    // Prix indicatif
+    // Prix agence : utiliser prix agence défini ou calculer automatiquement (-20%)
+    const calculateAgencyPrice = (publicPrice: number): number => {
+      return Math.round(publicPrice * 0.8); // -20% sur la coque nue
+    };
+    
+    const boatWithPrices = await prisma.boat.findUnique({ 
+      where: { slug: boatSlug }, 
+      select: { 
+        pricePerDay:true, priceAm:true, pricePm:true, 
+        priceAgencyPerDay:true, priceAgencyAm:true, priceAgencyPm:true 
+      } 
+    });
+    
     let total: number|null = null;
-    if(part==='FULL') total = boat.pricePerDay * days; else if(part==='AM') total = boat.priceAm ?? null; else if(part==='PM') total = boat.pricePm ?? null;
+    if(part==='FULL') {
+      total = boatWithPrices?.priceAgencyPerDay 
+        ? boatWithPrices.priceAgencyPerDay * days 
+        : calculateAgencyPrice(boatWithPrices?.pricePerDay || 0) * days;
+    } else if(part==='AM') {
+      total = boatWithPrices?.priceAgencyAm ?? (boatWithPrices?.priceAm ? calculateAgencyPrice(boatWithPrices.priceAm) : calculateAgencyPrice(Math.round((boatWithPrices?.pricePerDay || 0) / 2)));
+    } else if(part==='PM') {
+      total = boatWithPrices?.priceAgencyPm ?? (boatWithPrices?.pricePm ? calculateAgencyPrice(boatWithPrices.pricePm) : calculateAgencyPrice(Math.round((boatWithPrices?.pricePerDay || 0) / 2)));
+    }
     if(total==null) return NextResponse.json({ error:'price_missing' }, { status:400 });
 
     const reqCreated = await prisma.agencyRequest.create({
@@ -61,6 +81,42 @@ export async function POST(req: Request){
         currency: 'eur'
       }
     });
+    
+    // Envoyer un email à charter@bb-yachts.com pour notifier d'une nouvelle demande agence
+    try {
+      const { sendEmail } = await import('@/lib/email');
+      const { newAgencyRequestEmail } = await import('@/lib/email-templates');
+      
+      const userFull = await prisma.user.findUnique({ 
+        where: { id: user.id }, 
+        select: { email: true, firstName: true, lastName: true, name: true } 
+      });
+      
+      const emailData = {
+        id: reqCreated.id,
+        userName: `${userFull?.firstName || ''} ${userFull?.lastName || ''}`.trim() || userFull?.name || userFull?.email || 'Agence',
+        userEmail: userFull?.email || '',
+        boatName: boat.name,
+        startDate: start,
+        endDate: end || start,
+        part,
+        passengers: pax ? Number(pax) : undefined,
+        totalPrice: total,
+        status: reqCreated.status,
+      };
+      
+      const { subject, html } = newAgencyRequestEmail(emailData, locale as 'fr' | 'en');
+      
+      await sendEmail({
+        to: 'charter@bb-yachts.com',
+        subject,
+        html,
+      });
+    } catch (emailErr) {
+      console.error('Error sending notification email for agency request:', emailErr);
+      // Ne pas bloquer la création de la demande si l'email échoue
+    }
+    
     return NextResponse.json({ status: 'created', requestId: reqCreated.id });
   } catch(e){
     console.error(e); return NextResponse.json({ error: 'server_error' }, { status: 500 });

@@ -95,8 +95,8 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
       <div className="w-full max-w-7xl relative">
         {/* Barre principale ultra-moderne */}
         <div className="flex items-center gap-4 rounded-3xl bg-gradient-to-r from-white/96 via-white/92 to-white/96 dark:from-slate-900/95 dark:via-slate-800/95 dark:to-slate-900/95 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)] dark:shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)] px-4 sm:px-6 py-3 ring-1 ring-[color:var(--primary)]/15 hover:ring-[color:var(--primary)]/25 transition-all duration-300 group">
-          {/* Logo avec animation sophistiquée */}
-          <a href={homeBase} className="flex items-center group hover:scale-[1.02] transition-all duration-300 ease-out" aria-label={t.app_name}>
+          {/* Logo avec animation sophistiquée - masqué sur mobile */}
+          <a href={homeBase} className="hidden sm:flex items-center group hover:scale-[1.02] transition-all duration-300 ease-out" aria-label={t.app_name}>
             <div className="relative h-12 w-auto">
               <img 
                 src={logoUrl} 
@@ -260,6 +260,22 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
               aria-modal="true"
               className="md:hidden fixed left-1/2 -translate-x-1/2 top-[76px] w-[94%] max-w-6xl rounded-3xl bg-gradient-to-b from-white/98 via-white/95 to-white/92 dark:from-[#1f2c38]/96 dark:via-[#203241]/96 dark:to-[#1f2c38]/96 border border-white/70 dark:border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)] p-5 z-[110] backdrop-blur-xl"
             >
+              {/* Logo dans le menu mobile */}
+              <div className="flex justify-center mb-4 pb-4 border-b border-slate-200/50 dark:border-white/10">
+                <a href={homeBase} onClick={() => setOpen(false)} className="flex items-center" aria-label={t.app_name}>
+                  <img 
+                    src={logoUrl} 
+                    alt="BB YACHTS" 
+                    className="h-10 w-auto object-contain" 
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (target.src !== defaultLogo && !target.src.includes(defaultLogo)) {
+                        target.src = defaultLogo;
+                      }
+                    }}
+                  />
+                </a>
+              </div>
               <nav className="flex flex-col gap-1 text-sm">
                 {navbarItems.map(l => (
                   <a

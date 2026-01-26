@@ -14,7 +14,10 @@ export default async function UsedSalePage({ searchParams }: { searchParams?: Pr
   const boats = await (prisma as any).usedBoat.findMany({ orderBy:[{ sort:'asc' }, { createdAt:'desc' }] });
   const listed = boats.filter((b:any)=> b.status === 'listed');
   const sold = boats.filter((b:any)=> b.status === 'sold');
-  const fmt = (v:number)=> new Intl.NumberFormat(locale==='fr'?'fr-FR':'en-US',{ style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(v);
+  const fmt = (v:number | null | undefined)=> {
+    if (v === null || v === undefined) return locale==='fr' ? 'Nous consulter' : 'Contact us';
+    return new Intl.NumberFormat(locale==='fr'?'fr-FR':'en-US',{ style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(v);
+  };
   
   // Récupérer les paramètres de la page depuis Settings
   const settings = await prisma.settings.findFirst() as any;

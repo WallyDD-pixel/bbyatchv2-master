@@ -54,17 +54,19 @@ export default function ImageGalleryManager({
   // Mettre à jour les champs cachés quand les images changent
   useEffect(() => {
     console.log('🔄 Mise à jour des champs cachés, images:', images.length);
-    const mainImage = images.find(img => img.isMain);
-    const otherImages = images.filter(img => !img.isMain);
+    const mainImage = images.find(img => img.isMain && !img.isTemp);
+    const otherImages = images.filter(img => !img.isMain && !img.isTemp);
     
     if (mainImageInputRef.current) {
       mainImageInputRef.current.value = mainImage?.url || '';
-      console.log('✅ mainImageInput mis à jour');
+      console.log('✅ mainImageInput mis à jour:', mainImage?.url || '(vide)');
     }
     
     if (keepPhotosInputRef.current) {
-      keepPhotosInputRef.current.value = JSON.stringify(otherImages.map(img => img.url));
-      console.log('✅ keepPhotosInput mis à jour');
+      // Filtrer uniquement les images existantes (pas les nouvelles temporaires)
+      const existingPhotos = otherImages.map(img => img.url);
+      keepPhotosInputRef.current.value = JSON.stringify(existingPhotos);
+      console.log('✅ keepPhotosInput mis à jour:', existingPhotos.length, 'photos');
     }
 
     // Notifier les nouveaux fichiers

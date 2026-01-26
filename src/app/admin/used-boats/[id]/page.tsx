@@ -53,7 +53,10 @@ export default async function EditUsedBoatPage({ params, searchParams }: { param
           <div className='grid md:grid-cols-3 gap-5'>
             <label className='grid gap-1 text-sm'><span>Année *</span><input required name='year' type='number' defaultValue={boat.year} className='h-11 rounded-lg border border-black/15 px-3' /></label>
             <label className='grid gap-1 text-sm'><span>Longueur (m) *</span><input required step='0.01' name='lengthM' type='number' defaultValue={boat.lengthM} className='h-11 rounded-lg border border-black/15 px-3' /></label>
-            <label className='grid gap-1 text-sm'><span>Prix EUR *</span><input required name='priceEur' type='number' defaultValue={boat.priceEur} className='h-11 rounded-lg border border-black/15 px-3' /></label>
+            <label className='grid gap-1 text-sm'>
+              <span>Prix EUR (laisser vide pour "nous consulter")</span>
+              <input name='priceEur' type='number' defaultValue={boat.priceEur || ''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='Ex: 150000' />
+            </label>
             <label className='grid gap-1 text-sm'><span>Moteurs</span><input name='engines' defaultValue={boat.engines||''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='2x Volvo IPS...' /></label>
             <label className='grid gap-1 text-sm'><span>Heures moteur</span><input name='engineHours' type='number' defaultValue={boat.engineHours??''} className='h-11 rounded-lg border border-black/15 px-3' /></label>
             <label className='grid gap-1 text-sm'><span>Carburant</span><input name='fuelType' defaultValue={boat.fuelType||''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='diesel' /></label>

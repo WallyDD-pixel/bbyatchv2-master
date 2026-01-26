@@ -18,7 +18,10 @@ export default async function AdminUsedBoatsPage({ searchParams }: { searchParam
   try {
     boats = await (prisma as any).usedBoat.findMany({ orderBy:[{ sort:'asc' }, { createdAt:'desc' }], take:200 });
   } catch{}
-  const money = (v:number)=> (v/1).toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €';
+  const money = (v:number | null | undefined)=> {
+    if (v === null || v === undefined) return locale==='fr' ? 'Nous consulter' : 'Contact us';
+    return (v/1).toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €';
+  };
   return (
     <div className="p-6 md:p-8 lg:p-10">
       <div className="mb-6">

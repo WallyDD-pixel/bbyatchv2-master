@@ -33,7 +33,10 @@ export default async function AdminUsedBoatNewPage({ searchParams }: { searchPar
           <div className='grid md:grid-cols-2 gap-5'>
             <label className='grid gap-1 text-sm'><span>Année *</span><input required name='year' type='number' className='h-11 rounded-lg border border-black/15 px-3' /></label>
             <label className='grid gap-1 text-sm'><span>Longueur (m) *</span><input required step='0.01' name='lengthM' type='number' className='h-11 rounded-lg border border-black/15 px-3' /></label>
-            <label className='grid gap-1 text-sm'><span>Prix EUR *</span><input required name='priceEur' type='number' className='h-11 rounded-lg border border-black/15 px-3' /></label>
+            <label className='grid gap-1 text-sm'>
+              <span>Prix EUR (laisser vide pour "nous consulter")</span>
+              <input name='priceEur' type='number' className='h-11 rounded-lg border border-black/15 px-3' placeholder='Ex: 150000' />
+            </label>
             <label className='grid gap-1 text-sm'><span>Moteurs</span><input name='engines' className='h-11 rounded-lg border border-black/15 px-3' placeholder='2x Volvo IPS...' /></label>
             <label className='grid gap-1 text-sm'><span>Heures moteur</span><input name='engineHours' type='number' className='h-11 rounded-lg border border-black/15 px-3' /></label>
             <label className='grid gap-1 text-sm'><span>Carburant</span><input name='fuelType' className='h-11 rounded-lg border border-black/15 px-3' placeholder='diesel' /></label>

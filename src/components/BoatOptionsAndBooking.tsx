@@ -108,21 +108,6 @@ export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalL
             </div>
           </div>
 
-          {/* Excursion */}
-          <div>
-            <label className='flex items-center gap-2 cursor-pointer'>
-              <input
-                type='checkbox'
-                checked={additionalInfo.wantsExcursion}
-                onChange={(e) => setAdditionalInfo(prev => ({ ...prev, wantsExcursion: e.target.checked }))}
-                className='h-4 w-4 accent-blue-600'
-              />
-              <span className='text-sm font-medium text-black/80'>
-                {locale === 'fr' ? 'Souhaitez-vous une excursion ?' : 'Would you like an excursion?'}
-              </span>
-            </label>
-          </div>
-
           {/* Besoins spéciaux */}
           <div>
             <label className='block text-sm font-medium text-black/80 mb-1.5'>

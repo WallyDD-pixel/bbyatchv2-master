@@ -402,10 +402,9 @@ Détails complets disponibles dans le tableau de bord admin.
           };
           
           const { subject, html } = newAgencyRequestEmail(emailData, locale as 'fr' | 'en');
-          const notificationEmail = await getNotificationEmail();
           
           await sendEmail({
-            to: notificationEmail,
+            to: 'charter@bb-yachts.com',
             subject,
             html,
           });

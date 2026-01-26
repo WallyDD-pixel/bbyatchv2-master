@@ -22,10 +22,25 @@ export async function POST(req: Request){
     // keepPhotos = ordre restant des anciennes photos (hors main) envoyé par le formulaire
     let keepPhotosRaw = String(data.get('keepPhotos')||'');
     let kept: string[] | null = null;
-    if(keepPhotosRaw){
-      try { const parsed = JSON.parse(keepPhotosRaw); if(Array.isArray(parsed)) kept = parsed.filter(p=> typeof p==='string'); } catch {}
+    if(keepPhotosRaw && keepPhotosRaw.trim() !== ''){
+      try { 
+        const parsed = JSON.parse(keepPhotosRaw); 
+        if(Array.isArray(parsed)) {
+          kept = parsed.filter(p=> typeof p==='string');
+        }
+      } catch {}
     }
-    let basePhotos = kept !== null ? kept.filter(p=> existingPhotos.includes(p)) : existingPhotos;
+    // Si kept est null, cela signifie que keepPhotos n'a pas été envoyé ou était vide
+    // Dans ce cas, on garde toutes les photos existantes (comportement par défaut)
+    // Si kept est un tableau (même vide), on utilise uniquement les photos listées
+    let basePhotos: string[] = [];
+    if(kept !== null) {
+      // Utiliser uniquement les photos qui sont dans kept ET dans existingPhotos
+      basePhotos = kept.filter(p=> existingPhotos.includes(p));
+    } else {
+      // Comportement par défaut : garder toutes les photos existantes
+      basePhotos = [...existingPhotos];
+    }
 
     // mainImageChoice éventuel
     const mainChoice = String(data.get('mainImageChoice')||'').trim();

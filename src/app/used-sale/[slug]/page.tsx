@@ -46,7 +46,11 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
   }
   // Combiner mainImage avec photos pour le carousel
   const allImages = boat.mainImage ? [boat.mainImage, ...photos.filter(p => p !== boat.mainImage)] : photos;
-  const priceLabel = boat.status === 'sold' ? (locale==='fr'? 'Vendu':'Sold') : new Intl.NumberFormat(locale==='fr'?'fr-FR':'en-US',{ style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(boat.priceEur);
+  const priceLabel = boat.status === 'sold' 
+    ? (locale==='fr'? 'Vendu':'Sold') 
+    : (boat.priceEur 
+      ? new Intl.NumberFormat(locale==='fr'?'fr-FR':'en-US',{ style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(boat.priceEur)
+      : (locale==='fr'? 'Nous consulter':'Contact us'));
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-[#f5f7fa]">

@@ -73,15 +73,6 @@ export default function HeroSlider({ title, subtitle, imageUrl, images }: HeroSl
 							{subtitle ||
 								"Réservez votre yacht pour une journée d'exception ou une soirée au coucher de soleil."}
 						</p>
-						<div className="mt-4">
-							<a
-								href="#experiences"
-								className="inline-flex items-center rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-6 h-11 shadow-sm hover:shadow transition-colors"
-							>
-								Découvrir nos expériences
-								<span className="ml-1 text-base translate-y-[1px]">→</span>
-							</a>
-						</div>
 					</div>
 				</div>
 			</div>

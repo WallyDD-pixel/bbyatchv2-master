@@ -21,6 +21,9 @@ export async function POST(req: Request){
     await (prisma as any).contactMessage.create({ data:{ name, email, phone, message, usedBoatId, locale, sourcePage } });
     
     // Envoyer une notification par email pour tous les messages de contact
+    // Pour les messages "autre" (autre-ville) ou depuis la page contact, envoyer à charter@bb-yachts.com
+    const isOtherMessage = sourcePage === 'autre-ville' || sourcePage === 'contact';
+    
     try {
       const { sendEmail, getNotificationEmail, isNotificationEnabled } = await import('@/lib/email');
       const { newContactMessageEmail } = await import('@/lib/email-templates');
@@ -35,10 +38,12 @@ export async function POST(req: Request){
         };
         
         const { subject, html } = newContactMessageEmail(emailData, (locale as 'fr' | 'en') || 'fr');
-        const notificationEmail = await getNotificationEmail();
+        
+        // Pour les messages "autre" ou depuis contact, envoyer directement à charter@bb-yachts.com
+        const recipientEmail = isOtherMessage ? 'charter@bb-yachts.com' : await getNotificationEmail();
         
         await sendEmail({
-          to: notificationEmail,
+          to: recipientEmail,
           subject,
           html,
         });

@@ -19,8 +19,13 @@ interface AgencyRequestRow {
   status: string;
   totalPrice: number | null;
   metadata: string | null;
+  boatId: number | null;
   user: { email: string | null; firstName: string | null; lastName: string | null } | null;
-  boat: { name: string | null } | null;
+  boat: { 
+    name: string | null; 
+    slug: string | null;
+    options?: { id: number; label: string; price: number | null }[] | null;
+  } | null;
   reservation: { id: string } | null;
 }
 
@@ -50,8 +55,15 @@ export default async function AgencyRequestDetailPage(
       status:true,
       totalPrice:true,
       metadata:true,
+      boatId:true,
       user:{ select:{ email:true, firstName:true, lastName:true } },
-      boat:{ select:{ name:true } },
+      boat:{ 
+        select:{ 
+          name:true, 
+          slug:true,
+          options: { select: { id: true, label: true, price: true } }
+        } 
+      },
       reservation:{ select:{ id:true } }
     }
   }) as AgencyRequestRow | null;
@@ -222,8 +234,38 @@ export default async function AgencyRequestDetailPage(
                   )}
                   {metadataObj.optionIds && Array.isArray(metadataObj.optionIds) && metadataObj.optionIds.length > 0 && (
                     <div>
-                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Options sélectionnées':'Selected options'}: </span>
-                      <span>{metadataObj.optionIds.join(', ')}</span>
+                      <span className='font-semibold text-black/70 block mb-1'>{locale==='fr'? 'Options sélectionnées':'Selected options'}: </span>
+                      <ul className='list-disc list-inside space-y-0.5 text-black/60'>
+                        {metadataObj.optionIds.map((optId: number) => {
+                          const option = row.boat?.options?.find((o: any) => o.id === optId);
+                          return (
+                            <li key={optId}>
+                              {option ? (
+                                <>
+                                  {option.label} {option.price != null ? `(${option.price.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €)` : '(Inclus)'}
+                                </>
+                              ) : (
+                                `Option ID: ${optId}`
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                  {metadataObj.needsSkipper && (
+                    <div>
+                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Skipper demandé':'Skipper requested'}: </span>
+                      <span>{locale==='fr'? 'Oui':'Yes'}</span>
+                      {metadataObj.effectiveSkipperPrice && (
+                        <span className='ml-2 text-black/50'>({metadataObj.effectiveSkipperPrice}€ HT/jour)</span>
+                      )}
+                    </div>
+                  )}
+                  {metadataObj.bookingDate && (
+                    <div>
+                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Date de réservation':'Booking date'}: </span>
+                      <span>{new Date(metadataObj.bookingDate).toLocaleDateString(locale==='fr'? 'fr-FR':'en-GB')}</span>
                     </div>
                   )}
                   {metadataObj.departurePort && (

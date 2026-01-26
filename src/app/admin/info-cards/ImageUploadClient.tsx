@@ -12,6 +12,7 @@ export default function ImageUploadClient({ locale, existingImageUrl }: ImageUpl
   const previewImgRef = useRef<HTMLImageElement>(null);
   const removeBtnRef = useRef<HTMLDivElement>(null);
   const placeholderRef = useRef<HTMLDivElement>(null);
+  const hiddenImageUrlRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(existingImageUrl || null);
   const [hasImage, setHasImage] = useState(!!existingImageUrl);
   const [isNewImage, setIsNewImage] = useState(false);
@@ -34,6 +35,10 @@ export default function ImageUploadClient({ locale, existingImageUrl }: ImageUpl
         });
         setHasImage(true);
         setIsNewImage(true);
+        // Mettre à jour le champ caché pour vider l'image existante quand on upload une nouvelle
+        if (hiddenImageUrlRef.current && existingImageUrl) {
+          hiddenImageUrlRef.current.value = "";
+        }
         if (placeholderRef.current) {
           placeholderRef.current.classList.add("opacity-0");
         }
@@ -125,12 +130,16 @@ export default function ImageUploadClient({ locale, existingImageUrl }: ImageUpl
     if (placeholderRef.current) {
       placeholderRef.current.classList.remove("opacity-0");
     }
+    // Mettre à jour le champ caché imageUrl pour indiquer qu'on veut supprimer l'image
+    if (hiddenImageUrlRef.current) {
+      hiddenImageUrlRef.current.value = "";
+    }
   };
 
   return (
     <div className="grid gap-2 text-sm">
       <span>{locale === "fr" ? "Image" : "Image"}</span>
-      <input type="hidden" name="imageUrl" value={existingImageUrl || ""} />
+      <input ref={hiddenImageUrlRef} type="hidden" name="imageUrl" value={existingImageUrl || ""} />
       <div
         ref={dropZoneRef}
         className={`relative h-48 rounded-lg border border-dashed border-black/25 flex flex-col items-center justify-center text-xs text-black/60 cursor-pointer bg-black/[0.02] hover:bg-black/[0.04] transition ${
