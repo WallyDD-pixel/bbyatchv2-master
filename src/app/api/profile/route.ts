@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const session = (await getServerSession(auth as any)) as any;
+    const session = (await getServerSession()) as any;
     if (!session?.user?.email) {
       // Retourner null au lieu de 401 pour éviter les erreurs répétées côté client
       return NextResponse.json({ user: null }, { status: 200 });

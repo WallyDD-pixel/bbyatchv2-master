@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
 async function ensureAdmin() {
-  const session = (await getServerSession(auth as any)) as any;
+  const session = (await getServerSession()) as any;
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const email = session.user.email as string;
   const me = await (prisma as any).user.findUnique({ where: { email }, select: { role: true } }).catch(() => null);
