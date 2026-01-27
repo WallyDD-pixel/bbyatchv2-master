@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import type { NextAuthOptions } from "next-auth";
+import { getServerSession as nextAuthGetServerSession } from "next-auth/next";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
@@ -47,6 +48,11 @@ export const authOptions: NextAuthOptions = {
 
 // Keep an alias for existing imports
 export const auth = authOptions;
+
+// Export getServerSession for use in server components and API routes
+export async function getServerSession() {
+  return await nextAuthGetServerSession(authOptions as any);
+}
 
 // Route handlers
 const handler = NextAuth(authOptions as any);
