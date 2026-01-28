@@ -8,9 +8,13 @@ import { cookies } from "next/headers";
 
 // Define options explicitly so getServerSession can use the same config in v4
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
+  // Note: PrismaAdapter is not needed with JWT strategy, but kept for compatibility
+  // adapter: PrismaAdapter(prisma) as any,
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+  pages: {
+    error: '/signin', // Redirect errors to signin page
+  },
   providers: [
     CredentialsProvider({
       name: "Credentials",
