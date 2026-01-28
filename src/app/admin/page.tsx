@@ -1,12 +1,11 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from 'next/link';
 
 export default async function AdminPage({ searchParams }: { searchParams?: { lang?: string } }) {
-  const session = (await getServerSession(auth as any)) as any;
+  const session = (await getServerSession()) as any;
   if (!session?.user) redirect("/signin");
 
   // Fallback DB si la session n'expose pas encore le rôle

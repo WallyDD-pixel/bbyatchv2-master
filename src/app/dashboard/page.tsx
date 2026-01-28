@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import HeaderBar from "@/components/HeaderBar";
 import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
@@ -10,7 +9,7 @@ import ProfileCardClient from "@/app/dashboard/ProfileCardClient";
 import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage({ searchParams }: { searchParams?: { lang?: string } }) {
-  const session = (await getServerSession(auth as any)) as any;
+  const session = (await getServerSession()) as any;
   if (!session?.user) redirect("/signin");
 
   const sp = searchParams || {};
