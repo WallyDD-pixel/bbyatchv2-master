@@ -120,6 +120,15 @@ model Settings {
   smtpPassword                               String? // Mot de passe SMTP
   smtpFromEmail                              String? // Email expéditeur (ex: noreply@bb-yachts.com)
   smtpFromName                               String? // Nom expéditeur (ex: BB YACHTS)
+  // SEO et tracking
+  facebookPixelId                            String?
+  googleAnalyticsId                          String?
+  googleTagManagerId                         String?
+  metaTitle                                  String?
+  metaDescription                           String?
+  metaKeywords                               String?
+  ogImage                                    String?
+  siteUrl                                    String?
 }
 
 model NavbarItem {

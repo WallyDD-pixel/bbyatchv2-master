@@ -15,9 +15,12 @@ export default async function UsedSalePage({ searchParams }: { searchParams?: Pr
   const listed = boats.filter((b:any)=> b.status === 'listed');
   const sold = boats.filter((b:any)=> b.status === 'sold');
   const fmt = (v:number | null | undefined)=> {
-    if (v === null || v === undefined) return locale==='fr' ? 'Nous consulter' : 'Contact us';
+    if (v === null || v === undefined || v === 0) return locale==='fr' ? 'Nous consulter' : 'Contact us';
     return new Intl.NumberFormat(locale==='fr'?'fr-FR':'en-US',{ style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(v);
   };
+  
+  // Vérifier si un bateau a un prix valide
+  const hasValidPrice = (price: number | null | undefined) => price != null && price > 0;
   
   // Récupérer les paramètres de la page depuis Settings
   const settings = await prisma.settings.findFirst() as any;
@@ -61,9 +64,7 @@ export default async function UsedSalePage({ searchParams }: { searchParams?: Pr
                   </div>
                   <div className='absolute bottom-3 left-3 right-3 flex items-end justify-between'>
                     <h2 className='text-white text-lg font-semibold drop-shadow max-w-[70%] line-clamp-2'>{locale==='fr'? b.titleFr : b.titleEn}</h2>
-                    <div className='ml-2 px-3 py-1 rounded-md bg-white/95 shadow text-[13px] font-semibold text-[color:var(--primary)]'>
-                      {fmt(b.priceEur)}
-                    </div>
+                    {/* Prix masqué - ne plus afficher même s'il existe en base */}
                   </div>
                 </div>
               )}

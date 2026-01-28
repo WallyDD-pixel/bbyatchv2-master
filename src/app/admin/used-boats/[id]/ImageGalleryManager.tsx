@@ -57,16 +57,24 @@ export default function ImageGalleryManager({
     const mainImage = images.find(img => img.isMain && !img.isTemp);
     const otherImages = images.filter(img => !img.isMain && !img.isTemp);
     
+    console.log('📊 Images analysées - mainImage:', mainImage ? 'trouvée' : 'absente', 'otherImages:', otherImages.length);
+    
     if (mainImageInputRef.current) {
       mainImageInputRef.current.value = mainImage?.url || '';
       console.log('✅ mainImageInput mis à jour:', mainImage?.url || '(vide)');
+    } else {
+      console.warn('⚠️ mainImageInputRef.current est null');
     }
     
     if (keepPhotosInputRef.current) {
       // Filtrer uniquement les images existantes (pas les nouvelles temporaires)
       const existingPhotos = otherImages.map(img => img.url);
-      keepPhotosInputRef.current.value = JSON.stringify(existingPhotos);
-      console.log('✅ keepPhotosInput mis à jour:', existingPhotos.length, 'photos');
+      const jsonValue = JSON.stringify(existingPhotos);
+      keepPhotosInputRef.current.value = jsonValue;
+      console.log('✅ keepPhotosInput mis à jour:', existingPhotos.length, 'photos, valeur:', jsonValue);
+      console.log('🔍 URLs des photos à conserver:', existingPhotos);
+    } else {
+      console.warn('⚠️ keepPhotosInputRef.current est null');
     }
 
     // Notifier les nouveaux fichiers
@@ -153,12 +161,42 @@ export default function ImageGalleryManager({
     }
     
     setImages(prev => {
+      // Vérifier que l'index est valide
+      if (index < 0 || index >= prev.length) {
+        console.error('❌ Index invalide:', index, 'sur', prev.length, 'images');
+        return prev;
+      }
+      
+      const imageToRemove = prev[index];
+      console.log('🗑️ Suppression de l\'image à l\'index:', index, 'URL:', imageToRemove.url.substring(imageToRemove.url.length - 40));
+      console.log('📋 Images avant suppression:', prev.map((img, i) => `${i}: ${img.url.substring(img.url.length - 30)}`));
+      
       const newImages = prev.filter((_, i) => i !== index);
+      console.log('📋 Images après suppression:', newImages.length);
+      
       // Si on supprime l'image principale et qu'il y a d'autres images, 
       // faire de la première image restante la nouvelle image principale
-      if (prev[index].isMain && newImages.length > 0) {
+      if (imageToRemove.isMain && newImages.length > 0) {
         newImages[0].isMain = true;
+        console.log('✅ Nouvelle image principale définie:', newImages[0].url.substring(newImages[0].url.length - 30));
       }
+      
+      // Mettre à jour immédiatement les champs cachés
+      const mainImage = newImages.find(img => img.isMain && !img.isTemp);
+      const otherImages = newImages.filter(img => !img.isMain && !img.isTemp);
+      
+      if (mainImageInputRef.current) {
+        mainImageInputRef.current.value = mainImage?.url || '';
+        console.log('✅ mainImageInput mis à jour après suppression:', mainImage?.url || '(vide)');
+      }
+      
+      if (keepPhotosInputRef.current) {
+        const existingPhotos = otherImages.map(img => img.url);
+        const jsonValue = JSON.stringify(existingPhotos);
+        keepPhotosInputRef.current.value = jsonValue;
+        console.log('✅ keepPhotosInput mis à jour après suppression:', existingPhotos.length, 'photos, valeur:', jsonValue);
+      }
+      
       return newImages;
     });
   };
@@ -291,7 +329,7 @@ export default function ImageGalleryManager({
           
           return (
             <div
-              key={`${image.url}-${index}`}
+              key={image.isTemp ? `temp-${image.url}-${index}` : `existing-${image.url}`}
               className={`group relative w-40 h-28 rounded-lg overflow-hidden bg-white border-2 flex-shrink-0 cursor-move transition-all duration-200 ${
                 isDragged 
                   ? 'opacity-50 scale-95 rotate-2 border-blue-400 shadow-lg' 
@@ -321,7 +359,7 @@ export default function ImageGalleryManager({
                   }
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
-                onLoad={() => {
+                onLoad={(e) => {
                   console.log('✅ Image chargée avec succès:', image.url.substring(0, 50) + '...');
                   // Cacher le fallback si l'image se charge
                   const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
@@ -364,7 +402,12 @@ export default function ImageGalleryManager({
               
               <button
                 type="button"
-                onClick={() => removeImage(index)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  console.log('🗑️ Clic sur suppression, index:', index, 'image URL:', image.url.substring(image.url.length - 30));
+                  removeImage(index);
+                }}
                 className="hidden group-hover:flex absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white items-center justify-center text-xs z-20 hover:bg-red-700 transition-colors shadow-sm"
               >
                 ✕
@@ -444,7 +487,7 @@ export default function ImageGalleryManager({
         ref={keepPhotosInputRef}
         type="hidden" 
         name="keepPhotos" 
-        defaultValue=""
+        defaultValue="[]"
       />
       <input 
         ref={mainImageInputRef}

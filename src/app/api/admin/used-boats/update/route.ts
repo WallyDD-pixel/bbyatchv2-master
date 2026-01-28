@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadMultipleToSupabase } from '@/lib/storage';
 
 export async function POST(req: Request){
-  const session = await getServerSession(auth as any) as any;
+  const session = await getServerSession() as any;
   if(!session?.user || (session.user as any).role !== 'admin') return NextResponse.json({ error:'unauthorized' },{ status:401 });
   try {
     const data = await req.formData();
@@ -21,36 +20,57 @@ export async function POST(req: Request){
 
     // keepPhotos = ordre restant des anciennes photos (hors main) envoyé par le formulaire
     let keepPhotosRaw = String(data.get('keepPhotos')||'');
+    console.log('📸 keepPhotosRaw reçu:', keepPhotosRaw);
     let kept: string[] | null = null;
     if(keepPhotosRaw && keepPhotosRaw.trim() !== ''){
       try { 
         const parsed = JSON.parse(keepPhotosRaw); 
         if(Array.isArray(parsed)) {
           kept = parsed.filter(p=> typeof p==='string');
+          console.log('📸 kept parsé:', kept.length, 'photos');
         }
-      } catch {}
+      } catch (e) {
+        console.error('❌ Erreur parsing keepPhotos:', e);
+      }
+    } else {
+      console.log('⚠️ keepPhotosRaw est vide ou null');
     }
-    // Si kept est null, cela signifie que keepPhotos n'a pas été envoyé ou était vide
-    // Dans ce cas, on garde toutes les photos existantes (comportement par défaut)
-    // Si kept est un tableau (même vide), on utilise uniquement les photos listées
+    
+    // Si kept est null, cela signifie que keepPhotos n'a pas été envoyé
+    // Si kept est un tableau (même vide []), on utilise uniquement les photos listées
     let basePhotos: string[] = [];
     if(kept !== null) {
       // Utiliser uniquement les photos qui sont dans kept ET dans existingPhotos
       basePhotos = kept.filter(p=> existingPhotos.includes(p));
+      console.log('📸 basePhotos après filtrage:', basePhotos.length, 'photos');
     } else {
-      // Comportement par défaut : garder toutes les photos existantes
+      // Si keepPhotos n'a pas été envoyé du tout, garder toutes les photos existantes
       basePhotos = [...existingPhotos];
+      console.log('⚠️ keepPhotos non envoyé, conservation de toutes les photos existantes:', basePhotos.length);
     }
 
     // mainImageChoice éventuel
     const mainChoice = String(data.get('mainImageChoice')||'').trim();
-    if(mainChoice && (mainChoice === existing.mainImage || existingPhotos.includes(mainChoice))){
-      if(mainChoice !== mainImage){
-        // replacer ancienne main dans photos si différente
-        if(mainImage && !basePhotos.includes(mainImage)) basePhotos.unshift(mainImage);
-        // retirer la nouvelle main de la liste photos si elle y était
-        basePhotos = basePhotos.filter(p=> p !== mainChoice);
-        mainImage = mainChoice;
+    console.log('📸 mainImageChoice reçu:', mainChoice || '(vide)');
+    
+    // Si mainImageChoice est explicitement envoyé (même vide), on l'utilise
+    if(data.has('mainImageChoice')) {
+      if(mainChoice && (mainChoice === existing.mainImage || existingPhotos.includes(mainChoice))){
+        if(mainChoice !== mainImage){
+          // replacer ancienne main dans photos si différente
+          if(mainImage && !basePhotos.includes(mainImage)) basePhotos.unshift(mainImage);
+          // retirer la nouvelle main de la liste photos si elle y était
+          basePhotos = basePhotos.filter(p=> p !== mainChoice);
+          mainImage = mainChoice;
+          console.log('📸 mainImage mise à jour vers:', mainChoice);
+        }
+      } else if(!mainChoice) {
+        // mainImageChoice est vide explicitement -> supprimer l'image principale
+        console.log('📸 mainImageChoice est vide, suppression de l\'image principale');
+        if(mainImage && !basePhotos.includes(mainImage)) {
+          basePhotos.unshift(mainImage);
+        }
+        mainImage = null;
       }
     }
 
@@ -82,6 +102,8 @@ export async function POST(req: Request){
 
     // Fusion finale (ordre: basePhotos existantes réordonnées + nouvelles)
     const mergedPhotos = Array.from(new Set([...basePhotos, ...newUrls]));
+    console.log('📸 mergedPhotos final:', mergedPhotos.length, 'photos');
+    console.log('📸 mainImage final:', mainImage || '(null)');
 
     // Gestion des vidéos
     let videoUrls: string[] = [];

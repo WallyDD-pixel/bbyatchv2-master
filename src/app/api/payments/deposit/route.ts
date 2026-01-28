@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 
 export async function POST(req: Request){
   try {
@@ -20,7 +19,7 @@ export async function POST(req: Request){
     const specialNeedsStr = specialNeeds ? (typeof specialNeeds === 'string' ? specialNeeds : String(specialNeeds)) : undefined;
     const wantsExcursionBool = excursion === '1' || excursion === true;
     // Session utilisateur (avant calculs pour avoir userRole)
-    const session = await getServerSession(auth as any) as any;
+    const session = await getServerSession() as any;
     let userId: string | null = null;
     let userRole: string | null = null;
     if(session?.user?.email){
@@ -126,8 +125,15 @@ export async function POST(req: Request){
     // Dates validation
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if(!dateRegex.test(start) || (end && !dateRegex.test(end))) return NextResponse.json({ error: 'invalid_date' }, { status: 400 });
-    const s = new Date(start+'T00:00:00');
-    const e = new Date(((part==='FULL' || part==='SUNSET') && end? end : start)+'T00:00:00');
+    
+    // Normaliser les dates en UTC pour correspondre aux slots (stockés en UTC à minuit)
+    // Réutiliser les variables déjà déclarées pour le debug (ligne 43)
+    const s = debugDateUTC; // Déjà en UTC depuis le debug
+    
+    const endDateStr = (part==='FULL' || part==='SUNSET') && end ? end : start;
+    const [endYear, endMonth, endDay] = endDateStr.split('-').map(Number);
+    const e = new Date(Date.UTC(endYear, endMonth - 1, endDay, 0, 0, 0, 0));
+    
     if(e < s) return NextResponse.json({ error: 'invalid_range' }, { status: 400 });
     let days = 1;
     if(part==='FULL' || part==='SUNSET'){
@@ -161,6 +167,9 @@ export async function POST(req: Request){
     // IMPORTANT: Pour les agences, on permet quand même la demande (sera examinée par l'admin)
     // On vérifie uniquement pour les réservations directes (non-agence)
     if(userRole !== 'agency') {
+      // Log pour debug
+      console.log(`[deposit] Checking overlap for boat ${boat.id}, dates: ${s.toISOString()} to ${e.toISOString()}, part: ${part}`);
+      
       const overlap = await prisma.reservation.findFirst({
         where: {
           boatId: boat.id,
@@ -174,10 +183,47 @@ export async function POST(req: Request){
             { part: null }
           ]
         },
-        select: { id: true }
+        select: { 
+          id: true, 
+          reference: true, 
+          startDate: true, 
+          endDate: true, 
+          part: true, 
+          status: true,
+          userId: true,
+          createdAt: true
+        }
       });
+      
       if(overlap){
-        return NextResponse.json({ error: 'slot_unavailable' }, { status: 409 });
+        // Récupérer les infos utilisateur pour le log
+        const user = await prisma.user.findUnique({ 
+          where: { id: overlap.userId }, 
+          select: { email: true, name: true } 
+        }).catch(() => null);
+        
+        console.log(`[deposit] Overlap found! Conflicting reservation:`, {
+          id: overlap.id,
+          reference: overlap.reference,
+          startDate: overlap.startDate.toISOString(),
+          endDate: overlap.endDate.toISOString(),
+          part: overlap.part,
+          status: overlap.status,
+          userId: overlap.userId,
+          userEmail: user?.email || 'unknown',
+          userName: user?.name || 'unknown',
+          createdAt: overlap.createdAt.toISOString()
+        });
+        return NextResponse.json({ 
+          error: 'slot_unavailable',
+          conflictingReservation: {
+            id: overlap.id,
+            reference: overlap.reference,
+            status: overlap.status
+          }
+        }, { status: 409 });
+      } else {
+        console.log(`[deposit] No overlap found, slot is available`);
       }
     }
 
@@ -206,12 +252,10 @@ export async function POST(req: Request){
         const endDateStr = end || start;
         
         // Parser les dates directement depuis les chaînes (format YYYY-MM-DD)
-        const [startYear, startMonth, startDay] = start.split('-').map(Number);
-        const [endYear, endMonth, endDay] = endDateStr.split('-').map(Number);
-        
-        // Créer des dates en UTC pour correspondre au stockage des slots
-        const startDateObj = new Date(Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0));
-        const endDateObj = new Date(Date.UTC(endYear, endMonth - 1, endDay, 0, 0, 0, 0));
+        // Réutiliser debugDateUTC pour startDateObj (déjà calculé en UTC)
+        const startDateObj = debugDateUTC;
+        const [endYear2, endMonth2, endDay2] = endDateStr.split('-').map(Number);
+        const endDateObj = new Date(Date.UTC(endYear2, endMonth2 - 1, endDay2, 0, 0, 0, 0));
         
         let currentDateObj = new Date(startDateObj);
         while(currentDateObj <= endDateObj){

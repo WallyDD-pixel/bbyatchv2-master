@@ -1,16 +1,17 @@
-import { getServerSession } from 'next-auth';
+import { getServerSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 
-export default async function AdminUsedBoatNewPage({ searchParams }: { searchParams?: { lang?: string } }){
-  const session = await getServerSession(auth as any) as any;
+export default async function AdminUsedBoatNewPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> | { lang?: string } }){
+  const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   if((session.user as any)?.role !== 'admin') redirect('/dashboard');
-  const sp = searchParams || {} as { lang?: string };
-  const locale: Locale = sp?.lang==='en'? 'en':'fr';
+  
+  // Next.js 16: searchParams is a Promise
+  const resolvedSearchParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+  const locale: Locale = resolvedSearchParams?.lang==='en'? 'en':'fr';
   const t = messages[locale];
   return (
     <div className='min-h-screen flex flex-col'>

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from 'next/link';
 
-export default async function AdminPage({ searchParams }: { searchParams?: { lang?: string } }) {
+export default async function AdminPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> | { lang?: string } }) {
   const session = (await getServerSession()) as any;
   if (!session?.user) redirect("/signin");
 
@@ -18,8 +18,9 @@ export default async function AdminPage({ searchParams }: { searchParams?: { lan
   }
   if ((role || "user") !== "admin") redirect("/dashboard");
 
-  const sp = searchParams || {};
-  const locale: Locale = sp?.lang === "en" ? "en" : "fr";
+  // Next.js 16: searchParams is a Promise
+  const resolvedSearchParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+  const locale: Locale = resolvedSearchParams?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 
   let stats = { users: 0, boats: 0, usedBoats: 0, experiences: 0, reservations: 0, gallery: 0, infoCards: 0, availability: 0 };

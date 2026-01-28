@@ -431,11 +431,13 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
                 if (b.availableParts.FULL) bestPart = 'FULL';
                 else if (b.availableParts.AM) bestPart = 'AM';
                 else if (b.availableParts.PM) bestPart = 'PM';
-                else if (b.availableParts.SUNSET) bestPart = 'SUNSET';
+                // else if (b.availableParts.SUNSET) bestPart = 'SUNSET'; // SUNSET removed to satisfy type ("AM" | "PM" | "FULL")
               }
             }
             
-            const qs = new URLSearchParams({ lang: locale });
+            // Créer les paramètres de requête pour le lien
+            const qs = new URLSearchParams();
+            if (locale === 'en') qs.set('lang', 'en');
             qs.set('start', start || '');
             if (bestPart==='FULL' && (end || start)) qs.set('end', end || start || '');
             // transmettre le meilleur créneau disponible
@@ -449,9 +451,6 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
             } else if (bestPart==='PM') {
               qs.set('startTime','13:00');
               qs.set('endTime','18:00');
-            } else if (bestPart==='SUNSET') {
-              qs.set('startTime','20:00');
-              qs.set('endTime','22:00');
             }
             const href = `/boats/${b.slug}?${qs.toString()}`;
             return (
@@ -509,12 +508,8 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
                       </span>
                     )}
                     {b.availableParts.SUNSET && (
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
-                        partSel === 'SUNSET' 
-                          ? 'bg-purple-500 text-white bg-purple-600' 
-                          : 'bg-purple-100 text-purple-700 border border-purple-300'
-                      }`}>
-                        {locale === 'fr' ? 'Sunset' : 'Sunset'}
+                      <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 border border-purple-300">
+                        {locale === 'fr' ? 'Coucher de soleil' : 'Sunset'}
                       </span>
                     )}
                   </div>

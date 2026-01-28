@@ -1,21 +1,22 @@
-import { getServerSession } from 'next-auth';
+import { getServerSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Footer from '@/components/Footer';
+import HeaderBar from '@/components/HeaderBar';
 import { messages, type Locale } from '@/i18n/messages';
 import Link from 'next/link';
 import AdminInstructions from '@/components/AdminInstructions';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AgencyRequestsAdminPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
-  const session = await getServerSession(auth as any) as any;
+export default async function AgencyRequestsAdminPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> | { lang?: string } }) {
+  const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   const role = (session.user as any)?.role || 'user';
   if(role !== 'admin') redirect('/dashboard');
-  const sp = await (searchParams || Promise.resolve({} as any));
-  const locale:Locale = (sp as any).lang==='en'? 'en':'fr';
+  // Next.js 16: searchParams is a Promise
+  const resolvedSearchParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+  const locale: Locale = resolvedSearchParams?.lang==='en' ? 'en':'fr';
   const t = messages[locale];
 
   let rows: any[] = [];

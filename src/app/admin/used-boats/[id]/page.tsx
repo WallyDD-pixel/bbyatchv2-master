@@ -1,5 +1,4 @@
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { notFound, redirect } from 'next/navigation';
 import HeaderBar from '@/components/HeaderBar';
@@ -8,15 +7,20 @@ import Link from 'next/link';
 import UsedBoatEditClient from './UsedBoatEditClient';
 import UsedBoatEditForm from './UsedBoatEditForm';
 
-export default async function EditUsedBoatPage({ params, searchParams }: { params:{ id:string }, searchParams?: { lang?: string } }){
-  const session = await getServerSession(auth as any) as any;
+export default async function EditUsedBoatPage({ params, searchParams }: { params: Promise<{ id: string }> | { id: string }, searchParams?: Promise<{ lang?: string }> | { lang?: string } }){
+  const session = await getServerSession() as any;
   if(!session?.user || (session.user as any).role !== 'admin') redirect('/');
-  const id = parseInt(params.id,10);
+  
+  // Next.js 16: params and searchParams are Promises
+  const resolvedParams = params instanceof Promise ? await params : params;
+  const id = parseInt(resolvedParams.id, 10);
   if(isNaN(id)) notFound();
+  
   const boat = await (prisma as any).usedBoat.findUnique({ where:{ id } });
   if(!boat) notFound();
-  const sp = searchParams || {};
-  const locale = sp.lang==='en' ? 'en' : 'fr';
+  
+  const resolvedSearchParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+  const locale = resolvedSearchParams.lang==='en' ? 'en' : 'fr';
   const photoList: string[] = boat.photoUrls ? (()=>{ try { return JSON.parse(boat.photoUrls); } catch{return []; } })() : [];
 
   return (

@@ -1,20 +1,21 @@
-import { getServerSession } from "next-auth";
+import { getServerSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from "next/link";
 import { BoatsTableClient } from "./BoatsTableClient";
 import AdminInstructions from "@/components/AdminInstructions";
+import Footer from "@/components/Footer";
 
-export default async function AdminBoatsPage({ searchParams }: { searchParams?: { lang?: string } }) {
-  const session = (await getServerSession(auth as any)) as any;
+export default async function AdminBoatsPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> | { lang?: string } }) {
+  const session = (await getServerSession()) as any;
   if (!session?.user) redirect("/signin");
   const role = (session.user as any)?.role ?? "user";
   if (role !== "admin") redirect("/dashboard");
 
-  const sp = searchParams || {};
-  const locale: Locale = sp?.lang === "en" ? "en" : "fr";
+  // Next.js 16: searchParams is a Promise, Next.js 15: it's an object
+  const resolvedParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+  const locale: Locale = resolvedParams?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 
   let boats: any[] = [];
