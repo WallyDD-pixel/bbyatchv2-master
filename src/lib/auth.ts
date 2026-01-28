@@ -106,6 +106,7 @@ export async function getServerSession() {
   }
 }
 
-// Route handlers - NextAuth v4 retourne directement un handler
+// Route handlers - NextAuth v4 avec Next.js 15 App Router
+// Dans NextAuth v4, NextAuth() retourne directement un handler qui peut être utilisé comme GET et POST
 const handler = NextAuth(authOptions as any);
 export { handler as GET, handler as POST };
