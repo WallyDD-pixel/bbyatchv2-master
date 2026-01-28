@@ -24,20 +24,29 @@ export default function SignInFormClient() {
     setLoading(true);
     try {
       const res = await signIn("credentials", { email, password, redirect: false });
+      console.log("🔍 signIn response:", res);
       if (res?.error) {
+        console.error("❌ signIn error:", res.error);
         setError("Identifiants invalides.");
       } else {
+        console.log("✅ signIn success, checking session...");
         const getRole = async (): Promise<string | null> => {
           // 1) Tenter la session NextAuth
           try {
             const s = await fetch("/api/auth/session", { cache: "no-store" }).then((r) => r.json());
+            console.log("🔍 Session response:", s);
             if (s?.user?.role) return s.user.role as string;
-          } catch {}
+          } catch (e) {
+            console.error("❌ Session fetch error:", e);
+          }
           // 2) Fallback: endpoint profil (DB)
           try {
             const p = await fetch("/api/profile", { method: "GET" }).then((r) => r.json());
+            console.log("🔍 Profile response:", p);
             if (p?.user?.role) return p.user.role as string;
-          } catch {}
+          } catch (e) {
+            console.error("❌ Profile fetch error:", e);
+          }
           return null;
         };
 
