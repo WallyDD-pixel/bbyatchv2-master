@@ -1,21 +1,20 @@
-import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 import Link from 'next/link';
 
-export default async function AgencyDashboard({ searchParams }: { searchParams?: { lang?: string } }){
-  const session = await getServerSession(auth as any) as any;
+export default async function AgencyDashboard({ searchParams }: { searchParams?: Promise<{ lang?: string }> | { lang?: string } }){
+  const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   const userEmail = session.user.email as string;
   const user = await prisma.user.findUnique({ where:{ email: userEmail }, select:{ id:true, role:true } });
   if(!user) redirect('/signin');
   if(user.role!=='agency') redirect('/dashboard');
 
-  const sp = searchParams || {};
+  const sp = await (searchParams || Promise.resolve({} as any));
   const locale: Locale = sp?.lang==='en'? 'en':'fr';
   const t = messages[locale];
 
