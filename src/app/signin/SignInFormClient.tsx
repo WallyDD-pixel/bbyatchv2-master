@@ -50,21 +50,30 @@ export default function SignInFormClient() {
           return null;
         };
 
-        // Admin par email connu (fallback immédiat)
-        if (email.toLowerCase() === "admin@bbyachts.local") {
-          router.replace("/admin");
-          return;
-        }
-
+        // Attendre un peu pour que les cookies soient définis
+        await new Promise((r) => setTimeout(r, 500));
+        
         // Petits retries pour laisser le temps au cookie/session de se propager
         let role: string | null = null;
-        for (let i = 0; i < 3 && !role; i++) {
+        for (let i = 0; i < 5 && !role; i++) {
+          console.log(`🔍 Tentative ${i + 1}/5 pour récupérer le rôle...`);
           role = await getRole();
-          if (!role) await new Promise((r) => setTimeout(r, 200));
+          if (!role) {
+            console.log(`⏳ Pas de rôle trouvé, attente...`);
+            await new Promise((r) => setTimeout(r, 300));
+          } else {
+            console.log(`✅ Rôle trouvé: ${role}`);
+          }
         }
+        
         const finalRole = role || "user";
-        if (finalRole === "admin") router.replace("/admin");
-        else router.replace(callbackUrl);
+        console.log(`🎯 Rôle final: ${finalRole}, redirection...`);
+        
+        if (finalRole === "admin") {
+          router.replace("/admin");
+        } else {
+          router.replace(callbackUrl);
+        }
       }
     } catch (err) {
       setError("Impossible de se connecter pour le moment.");

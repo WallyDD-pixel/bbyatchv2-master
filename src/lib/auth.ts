@@ -4,7 +4,8 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+// No need to import jose for this approach
 
 // Define options explicitly so getServerSession can use the same config in v4
 export const authOptions: NextAuthOptions = {
@@ -54,49 +55,92 @@ export const authOptions: NextAuthOptions = {
 export const auth = authOptions;
 
 // Export getServerSession for use in server components and API routes
-// Simplified version that decodes JWT directly from cookies to avoid Function.prototype.apply errors
+// Uses NextAuth's internal session handling by calling the session endpoint
 export async function getServerSession() {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('next-auth.session-token') || cookieStore.get('__Secure-next-auth.session-token');
+    const headersList = await headers();
     
-    if (!token?.value) {
-      return null;
-    }
+    // Get all cookies to pass to the session endpoint
+    const allCookies = cookieStore.getAll();
+    const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
     
-    // Decode JWT token (simple base64 decode)
+    // Call NextAuth's session endpoint internally
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const sessionUrl = `${baseUrl}/api/auth/session`;
+    
     try {
-      const parts = token.value.split('.');
-      if (parts.length !== 3) return null;
+      const response = await fetch(sessionUrl, {
+        headers: {
+          'Cookie': cookieHeader,
+          'User-Agent': headersList.get('user-agent') || 'server',
+        },
+        cache: 'no-store',
+      });
       
-      // Decode base64 using Node.js Buffer (always available server-side)
-      const base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      const payloadJson = Buffer.from(base64Payload, 'base64').toString('utf8');
-      const payload = JSON.parse(payloadJson);
-      
-      // Get user info from database using email from token
-      if (payload.email) {
-        const user = await (prisma as any).user.findUnique({ 
-          where: { email: payload.email },
-          select: { id: true, email: true, name: true, image: true, role: true }
-        }).catch(() => null);
-        
-        if (user) {
-          return {
-            user: {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              image: user.image,
-              role: user.role || 'user'
-            },
-            expires: payload.exp ? new Date(payload.exp * 1000).toISOString() : undefined
-          } as any;
+      if (response.ok) {
+        const session = await response.json();
+        if (session?.user) {
+          // Get full user info from database
+          if (session.user.email) {
+            const user = await (prisma as any).user.findUnique({ 
+              where: { email: session.user.email },
+              select: { id: true, email: true, name: true, image: true, role: true }
+            }).catch(() => null);
+            
+            if (user) {
+              return {
+                user: {
+                  id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  image: user.image,
+                  role: user.role || (session.user as any)?.role || 'user'
+                },
+                expires: session.expires
+              } as any;
+            }
+          }
+          
+          // Fallback: return session as-is if DB lookup fails
+          return session;
         }
       }
-    } catch (e) {
-      // Invalid token format - return null
-      return null;
+    } catch (fetchError) {
+      // If internal fetch fails, try simple JWT decode as fallback
+      const token = cookieStore.get('next-auth.session-token') || cookieStore.get('__Secure-next-auth.session-token');
+      if (token?.value) {
+        try {
+          const parts = token.value.split('.');
+          if (parts.length === 3) {
+            const base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            const payloadJson = Buffer.from(base64Payload, 'base64').toString('utf8');
+            const payload = JSON.parse(payloadJson);
+            
+            if (payload.email) {
+              const user = await (prisma as any).user.findUnique({ 
+                where: { email: payload.email as string },
+                select: { id: true, email: true, name: true, image: true, role: true }
+              }).catch(() => null);
+              
+              if (user) {
+                return {
+                  user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    image: user.image,
+                    role: user.role || (payload.role as string) || 'user'
+                  },
+                  expires: payload.exp ? new Date((payload.exp as number) * 1000).toISOString() : undefined
+                } as any;
+              }
+            }
+          }
+        } catch (e) {
+          // JWT decode also failed
+        }
+      }
     }
     
     return null;
