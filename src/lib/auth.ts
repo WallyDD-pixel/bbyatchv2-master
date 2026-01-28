@@ -106,6 +106,6 @@ export async function getServerSession() {
   }
 }
 
-// Route handlers
+// Route handlers - NextAuth v4 retourne directement un handler
 const handler = NextAuth(authOptions as any);
 export { handler as GET, handler as POST };
