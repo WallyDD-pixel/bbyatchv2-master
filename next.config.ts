@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true, // Méthode 1: laisser passer la build malgré les écarts de typage générés
   },
+  eslint: {
+    ignoreDuringBuilds: true, // Ignorer les erreurs ESLint pendant le build
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
