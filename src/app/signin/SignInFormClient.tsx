@@ -30,18 +30,31 @@ export default function SignInFormClient() {
         setError("Identifiants invalides.");
       } else {
         console.log("✅ signIn success, checking session...");
+        
+        // Attendre un peu pour que les cookies soient définis
+        await new Promise((r) => setTimeout(r, 300));
+        
         const getRole = async (): Promise<string | null> => {
           // 1) Tenter la session NextAuth
           try {
-            const s = await fetch("/api/auth/session", { cache: "no-store" }).then((r) => r.json());
+            const s = await fetch("/api/auth/session", { 
+              cache: "no-store",
+              credentials: "include",
+            }).then((r) => r.json());
             console.log("🔍 Session response:", s);
-            if (s?.user?.role) return s.user.role as string;
+            if (s?.user) {
+              // Si on a un user, retourner le rôle ou "user" par défaut
+              return (s.user as any)?.role || "user";
+            }
           } catch (e) {
             console.error("❌ Session fetch error:", e);
           }
           // 2) Fallback: endpoint profil (DB)
           try {
-            const p = await fetch("/api/profile", { method: "GET" }).then((r) => r.json());
+            const p = await fetch("/api/profile", { 
+              method: "GET",
+              credentials: "include",
+            }).then((r) => r.json());
             console.log("🔍 Profile response:", p);
             if (p?.user?.role) return p.user.role as string;
           } catch (e) {
@@ -49,30 +62,31 @@ export default function SignInFormClient() {
           }
           return null;
         };
-
-        // Attendre un peu pour que les cookies soient définis
-        await new Promise((r) => setTimeout(r, 500));
         
         // Petits retries pour laisser le temps au cookie/session de se propager
         let role: string | null = null;
-        for (let i = 0; i < 5 && !role; i++) {
-          console.log(`🔍 Tentative ${i + 1}/5 pour récupérer le rôle...`);
+        let sessionFound = false;
+        for (let i = 0; i < 10 && !sessionFound; i++) {
+          console.log(`🔍 Tentative ${i + 1}/10 pour récupérer la session...`);
           role = await getRole();
-          if (!role) {
-            console.log(`⏳ Pas de rôle trouvé, attente...`);
-            await new Promise((r) => setTimeout(r, 300));
+          if (role !== null) {
+            sessionFound = true;
+            console.log(`✅ Session trouvée avec rôle: ${role}`);
           } else {
-            console.log(`✅ Rôle trouvé: ${role}`);
+            console.log(`⏳ Pas de session trouvée, attente...`);
+            await new Promise((r) => setTimeout(r, 200));
           }
         }
         
         const finalRole = role || "user";
         console.log(`🎯 Rôle final: ${finalRole}, redirection...`);
         
+        // Utiliser window.location.href pour forcer un rechargement complet de la page
+        // Cela garantit que les cookies sont bien pris en compte
         if (finalRole === "admin") {
-          router.replace("/admin");
+          window.location.href = "/admin";
         } else {
-          router.replace(callbackUrl);
+          window.location.href = callbackUrl;
         }
       }
     } catch (err) {

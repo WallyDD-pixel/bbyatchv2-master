@@ -11,11 +11,16 @@ import { cookies, headers } from "next/headers";
 export const authOptions: NextAuthOptions = {
   // Note: PrismaAdapter is not needed with JWT strategy, but kept for compatibility
   // adapter: PrismaAdapter(prisma) as any,
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
   pages: {
     error: '/signin', // Redirect errors to signin page
   },
+  // Let NextAuth handle cookies automatically - don't override
+  // This ensures compatibility with NextAuth v4
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -36,8 +41,18 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ user, account, profile }: any) {
+      // Allow sign in if user exists
+      return !!user;
+    },
     async jwt({ token, user }: any) {
-      if (user) token.role = (user as any).role;
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
+        token.picture = user.image;
+        token.role = (user as any).role;
+      }
       if (!token.role && token?.email) {
         const dbUser = await (prisma as any).user.findUnique({ where: { email: token.email } }).catch(() => null);
         token.role = dbUser?.role || "user";
@@ -45,8 +60,18 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }: any) {
-      if (session?.user) (session.user as any).role = token?.role || "user";
+      if (session?.user) {
+        (session.user as any).id = token.id;
+        (session.user as any).role = token?.role || "user";
+      }
       return session;
+    },
+    async redirect({ url, baseUrl }: any) {
+      // Allow relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      // Allow callback URLs on the same origin
+      if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
 };
@@ -55,76 +80,140 @@ export const authOptions: NextAuthOptions = {
 export const auth = authOptions;
 
 // Export getServerSession for use in server components and API routes
-// Uses direct JWT decoding to avoid fetch loops that can crash the app on startup
+// Uses NextAuth's internal session API which is the most reliable method
 export async function getServerSession() {
   try {
     const cookieStore = await cookies();
+    const headersList = await headers();
     
-    // Get the JWT token directly from cookies (no fetch to avoid startup loops)
-    const token = cookieStore.get('next-auth.session-token') || 
-                  cookieStore.get('__Secure-next-auth.session-token');
+    // Get all cookies to pass to the session endpoint
+    const allCookies = cookieStore.getAll();
+    const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
     
-    if (!token?.value) {
-      return null;
+    // Use NextAuth's session API endpoint (most reliable method)
+    // Try to get base URL from environment or headers
+    let baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL;
+    
+    if (!baseUrl) {
+      const host = headersList.get('host');
+      const protocol = headersList.get('x-forwarded-proto') || 
+                      (headersList.get('x-forwarded-ssl') === 'on' ? 'https' : 'http');
+      if (host) {
+        baseUrl = `${protocol}://${host}`;
+      } else {
+        baseUrl = 'http://localhost:3000';
+      }
     }
+    
+    const sessionUrl = `${baseUrl}/api/auth/session`;
     
     try {
-      // Decode JWT directly without verification (we trust our own cookies)
-      const parts = token.value.split('.');
-      if (parts.length !== 3) {
-        return null;
-      }
+      const response = await fetch(sessionUrl, {
+        headers: {
+          'Cookie': cookieHeader,
+          'User-Agent': headersList.get('user-agent') || 'server',
+          'Accept': 'application/json',
+        },
+        cache: 'no-store',
+      });
       
-      // Decode the payload (second part of JWT)
-      const base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      const payloadJson = Buffer.from(base64Payload, 'base64').toString('utf8');
-      const payload = JSON.parse(payloadJson);
-      
-      // Check if token is expired
-      if (payload.exp && payload.exp * 1000 < Date.now()) {
-        return null;
-      }
-      
-      // Get user from database using email from JWT
-      if (payload.email) {
-        const user = await (prisma as any).user.findUnique({ 
-          where: { email: payload.email as string },
-          select: { id: true, email: true, name: true, image: true, role: true }
-        }).catch(() => null);
-        
-        if (user) {
-          return {
-            user: {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              image: user.image,
-              role: user.role || (payload.role as string) || 'user'
-            },
-            expires: payload.exp ? new Date((payload.exp as number) * 1000).toISOString() : undefined
-          } as any;
+      if (response.ok) {
+        const session = await response.json();
+        if (session?.user) {
+          // Get full user info from database to ensure we have the latest role
+          if (session.user.email) {
+            const user = await (prisma as any).user.findUnique({
+              where: { email: session.user.email },
+              select: { id: true, email: true, name: true, image: true, role: true }
+            }).catch(() => null);
+            
+            if (user) {
+              return {
+                user: {
+                  id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  image: user.image,
+                  role: user.role || (session.user as any)?.role || 'user'
+                },
+                expires: session.expires
+              } as any;
+            }
+          }
+          // Fallback: return session as-is if DB lookup fails
+          return session;
         }
       }
-      
-      // Fallback: return session from JWT payload if DB lookup fails
-      if (payload.email) {
-        return {
-          user: {
-            id: payload.sub || payload.id,
-            email: payload.email,
-            name: payload.name,
-            image: payload.picture || payload.image,
-            role: payload.role || 'user'
-          },
-          expires: payload.exp ? new Date((payload.exp as number) * 1000).toISOString() : undefined
-        } as any;
-      }
-      
-      return null;
-    } catch (decodeError) {
-      // JWT decode failed, return null
-      return null;
+    } catch (fetchError) {
+      // If fetch fails, try JWT decode as fallback
+      console.error('Session fetch failed, trying JWT decode:', fetchError);
     }
+    
+    // Fallback: Try to decode JWT directly from cookies
+    const cookieNames = [
+      'next-auth.session-token',
+      '__Secure-next-auth.session-token',
+      'authjs.session-token',
+      '__Secure-authjs.session-token',
+    ];
+    
+    let token = null;
+    for (const name of cookieNames) {
+      const found = cookieStore.get(name);
+      if (found?.value) {
+        token = found;
+        break;
+      }
+    }
+    
+    // If not found by name, search in all cookies
+    if (!token) {
+      for (const cookie of allCookies) {
+        if (cookie.name.includes('session-token') || cookie.name.includes('session')) {
+          token = cookie;
+          break;
+        }
+      }
+    }
+    
+    if (token?.value) {
+      try {
+        const parts = token.value.split('.');
+        if (parts.length === 3) {
+          const base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          const payloadJson = Buffer.from(base64Payload, 'base64').toString('utf8');
+          const payload = JSON.parse(payloadJson);
+          
+          if (payload.exp && payload.exp * 1000 < Date.now()) {
+            return null;
+          }
+          
+          if (payload.email) {
+            const user = await (prisma as any).user.findUnique({ 
+              where: { email: payload.email as string },
+              select: { id: true, email: true, name: true, image: true, role: true }
+            }).catch(() => null);
+            
+            if (user) {
+              return {
+                user: {
+                  id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  image: user.image,
+                  role: user.role || (payload.role as string) || 'user'
+                },
+                expires: payload.exp ? new Date((payload.exp as number) * 1000).toISOString() : undefined
+              } as any;
+            }
+          }
+        }
+      } catch (decodeError) {
+        // JWT decode failed
+      }
+    }
+    
+    return null;
   } catch (error) {
     // Silently fail and return null to prevent crashes
     return null;
