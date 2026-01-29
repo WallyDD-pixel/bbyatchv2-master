@@ -12,6 +12,7 @@ const manrope = Manrope({
   subsets: ["latin"],
   display: "swap",
   fallback: ["system-ui", "arial"],
+  adjustFontFallback: false, // Désactiver l'ajustement automatique pour éviter les timeouts
 });
 
 const playfair = Playfair_Display({
@@ -20,6 +21,7 @@ const playfair = Playfair_Display({
   weight: ["400", "700"],
   display: "swap",
   fallback: ["Georgia", "serif"],
+  adjustFontFallback: false,
 });
 
 // Police temporaire pour Aviano (en attendant la vraie police)
@@ -29,6 +31,7 @@ const montserrat = Montserrat({
   weight: ["400", "500", "600", "700"],
   display: "swap",
   fallback: ["system-ui", "sans-serif"],
+  adjustFontFallback: false,
 });
 
 // Variables pour les polices personnalisées (remplacées par Playfair Display et Montserrat)
