@@ -37,7 +37,17 @@ export async function GET(req: Request) {
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return NextResponse.json({ error: 'bad_range' }, { status: 400 });
   try {
     const [boats, slots, reservations] = await Promise.all([
-      (prisma as any).boat.findMany({ select: { id: true, name: true, slug: true, imageUrl: true } }),
+      (prisma as any).boat.findMany({ 
+        select: { 
+          id: true, 
+          name: true, 
+          slug: true, 
+          imageUrl: true,
+          skipperPrice: true,
+          skipperRequired: true
+        },
+        orderBy: { name: 'asc' }
+      }),
       (prisma as any).availabilitySlot.findMany({
         where: { date: { gte: start, lte: end } },
         select: { id: true, boatId: true, date: true, part: true, status: true, note: true }
@@ -45,8 +55,29 @@ export async function GET(req: Request) {
       (prisma as any).reservation.findMany({
         where: { startDate: { lte: end }, endDate: { gte: start }, status: { not: 'canceled' } },
         include: {
-          boat: { include: { options: { select: { id: true, label: true, price: true } } } },
-          user: { select: { id: true, name: true, firstName: true, lastName: true, email: true } }
+          boat: { 
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              imageUrl: true,
+              skipperPrice: true,
+              skipperRequired: true,
+              options: { 
+                select: { id: true, label: true, price: true } 
+              }
+            }
+          },
+          user: { 
+            select: { 
+              id: true, 
+              name: true, 
+              firstName: true, 
+              lastName: true, 
+              email: true, 
+              phone: true 
+            } 
+          }
         }
       })
     ]);
@@ -76,7 +107,7 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch {}
   const { boatId, date, part, note } = body || {};
   if (!boatId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
-  if (!['AM','PM','FULL','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
+  if (!['AM','PM','FULL'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
   
   // Normaliser la date en UTC pour correspondre à la recherche
   // Parser la date depuis la chaîne YYYY-MM-DD
@@ -100,11 +131,11 @@ export async function POST(req: Request) {
       await (prisma as any).availabilitySlot.delete({ where: { id: existing.id } });
       return NextResponse.json({ toggled: 'removed', id: existing.id });
     }
-    // If creating FULL remove AM/PM/SUNSET for that day for this boat
+    // If creating FULL remove AM/PM for that day for this boat
     if (part === 'FULL') {
-      await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: { in: ['AM','PM','SUNSET'] } } });
+      await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: { in: ['AM','PM'] } } });
     } else {
-      // If creating AM, PM, or SUNSET and FULL exists, delete FULL
+      // If creating AM or PM and FULL exists, delete FULL
       await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: 'FULL' } });
     }
     const created = await (prisma as any).availabilitySlot.create({ data: { boatId: Number(boatId), date: day, part, status: 'available', note: note || null } });

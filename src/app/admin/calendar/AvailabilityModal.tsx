@@ -18,8 +18,9 @@ interface AvailabilityModalProps {
     boatId: number;
     experienceId?: number | null;
     dates: string[];
-    part: 'FULL' | 'AM' | 'PM' | 'SUNSET';
+    part: 'FULL' | 'AM' | 'PM';
     note?: string;
+    experiencePrice?: number | null;
   }) => Promise<void>;
 }
 
@@ -27,14 +28,41 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedBoatId, setSelectedBoatId] = useState<number | null>(null);
   const [selectedExperienceId, setSelectedExperienceId] = useState<number | null>(null);
+  const [experiencePrice, setExperiencePrice] = useState<string>('');
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [part, setPart] = useState<'FULL' | 'AM' | 'PM' | 'SUNSET'>('FULL');
+  const [part, setPart] = useState<'FULL' | 'AM' | 'PM'>('FULL');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [linkToEvent, setLinkToEvent] = useState(false);
   const [existingSlots, setExistingSlots] = useState<Slot[]>([]);
   const [existingReservations, setExistingReservations] = useState<Reservation[]>([]);
+
+  // Charger automatiquement le prix par défaut quand bateau et événement sont sélectionnés
+  useEffect(() => {
+    const loadDefaultPrice = async () => {
+      if (selectedBoatId && selectedExperienceId && linkToEvent) {
+        try {
+          const res = await fetch(`/api/admin/boats/${selectedBoatId}/experience-price?experienceId=${selectedExperienceId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.price) {
+              setExperiencePrice(String(data.price));
+            } else if (!experiencePrice) {
+              // Ne pas écraser si l'utilisateur a déjà saisi un prix
+              setExperiencePrice('');
+            }
+          }
+        } catch (err) {
+          console.error('Error loading default experience price:', err);
+        }
+      } else if (!selectedBoatId || !selectedExperienceId) {
+        // Réinitialiser le prix si bateau ou événement désélectionné
+        setExperiencePrice('');
+      }
+    };
+    loadDefaultPrice();
+  }, [selectedBoatId, selectedExperienceId, linkToEvent]);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   const loc = locale === 'fr' ? fr : enUS;
@@ -45,6 +73,32 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
       loadExistingAvailability();
     }
   }, [step, selectedBoatId, currentMonth]);
+
+  // Charger automatiquement le prix par défaut quand bateau et événement sont sélectionnés
+  useEffect(() => {
+    const loadDefaultPrice = async () => {
+      if (selectedBoatId && selectedExperienceId && linkToEvent) {
+        try {
+          const res = await fetch(`/api/admin/boats/${selectedBoatId}/experience-price?experienceId=${selectedExperienceId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.price) {
+              setExperiencePrice(String(data.price));
+            } else if (!experiencePrice) {
+              // Ne pas écraser si l'utilisateur a déjà saisi un prix
+              setExperiencePrice('');
+            }
+          }
+        } catch (err) {
+          console.error('Error loading default experience price:', err);
+        }
+      } else if (!selectedBoatId || !selectedExperienceId) {
+        // Réinitialiser le prix si bateau ou événement désélectionné
+        setExperiencePrice('');
+      }
+    };
+    loadDefaultPrice();
+  }, [selectedBoatId, selectedExperienceId, linkToEvent]);
 
   const loadExistingAvailability = async () => {
     if (!selectedBoatId) return;
@@ -178,12 +232,14 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
         dates: Array.from(selectedDates).sort(),
         part,
         note: note.trim() || undefined,
+        experiencePrice: linkToEvent && selectedExperienceId && experiencePrice ? Number(experiencePrice) : null,
       });
       
       // Réinitialiser et fermer
       setStep(1);
       setSelectedBoatId(null);
       setSelectedExperienceId(null);
+      setExperiencePrice('');
       setSelectedDates(new Set());
       setPart('FULL');
       setNote('');
@@ -203,6 +259,7 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
     setStep(1);
     setSelectedBoatId(null);
     setSelectedExperienceId(null);
+    setExperiencePrice('');
     setSelectedDates(new Set());
     setPart('FULL');
     setNote('');
@@ -459,7 +516,7 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
                   {locale === 'fr' ? 'Type de créneau' : 'Slot type'}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
-                  {(['FULL', 'AM', 'PM', 'SUNSET'] as const).map(p => (
+                  {(['FULL', 'AM', 'PM'] as const).map(p => (
                     <button
                       key={p}
                       onClick={() => setPart(p)}
@@ -473,16 +530,14 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
                         <div className={`text-2xl mb-2 ${
                           part === p ? 'scale-110' : ''
                         } transition-transform`}>
-                          {p === 'FULL' ? '🔵' : p === 'AM' || p === 'PM' ? '🟢' : '🟠'}
+                          {p === 'FULL' ? '🔵' : '🟢'}
                         </div>
                         <p className="font-semibold text-sm text-gray-900">
                           {p === 'FULL' 
                             ? locale === 'fr' ? 'Journée complète (8h)' : 'Full day (8h)'
                             : p === 'AM'
                             ? locale === 'fr' ? 'Matin (4h)' : 'Morning (4h)'
-                            : p === 'PM'
-                            ? locale === 'fr' ? 'Après-midi (4h)' : 'Afternoon (4h)'
-                            : 'Sunset (2h)'
+                            : locale === 'fr' ? 'Après-midi (4h)' : 'Afternoon (4h)'
                           }
                         </p>
                       </div>
@@ -505,10 +560,27 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
                   </span>
                 </label>
                 {linkToEvent && (
-                  <div className="mt-3">
+                  <div className="mt-3 space-y-3">
                     <select
                       value={selectedExperienceId || ''}
-                      onChange={(e) => setSelectedExperienceId(e.target.value ? Number(e.target.value) : null)}
+                      onChange={async (e) => {
+                        const expId = e.target.value ? Number(e.target.value) : null;
+                        setSelectedExperienceId(expId);
+                        // Charger le prix existant si disponible
+                        if (expId && selectedBoatId) {
+                          try {
+                            const res = await fetch(`/api/admin/boats/${selectedBoatId}/experience-price?experienceId=${expId}`);
+                            if (res.ok) {
+                              const data = await res.json();
+                              setExperiencePrice(data.price ? String(data.price) : '');
+                            }
+                          } catch (err) {
+                            console.error('Error loading experience price:', err);
+                          }
+                        } else {
+                          setExperiencePrice('');
+                        }
+                      }}
                       className="w-full h-10 px-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">{locale === 'fr' ? 'Sélectionner un événement' : 'Select an event'}</option>
@@ -518,6 +590,27 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
                         </option>
                       ))}
                     </select>
+                    {selectedExperienceId && selectedBoatId && (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                          {locale === 'fr' ? 'Prix de l\'expérience (€)' : 'Experience price (€)'}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={experiencePrice}
+                          onChange={(e) => setExperiencePrice(e.target.value)}
+                          placeholder={locale === 'fr' ? 'Définir le prix...' : 'Set the price...'}
+                          className="w-full h-10 px-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {locale === 'fr' 
+                            ? 'Ce prix deviendra le prix par défaut pour cette combinaison bateau-événement. Si le prix n\'est pas défini, l\'expérience n\'aura pas de prix affiché.' 
+                            : 'This price will become the default price for this boat-event combination. If the price is not set, the experience will not have a displayed price.'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -560,10 +653,18 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
                     }
                   </p>
                   {linkToEvent && selectedExperienceId && (
-                    <p>
-                      <strong>{locale === 'fr' ? 'Événement:' : 'Event:'}</strong>{' '}
-                      {experiences.find(e => e.id === selectedExperienceId)?.[locale === 'fr' ? 'titleFr' : 'titleEn']}
-                    </p>
+                    <>
+                      <p>
+                        <strong>{locale === 'fr' ? 'Événement:' : 'Event:'}</strong>{' '}
+                        {experiences.find(e => e.id === selectedExperienceId)?.[locale === 'fr' ? 'titleFr' : 'titleEn']}
+                      </p>
+                      {experiencePrice && (
+                        <p>
+                          <strong>{locale === 'fr' ? 'Prix:' : 'Price:'}</strong>{' '}
+                          {Number(experiencePrice).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US')} €
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

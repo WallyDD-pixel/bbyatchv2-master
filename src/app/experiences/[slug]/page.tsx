@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import ExperienceBoatSelector from "@/components/ExperienceBoatSelector";
 import BoatMediaCarousel from "@/components/BoatMediaCarousel";
 
-export default async function ExperienceDetailPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string }> }) {
+export default async function ExperienceDetailPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; date?: string; boat?: string }> }) {
   // Next.js 15 : params et searchParams sont maintenant des Promises
   const { slug: slugParam } = await params;
   const sp = await (searchParams || Promise.resolve({}));
@@ -20,6 +20,8 @@ export default async function ExperienceDetailPage({ params, searchParams }: { p
   }
   
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
+  const initialDate = sp?.date || undefined;
+  const initialBoatId = sp?.boat ? Number(sp.boat) : undefined;
   const t = messages[locale];
 
   // Normaliser le slug : remplacer les espaces multiples par un seul espace, trim
@@ -186,7 +188,7 @@ export default async function ExperienceDetailPage({ params, searchParams }: { p
             </div>
           </div>
           <aside className="lg:col-span-1 space-y-6">
-            <ExperienceBoatSelector locale={locale} experienceSlug={slug} boats={boatsForClient} experienceTitle={locale==='fr'? exp.titleFr: exp.titleEn} experience={exp} />
+            <ExperienceBoatSelector locale={locale} experienceSlug={slug} boats={boatsForClient} experienceTitle={locale==='fr'? exp.titleFr: exp.titleEn} experience={exp} initialDate={initialDate} initialBoatId={initialBoatId} />
           </aside>
         </div>
       </main>

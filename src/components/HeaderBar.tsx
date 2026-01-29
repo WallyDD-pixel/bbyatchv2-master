@@ -260,10 +260,10 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
               id="mobile-menu"
               role="dialog"
               aria-modal="true"
-              className="md:hidden fixed left-1/2 -translate-x-1/2 top-[76px] w-[92%] max-w-md rounded-3xl bg-white border border-slate-200/80 shadow-2xl p-6 z-[110] backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300"
+              className="md:hidden fixed left-1/2 -translate-x-1/2 top-[76px] w-[92%] max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 shadow-2xl p-6 z-[110] backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300"
             >
               {/* Logo dans le menu mobile */}
-              <div className="flex justify-center mb-6 pb-5 border-b border-slate-200">
+              <div className="flex justify-center mb-6 pb-5 border-b border-slate-200 dark:border-slate-700">
                 <a href={homeBase} onClick={() => setOpen(false)} className="flex items-center justify-center hover:opacity-80 transition-opacity" aria-label={t.app_name}>
                   <img 
                     src={logoUrl || defaultLogo} 
@@ -291,26 +291,26 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                     href={l.href}
                     target={l.target}
                     onClick={()=>setOpen(false)}
-                    className="group px-5 py-4 rounded-2xl font-semibold flex items-center justify-between transition-all duration-200 relative bg-slate-50 hover:bg-blue-50 active:bg-blue-100 border border-slate-200 hover:border-blue-200"
+                    className="group px-5 py-4 rounded-2xl font-semibold flex items-center justify-between transition-all duration-200 relative bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:bg-blue-100 dark:active:bg-blue-900/40 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-700"
                   >
-                    {/* labels: texte sombre pour meilleure lisibilité */}
-                    <span className="text-slate-900 text-base font-semibold">{locale === 'fr' ? l.labelFr : l.labelEn}</span>
+                    {/* labels: texte sombre en light, clair en dark */}
+                    <span className="text-slate-900 dark:text-slate-100 text-base font-semibold">{locale === 'fr' ? l.labelFr : l.labelEn}</span>
                     {/* Flèche indicateur */}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all duration-200">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all duration-200">
                       <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
                   </a>
                 ))}
               </nav>
-              <div className="my-5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+              <div className="my-5 h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
               
               {/* Sélecteur de langue */}
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-300 p-1.5 bg-slate-50 mb-4">
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-300 dark:border-slate-700 p-1.5 bg-slate-50 dark:bg-slate-800 mb-4">
                 <button
                   className={`flex-1 h-11 rounded-xl text-sm font-bold transition-all duration-200 ${
                     locale === "fr" 
                       ? "bg-blue-600 text-white shadow-lg scale-[1.02]" 
-                      : "text-slate-700 hover:text-slate-900 hover:bg-white"
+                      : "text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700"
                   }`}
                   style={locale === "fr" ? { backgroundColor: '#2563eb' } : {}}
                   aria-pressed={locale === "fr"}
@@ -323,7 +323,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                   className={`flex-1 h-11 rounded-xl text-sm font-bold transition-all duration-200 ${
                     locale === "en" 
                       ? "bg-blue-600 text-white shadow-lg scale-[1.02]" 
-                      : "text-slate-700 hover:text-slate-900 hover:bg-white"
+                      : "text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700"
                   }`}
                   style={locale === "en" ? { backgroundColor: '#2563eb' } : {}}
                   aria-pressed={locale === "en"}

@@ -7,6 +7,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import ExperiencePayButton from './pay-button';
 import ExperienceBookingDisplay from './ExperienceBookingDisplay';
+import ExperiencePriceClient from './ExperiencePriceClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,9 +38,13 @@ export default async function BookingExperiencePage({ searchParams }:{ searchPar
   const fullDay = part==='FULL';
   const dayCount = (()=>{ const s=new Date(start+'T00:00:00'); const e=new Date(end+'T00:00:00'); return Math.round((e.getTime()-s.getTime())/86400000)+1; })();
 
-  // Prix simple: prix experience * nb jours (si full) sinon moitié? (placeholder)
+  // Prix base: prix experience * nb jours (si full) sinon moitié (55%)
   const basePrice = boatExp?.price || 0;
-  const computedPrice = fullDay? basePrice * dayCount : Math.round(basePrice * 0.55); // demi-journée 55%
+  const basePriceForDays = fullDay? basePrice * dayCount : Math.round(basePrice * 0.55);
+  
+  // Les options seront récupérées côté client depuis sessionStorage et ajoutées au total
+  // Pour l'affichage initial, on montre seulement le prix de base
+  const computedPrice = basePriceForDays; // Sera mis à jour côté client avec les options
   const deposit = Math.round(computedPrice * 0.2);
   const remaining = computedPrice - deposit;
 
@@ -94,27 +99,28 @@ export default async function BookingExperiencePage({ searchParams }:{ searchPar
             </div>
           </div>
           <div className="md:col-span-1 space-y-6">
-            <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-semibold mb-4">{locale==='fr'? 'Prix':'Price'}</h2>
-              <div className="flex justify-between text-sm"><span>{locale==='fr'? 'Base':'Base'}</span><span>{money(basePrice, locale)}</span></div>
-              {fullDay && dayCount>1 && <div className="flex justify-between text-xs mt-1 text-black/60"><span>x {dayCount} {locale==='fr'? 'jours':'days'}</span><span>{money(basePrice*dayCount, locale)}</span></div>}
-              {!fullDay && <div className="text-[10px] text-black/50 mt-1">{locale==='fr'? 'Tarif demi-journée estimé (55%)':'Half-day estimated (55%)'}</div>}
-              <div className="border-t border-black/10 my-3" />
-              <div className="flex justify-between font-semibold text-sm"><span>{locale==='fr'? 'Total':'Total'}</span><span>{money(computedPrice, locale)}</span></div>
-              <div className="flex justify-between text-xs mt-2"><span>{locale==='fr'? 'Acompte (20%)':'Deposit (20%)'}</span><span>{money(deposit, locale)}</span></div>
-              <div className="flex justify-between text-xs"><span>{locale==='fr'? 'Reste':'Remaining'}</span><span>{money(remaining, locale)}</span></div>
-              {checkoutUrl ? (
-                // Remplacement par bouton client Stripe expérience
-                boat && (
+            <ExperiencePriceClient 
+              locale={locale}
+              basePrice={basePrice}
+              options={options}
+              dayCount={dayCount}
+              fullDay={fullDay}
+            />
+            {checkoutUrl ? (
+              // Remplacement par bouton client Stripe expérience
+              boat && (
+                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
                   <ExperiencePayButton expSlug={experience.slug} boatId={boat.id} start={start} end={end} part={part} locale={locale} disabled={!user} />
-                )
-              ) : (
-                <span className="mt-5 w-full h-11 rounded-full bg-black/20 text-white/60 font-semibold text-sm flex items-center justify-center cursor-not-allowed">
+                  {!user && <p className="mt-2 text-[10px] text-black/50">{locale==='fr'? 'Connectez-vous pour accélérer le paiement':'Log in to speed up checkout'}</p>}
+                </div>
+              )
+            ) : (
+              <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
+                <span className="w-full h-11 rounded-full bg-black/20 text-white/60 font-semibold text-sm flex items-center justify-center cursor-not-allowed">
                   {locale==='fr'? 'Continuer vers paiement':'Continue to payment'}
                 </span>
-              )}
-              {!user && <p className="mt-2 text-[10px] text-black/50">{locale==='fr'? 'Connectez-vous pour accélérer le paiement':'Log in to speed up checkout'}</p>}
-            </div>
+              </div>
+            )}
             <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm text-[10px] text-black/60 space-y-2">
               <p>⚠️ {locale==='fr'? 'Prix estimatif. Le calcul final peut varier selon options et taxes.' : 'Indicative price. Final calculation may vary with options and taxes.'}</p>
               <p>✔️ {locale==='fr'? 'Étape suivante : création / connexion compte pour réserver.' : 'Next: create / login account to book.'}</p>

@@ -83,9 +83,13 @@ export async function GET(_req: Request, context: any) {
     const baseTotal = reservation.totalPrice || 0;
     const reservationData = reservation as any;
     const finalFuelAmount = reservationData.finalFuelAmount || 0; // Montant final du carburant
+    
+    // IMPORTANT: Le skipper et le carburant sont payés sur place
+    // L'acompte de 20% ne s'applique QUE sur le prix du bateau + options (sans skipper ni carburant)
+    // Le total final = bateau + options + skipper + carburant
     const total = baseTotal + finalFuelAmount; // Total avec carburant
-    const deposit = reservation.depositAmount || 0;
-    const balance = Math.max(total - deposit, 0);
+    const deposit = reservation.depositAmount || 0; // Acompte sur bateau + options uniquement
+    // Le solde payé = (bateau + options - acompte) + skipper + carburant (tous payés)
     const totalPaid = total; // puisque completed
     
     // Parser metadata
@@ -108,8 +112,11 @@ export async function GET(_req: Request, context: any) {
     const skipperDays = (part==='FULL' || part==='SUNSET') ? Math.max(nbJours, 1) : 1;
     const skipperTotal = boatData?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0;
     
-    // Calculer le prix de base (sans options ni skipper)
-    const basePrice = baseTotal - skipperTotal;
+    // IMPORTANT: Le skipper et le carburant sont payés sur place
+    // L'acompte de 20% ne s'applique QUE sur le prix du bateau + options (sans skipper ni carburant)
+    // Calculer le prix de base pour l'acompte (prix bateau + options, SANS skipper)
+    const basePriceForDeposit = baseTotal - skipperTotal; // Prix bateau + options (sans skipper)
+    const basePrice = basePriceForDeposit; // Pour l'affichage dans la facture
     
     // Récupérer les options sélectionnées
     const selectedOptionIds = meta?.optionIds || [];
@@ -304,15 +311,32 @@ export async function GET(_req: Request, context: any) {
     y -= 20;
     
     // Ligne acompte déjà payé
-    page.drawText('Acompte déjà payé', { x: tableX1, y: y-2, size:10, font, color:textMuted });
+    page.drawText('Acompte déjà payé (20% sur bateau + options)', { x: tableX1, y: y-2, size:10, font, color:textMuted });
     page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
     page.drawText('-'+formatMoney(deposit), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
     y -= 16;
     
-    // Ligne solde payé
-    page.drawText('Solde payé', { x: tableX1, y: y-2, size:10, font, color:textMuted });
+    // Ligne solde payé (bateau + options - acompte)
+    const remainingBoatOptions = Math.max(basePriceForDeposit - deposit, 0);
+    page.drawText('Solde payé (bateau + options)', { x: tableX1, y: y-2, size:10, font, color:textMuted });
     page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
-    page.drawText(formatMoney(balance), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
+    page.drawText(formatMoney(remainingBoatOptions), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
+    y -= 16;
+    
+    // Ligne skipper payé sur place
+    if(skipperTotal > 0){
+      page.drawText('Skipper (payé sur place)', { x: tableX1, y: y-2, size:10, font, color:textMuted });
+      page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
+      page.drawText(formatMoney(skipperTotal), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
+      y -= 16;
+    }
+    
+    // Ligne carburant payé sur place
+    if(finalFuelAmount > 0){
+      page.drawText('Carburant (payé sur place)', { x: tableX1, y: y-2, size:10, font, color:textMuted });
+      page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
+      page.drawText(formatMoney(finalFuelAmount), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
+    }
     y -= 12;
     page.drawLine({ start:{ x:tableX1, y:y }, end:{ x: width-leftMargin, y:y }, thickness:0.5, color: lightGray });
     y -= 20;
@@ -320,7 +344,11 @@ export async function GET(_req: Request, context: any) {
     // Récap
     const recapX = width - 230;
     const recapWidth = 180;
-    const recapHeight = finalFuelAmount > 0 ? 100 : 80;
+    // Calculer la hauteur selon le nombre de lignes
+    let recapLinesCount = 3; // Total bateau + options, Total contrat, Acompte payé, Solde payé
+    if(skipperTotal > 0) recapLinesCount++;
+    if(finalFuelAmount > 0) recapLinesCount++;
+    const recapHeight = recapLinesCount * 14 + 20;
     page.drawRectangle({ x: recapX-10, y: y-recapHeight, width: recapWidth, height: recapHeight, color: rgb(1,1,1), borderColor: borderGray, borderWidth: .6 });
     let ry = y - 24;
     const recapLine = (label:string, value:string, bold=false) => {
@@ -328,13 +356,16 @@ export async function GET(_req: Request, context: any) {
       page.drawText(sanitize(value), { x: recapX + recapWidth - 85, y: ry, size:9, font: bold? fontBold: font, color:textDark });
       ry -= 14;
     };
-    recapLine('Total hors carburant', formatMoney(baseTotal));
+    recapLine('Total bateau + options', formatMoney(basePriceForDeposit));
+    if(skipperTotal > 0){
+      recapLine('Skipper (payé sur place)', formatMoney(skipperTotal));
+    }
     if(finalFuelAmount > 0){
-      recapLine('Carburant consommé', formatMoney(finalFuelAmount));
+      recapLine('Carburant (payé sur place)', formatMoney(finalFuelAmount));
     }
     recapLine('Total contrat', formatMoney(total), true);
-    recapLine('Total payé', formatMoney(totalPaid));
-    recapLine('Solde restant', formatMoney(0), true);
+    recapLine('Acompte payé (20%)', formatMoney(deposit));
+    recapLine('Solde payé', formatMoney(totalPaid - deposit), true);
     y -= recapHeight + 20;
 
     // ===== Informations de paiement =====

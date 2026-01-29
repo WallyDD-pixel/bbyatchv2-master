@@ -144,7 +144,7 @@ export default function ContactForm() {
         <button
           type='submit'
           disabled={submitting}
-          className='w-full h-12 rounded-full bg-[var(--primary)] text-white font-semibold hover:brightness-110 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed'
+          className='w-full h-12 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-sm disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:bg-gray-300'
         >
           {submitting 
             ? (locale === 'fr' ? 'Envoi en cours...' : 'Sending...')

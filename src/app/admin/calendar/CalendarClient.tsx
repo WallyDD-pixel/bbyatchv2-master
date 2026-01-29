@@ -9,7 +9,7 @@ import { format, startOfDay, endOfDay, addDays } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import AvailabilityModal from './AvailabilityModal';
 
-interface Boat { id: number; name: string; slug: string; imageUrl?: string|null; }
+interface Boat { id: number; name: string; slug: string; imageUrl?: string|null; options?: { id: number; label: string; price: number | null }[]; skipperPrice?: number | null; skipperRequired?: boolean | null; }
 interface Slot { id: number; boatId: number; date: string; part: string; status: string; note?: string | null; }
 interface Reservation {
   id: string;
@@ -23,8 +23,9 @@ interface Reservation {
   depositAmount?: number | null;
   remainingAmount?: number | null;
   metadata?: string | null;
-  boat?: Boat | null;
-  user?: { id: string; name: string | null; firstName: string | null; lastName: string | null; email: string } | null;
+  boat?: Boat & { skipperPrice?: number | null; skipperRequired?: boolean | null } | null;
+  user?: { id: string; name: string | null; firstName: string | null; lastName: string | null; email: string; phone?: string | null } | null;
+  createdAt?: string;
 }
 
 function localKey(dateStr: string) { 
@@ -76,8 +77,12 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
       if (slotsRes.ok) {
         const slotsData = await slotsRes.json();
         // L'API /api/admin/availability retourne { boats, slots, reservations }
-        const boatsList = slotsData.boats || [];
+        const boatsList = Array.isArray(slotsData.boats) ? slotsData.boats : [];
         console.log('[Load] Boats loaded from availability API:', boatsList.length, boatsList);
+        console.log('[Load] Full API response keys:', Object.keys(slotsData));
+        if (boatsList.length === 0) {
+          console.warn('[Load] No boats found in API response. Full response:', slotsData);
+        }
         setBoats(boatsList);
         
         const localKey = (dateStr: string) => {
@@ -273,9 +278,10 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           end.setHours(18, 0, 0, 0);
         }
         
+        const boatName = s.boatId ? boats.find(b => b.id === s.boatId)?.name : '';
         ev.push({
           id: 'expSlot-' + s.id,
-          title: s.part + (s.note ? ' • ' + s.note : ''),
+          title: (boatName ? boatName + ' - ' : '') + s.part + (s.note ? ' • ' + s.note : ''),
           start: start.toISOString(),
           end: end.toISOString(),
           allDay: false,
@@ -372,6 +378,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     dates: string[];
     part: 'FULL' | 'AM' | 'PM' | 'SUNSET';
     note?: string;
+    experiencePrice?: number | null;
   }) => {
     setSaving(true);
     try {
@@ -392,6 +399,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                 date: dateStr,
                 part: data.part,
                 note: data.note || null,
+                experiencePrice: data.experiencePrice || null,
               }),
             });
           } else {
@@ -602,7 +610,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         </div>
 
         <div className='space-y-4'>
-          <div>
+          <div className="min-h-[200px]">
             <div className='flex items-center justify-between mb-1'>
               <h3 className='font-semibold text-sm'>{locale==='fr'?'Bateaux':'Boats'}</h3>
               <button 
@@ -620,38 +628,44 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                 {showAll ? (locale==='fr'?'Masquer tout':'Hide all') : (locale==='fr'?'Vue globale':'Global view')}
               </button>
             </div>
-            <div className='space-y-2 max-h-64 overflow-y-auto'>
-              {boats.map(boat => (
-                <button
-                  key={boat.id}
-                  onClick={() => {
-                    setSelectedBoat(boat.id);
-                    setSelectedExperience(null);
-                    setShowAll(false);
-                  }}
-                  className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
-                    selectedBoat === boat.id
-                      ? 'border-blue-600 bg-blue-50 shadow-md'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {boat.imageUrl ? (
-                      <img src={boat.imageUrl} alt={boat.name} className="w-12 h-12 object-cover rounded-lg" />
-                    ) : (
-                      <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 font-semibold">
-                        🛥️
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{boat.name}</p>
-                      {selectedBoat === boat.id && (
-                        <p className="text-xs text-blue-600 mt-1">✓ {locale==='fr'?'Sélectionné':'Selected'}</p>
+            <div className='space-y-2 max-h-64 overflow-y-auto min-h-[100px]'>
+              {boats.length === 0 ? (
+                <div className="text-xs text-gray-500 p-3 text-center">
+                  {locale==='fr' ? 'Aucun bateau disponible' : 'No boats available'}
+                </div>
+              ) : (
+                boats.map(boat => (
+                  <button
+                    key={boat.id}
+                    onClick={() => {
+                      setSelectedBoat(boat.id);
+                      setSelectedExperience(null);
+                      setShowAll(false);
+                    }}
+                    className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
+                      selectedBoat === boat.id
+                        ? 'border-blue-600 bg-blue-50 shadow-md'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {boat.imageUrl ? (
+                        <img src={boat.imageUrl} alt={boat.name} className="w-12 h-12 object-cover rounded-lg" />
+                      ) : (
+                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 font-semibold">
+                          🛥️
+                        </div>
                       )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{boat.name}</p>
+                        {selectedBoat === boat.id && (
+                          <p className="text-xs text-blue-600 mt-1">✓ {locale==='fr'?'Sélectionné':'Selected'}</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
@@ -768,6 +782,26 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                            reservationInfo.user?.email || 
                            'N/A'}
                         </div>
+                        {reservationInfo.user?.firstName && (
+                          <div className="text-sm text-gray-600 mt-1">
+                            <span className="font-medium">{locale==='fr'?'Prénom':'First name'}:</span> {reservationInfo.user.firstName}
+                          </div>
+                        )}
+                        {reservationInfo.user?.lastName && (
+                          <div className="text-sm text-gray-600 mt-1">
+                            <span className="font-medium">{locale==='fr'?'Nom':'Last name'}:</span> {reservationInfo.user.lastName}
+                          </div>
+                        )}
+                        {reservationInfo.user?.phone && (
+                          <div className="text-sm text-gray-600 mt-1">
+                            <span className="font-medium">{locale==='fr'?'Téléphone':'Phone'}:</span> <a href={`tel:${reservationInfo.user.phone}`} className="text-blue-600 hover:underline">{reservationInfo.user.phone}</a>
+                          </div>
+                        )}
+                        {!reservationInfo.user?.phone && (
+                          <div className="text-sm text-gray-400 italic mt-1">
+                            {locale==='fr'?'Téléphone: Non renseigné':'Phone: Not provided'}
+                          </div>
+                        )}
                       </div>
                     </div>
                     
@@ -788,6 +822,22 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                         <div className="text-base font-semibold">{endDateStr}</div>
                       </div>
                     </div>
+                    
+                    {reservationInfo.createdAt && (
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <strong className="text-gray-700">{locale==='fr'?'Réservation créée le':'Reservation created on'}:</strong>
+                        <div className="text-base font-semibold mt-1">
+                          {new Date(reservationInfo.createdAt).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-GB', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: locale === 'en'
+                          })}
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                       <div>
@@ -853,11 +903,15 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                         const translations: Record<string, { fr: string; en: string }> = {
                           waterToys: { fr: 'Jouets aquatiques', en: 'Water toys' },
                           wantsExcursion: { fr: 'Souhaite une excursion', en: 'Wants excursion' },
+                          childrenCount: { fr: 'Nombre d\'enfants', en: 'Number of children' },
+                          children: { fr: 'Nombre d\'enfants', en: 'Number of children' },
                           optionIds: { fr: 'Options sélectionnées', en: 'Selected options' },
                           boatCapacity: { fr: 'Capacité du bateau', en: 'Boat capacity' },
                           boatLength: { fr: 'Longueur du bateau (m)', en: 'Boat length (m)' },
                           boatSpeed: { fr: 'Vitesse du bateau (km/h)', en: 'Boat speed (km/h)' },
                           departurePort: { fr: 'Port de départ', en: 'Departure port' },
+                          preferredTime: { fr: 'Heure préférée', en: 'Preferred time' },
+                          specialRequest: { fr: 'Demande spéciale', en: 'Special request' },
                           bookingDate: { fr: 'Date de réservation', en: 'Booking date' },
                           userRole: { fr: 'Rôle de l\'utilisateur', en: 'User role' },
                           skipperRequired: { fr: 'Skipper requis', en: 'Skipper required' },
@@ -870,7 +924,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                         return translations[key]?.[locale] || key;
                       };
                       
-                      const formatValue = (key: string, value: any): string => {
+                      const formatValue = (key: string, value: any): string | JSX.Element => {
                         if (key === 'bookingDate' && value) {
                           try {
                             const date = new Date(value);
@@ -885,17 +939,126 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                             return String(value);
                           }
                         }
+                        if (key === 'optionIds' && Array.isArray(value)) {
+                          // Récupérer les options du bateau
+                          const boatOptions = boat?.options || [];
+                          if (value.length === 0) {
+                            return locale === 'fr' ? 'Aucune' : 'None';
+                          }
+                          // Retourner un élément JSX pour afficher les options avec labels nettoyés
+                          return (
+                            <ul className="list-disc list-inside space-y-1 mt-1">
+                              {value.map((optId: number) => {
+                                const option = boatOptions.find((o: any) => o.id === optId);
+                                if (!option) return <li key={optId}>Option ID: {optId}</li>;
+                                
+                                // Nettoyer le label pour enlever les mentions FR/EN
+                                let cleanLabel = option.label || '';
+                                cleanLabel = cleanLabel.replace(/\s*\(?\s*(FR|EN|fr|en)\s*\)?\s*$/gi, '').trim();
+                                cleanLabel = cleanLabel.replace(/\s*-\s*(FR|EN|fr|en)\s*$/gi, '').trim();
+                                cleanLabel = cleanLabel.replace(/\s*\[(FR|EN|fr|en)\]\s*$/gi, '').trim();
+                                
+                                return (
+                                  <li key={optId}>
+                                    {cleanLabel} {option.price != null ? `(${option.price.toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US')} €)` : (locale === 'fr' ? '(Inclus)' : '(Included)')}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) as any;
+                        }
                         if (typeof value === 'boolean') {
                           return value ? (locale === 'fr' ? 'Oui' : 'Yes') : (locale === 'fr' ? 'Non' : 'No');
                         }
                         if (Array.isArray(value)) {
-                          return value.length > 0 ? value.join(', ') : (locale === 'fr' ? 'Aucune' : 'None');
+                          if (value.length === 0) {
+                            return locale === 'fr' ? 'Aucune' : 'None';
+                          }
+                          // Si c'est un tableau d'objets, les formater
+                          if (value.length > 0 && typeof value[0] === 'object') {
+                            return value.map((item: any, idx: number) => {
+                              if (typeof item === 'object' && item !== null) {
+                                return Object.entries(item).map(([k, v]) => `${k}: ${v}`).join(', ');
+                              }
+                              return String(item);
+                            }).join(' | ');
+                          }
+                          return value.join(', ');
                         }
                         if (typeof value === 'number') {
                           if (key.includes('Price') || key.includes('price')) {
                             return `${value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`;
                           }
                           return value.toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US');
+                        }
+                        // Pour specialRequest, gérer les chaînes et les objets
+                        if (key === 'specialRequest') {
+                          if (typeof value === 'string') {
+                            // Si c'est une chaîne, afficher avec formatage multi-lignes
+                            const lines = value.split('\n');
+                            return (
+                              <div className="whitespace-pre-wrap text-sm">
+                                {lines.map((line, idx) => (
+                                  <span key={idx}>
+                                    {line}
+                                    {idx < lines.length - 1 && <br />}
+                                  </span>
+                                ))}
+                              </div>
+                            ) as any;
+                          } else if (typeof value === 'object' && value !== null) {
+                            // Si c'est un objet, extraire le texte de manière lisible
+                            if (Array.isArray(value)) {
+                              return (
+                                <div className="space-y-1 text-sm">
+                                  {value.map((item, idx) => (
+                                    <div key={idx} className="whitespace-pre-wrap">
+                                      {typeof item === 'object' && item !== null
+                                        ? Object.entries(item).map(([k, v]) => `${k}: ${v}`).join('\n')
+                                        : String(item)}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) as any;
+                            } else {
+                              // Objet simple, extraire les valeurs textuelles
+                              const textValues = Object.entries(value)
+                                .filter(([k, v]) => v !== null && v !== undefined && v !== '')
+                                .map(([k, v]) => {
+                                  if (typeof v === 'string') return v;
+                                  if (typeof v === 'object') return JSON.stringify(v);
+                                  return String(v);
+                                })
+                                .join('\n');
+                              return (
+                                <div className="whitespace-pre-wrap text-sm">
+                                  {textValues || JSON.stringify(value, null, 2)}
+                                </div>
+                              ) as any;
+                            }
+                          }
+                        }
+                        // Pour les autres objets, les convertir en JSON formaté
+                        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                          try {
+                            // Essayer d'extraire des valeurs textuelles utiles
+                            const entries = Object.entries(value);
+                            if (entries.length > 0) {
+                              const textParts = entries
+                                .filter(([k, v]) => v !== null && v !== undefined && v !== '')
+                                .map(([k, v]) => {
+                                  if (typeof v === 'string') return `${k}: ${v}`;
+                                  if (typeof v === 'object') return `${k}: ${JSON.stringify(v)}`;
+                                  return `${k}: ${v}`;
+                                });
+                              if (textParts.length > 0) {
+                                return textParts.join('\n');
+                              }
+                            }
+                            return JSON.stringify(value, null, 2);
+                          } catch {
+                            return String(value);
+                          }
                         }
                         return String(value);
                       };
@@ -913,15 +1076,70 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                                   </div>
                                 </div>
                               )}
+                              {/* Afficher toujours le nombre d'enfants */}
+                              <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                <strong className="text-gray-600 text-sm block mb-1">{locale==='fr'?'Nombre d\'enfants':'Number of children'}:</strong>
+                                <div className="text-gray-800 font-semibold">
+                                  {(() => {
+                                    // Gérer childrenCount (nombre)
+                                    if (parsedMetadata.childrenCount !== undefined && parsedMetadata.childrenCount !== null) {
+                                      return parsedMetadata.childrenCount === 0 
+                                        ? (locale==='fr' ? 'Aucun enfant' : 'No children') 
+                                        : String(parsedMetadata.childrenCount);
+                                    }
+                                    // Gérer children (peut être un tableau ou un nombre)
+                                    if (parsedMetadata.children !== undefined && parsedMetadata.children !== null) {
+                                      if (Array.isArray(parsedMetadata.children)) {
+                                        const count = parsedMetadata.children.length;
+                                        return count === 0 
+                                          ? (locale==='fr' ? 'Aucun enfant' : 'No children') 
+                                          : String(count);
+                                      }
+                                      // Si c'est un nombre
+                                      return parsedMetadata.children === 0 
+                                        ? (locale==='fr' ? 'Aucun enfant' : 'No children') 
+                                        : String(parsedMetadata.children);
+                                    }
+                                    return locale==='fr' ? 'Aucun enfant' : 'No children';
+                                  })()}
+                                </div>
+                              </div>
+                              
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                                 {Object.entries(parsedMetadata)
-                                  .filter(([key]) => !['experienceId', 'expSlug', 'experienceTitleFr', 'experienceTitleEn'].includes(key))
-                                  .map(([key, value]) => (
-                                    <div key={key} className="bg-white p-3 rounded-lg border border-blue-100">
-                                      <strong className="text-gray-600 text-sm block mb-1">{translateKey(key)}:</strong>
-                                      <div className="text-gray-800 font-semibold">{formatValue(key, value)}</div>
-                                    </div>
-                                  ))}
+                                  .filter(([key]) => !['experienceId', 'expSlug', 'experienceTitleFr', 'experienceTitleEn', 'childrenCount', 'children'].includes(key))
+                                  .filter(([key, value]) => {
+                                    // Filtrer les valeurs null, undefined et chaînes vides
+                                    if (value === null || value === undefined || value === '') return false;
+                                    // Filtrer les tableaux vides
+                                    if (Array.isArray(value) && value.length === 0) return false;
+                                    return true;
+                                  })
+                                  .map(([key, value]) => {
+                                    // Pour effectiveSkipperPrice, utiliser le prix du bateau si la valeur est 0, null ou undefined
+                                    let displayValue = value;
+                                    if (key === 'effectiveSkipperPrice') {
+                                      // Si la valeur est 0, null ou undefined, utiliser le prix du bateau
+                                      if (value === 0 || value === null || value === undefined || value === '0') {
+                                        const boatSkipperPrice = (boat as any)?.skipperPrice;
+                                        const defaultSkipperPrice = 350; // Valeur par défaut depuis Settings
+                                        displayValue = boatSkipperPrice ?? defaultSkipperPrice;
+                                      }
+                                    }
+                                    
+                                    const formattedValue = formatValue(key, displayValue);
+                                    const isReactElement = typeof formattedValue === 'object' && formattedValue !== null && 'type' in formattedValue;
+                                    return (
+                                      <div key={key} className="bg-white p-3 rounded-lg border border-blue-100">
+                                        <strong className="text-gray-600 text-sm block mb-1">{translateKey(key)}:</strong>
+                                        {isReactElement ? (
+                                          formattedValue
+                                        ) : (
+                                          <div className="text-gray-800 font-semibold">{String(formattedValue)}</div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                               </div>
                             </div>
                           ) : (

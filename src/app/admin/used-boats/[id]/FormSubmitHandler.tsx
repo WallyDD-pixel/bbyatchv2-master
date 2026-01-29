@@ -55,19 +55,23 @@ export default function FormSubmitHandler({ newImageFiles }: FormSubmitHandlerPr
         const response = await fetch('/api/admin/used-boats/update', {
           method: 'POST',
           body: formData,
+          redirect: 'follow', // Suivre les redirections automatiquement
         });
 
-        if (response.ok || response.redirected) {
+        // Vérifier si la réponse est une redirection (status 303 ou 307)
+        if (response.status === 303 || response.status === 307 || response.redirected) {
           // Redirection gérée par le serveur
-          if (response.redirected) {
-            window.location.href = response.url;
-          } else {
-            const url = new URL(window.location.href);
-            url.searchParams.set('updated', '1');
-            window.location.href = url.toString();
-          }
+          const redirectUrl = response.url || response.headers.get('Location') || window.location.href;
+          window.location.href = redirectUrl;
+        } else if (response.ok) {
+          // Si pas de redirection mais OK, rediriger manuellement
+          const url = new URL(window.location.href);
+          url.searchParams.set('updated', '1');
+          window.location.href = url.toString();
         } else {
-          const error = await response.json().catch(() => ({ error: 'unknown' }));
+          // Erreur - essayer de lire le JSON d'erreur
+          const error = await response.json().catch(() => ({ error: 'unknown', details: `Status: ${response.status}` }));
+          console.error('Erreur API:', error);
           alert(`Erreur lors de l'enregistrement: ${error.error || error.details || 'Erreur inconnue'}`);
         }
       } catch (error) {

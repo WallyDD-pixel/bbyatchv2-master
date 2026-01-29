@@ -1,17 +1,17 @@
 "use client";
 import Image from "next/image";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import SearchBar from './SearchBar';
 import ExperienceBookingForm from '@/app/booking/experience/ExperienceBookingForm';
 
 type BoatOption = { id:number; label:string; price:number|null }; 
 interface BoatItem { boatId:number; slug:string; name:string; imageUrl?:string|null; capacity:number; speedKn:number; priceExperience:number|null; options:BoatOption[] }
 
-export default function ExperienceBoatSelector({ locale, experienceSlug, boats, experienceTitle, experience }: { locale:'fr'|'en'; experienceSlug:string; boats:BoatItem[]; experienceTitle?:string; experience?: { hasFixedTimes?: boolean; fixedDepartureTime?: string | null; fixedReturnTime?: string | null } }) {
-  const [selectedBoatId, setSelectedBoatId] = useState<number|undefined>();
+export default function ExperienceBoatSelector({ locale, experienceSlug, boats, experienceTitle, experience, initialDate, initialBoatId }: { locale:'fr'|'en'; experienceSlug:string; boats:BoatItem[]; experienceTitle?:string; experience?: { hasFixedTimes?: boolean; fixedDepartureTime?: string | null; fixedReturnTime?: string | null }; initialDate?: string; initialBoatId?: number }) {
+  const [selectedBoatId, setSelectedBoatId] = useState<number|undefined>(initialBoatId);
   const [selectedOptions, setSelectedOptions] = useState<Record<number, boolean>>({});
   const [searchOpen, setSearchOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<{startDate: string, endDate: string} | null>(null);
+  const [selectedDate, setSelectedDate] = useState<{startDate: string, endDate: string} | null>(initialDate ? { startDate: initialDate, endDate: initialDate } : null);
 
   const selectedBoat = useMemo(()=> boats.find(b=>b.boatId===selectedBoatId), [boats, selectedBoatId]);
   const totalOptions = useMemo(()=> Object.entries(selectedOptions).reduce((sum,[id, on])=> on? sum + (selectedBoat?.options.find(o=>o.id===Number(id))?.price||0): sum,0), [selectedOptions, selectedBoat]);
@@ -120,6 +120,13 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
                   fixedReturnTime={experience?.fixedReturnTime || null}
                   onSubmit={(data) => {
                     // Les données sont sauvegardées dans sessionStorage par le formulaire
+                    // Sauvegarder aussi les options sélectionnées
+                    if (typeof window !== 'undefined') {
+                      const optionIds = Object.entries(selectedOptions)
+                        .filter(([_, selected]) => selected)
+                        .map(([id, _]) => Number(id));
+                      sessionStorage.setItem('experienceSelectedOptions', JSON.stringify(optionIds));
+                    }
                     // Rediriger vers le checkout avec la date déjà sélectionnée
                     const params = new URLSearchParams();
                     params.set('exp', experienceSlug);
@@ -161,7 +168,7 @@ export default function ExperienceBoatSelector({ locale, experienceSlug, boats, 
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={()=>setSearchOpen(false)} />
           <div className="relative w-full max-w-3xl">
             <button onClick={()=>setSearchOpen(false)} className="absolute -top-10 right-0 text-white text-sm bg-black/40 rounded-full px-4 h-10 inline-flex items-center gap-2 hover:bg-black/60">✕ {locale==='fr'? 'Fermer':'Close'}</button>
-            <div className="animate-fadeIn rounded-3xl border border-white/15 bg-[#0f1f29]/80 p-5 sm:p-6 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-white">
+            <div className="animate-fadeIn rounded-3xl border border-white/15 bg-[#0f1f29]/80 p-5 sm:p-6 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] text-white card-popover">
               <h3 className="text-sm font-semibold mb-4">{experienceTitle || (locale==='fr'? 'Sélection date':'Pick date')}</h3>
               <p className="text-[11px] text-white/60 mb-4">{locale==='fr'? 'Choisis la date disponible pour cette expérience (journée unique).':'Pick the available date for this (single-day) experience.'}</p>
               <SearchBar

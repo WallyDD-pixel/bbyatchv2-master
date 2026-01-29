@@ -146,6 +146,9 @@ export default function SearchBar({
   const [monthCache, setMonthCache] = useState<Map<string,({date:string; boats:number} | {date:string; full:number; amOnly:number; pmOnly:number})[]>>(new Map());
   const [loadingMonth, setLoadingMonth] = useState(false);
   const [tempStart, setTempStart] = useState<string | null>(null); // premier clic plage FULL
+  const [availableBoatsForStartDate, setAvailableBoatsForStartDate] = useState<number[]>([]); // IDs des bateaux disponibles pour la date de début
+  const [loadingEndDates, setLoadingEndDates] = useState(false); // Chargement des dates de fin
+  const [endDateAvailability, setEndDateAvailability] = useState<Map<string, boolean>>(new Map()); // Cache des dates de fin disponibles
   const [partHint, setPartHint] = useState(false);
   const [cityHint, setCityHint] = useState(false); // nouvelle aide ville
   const [dateHint, setDateHint] = useState(false); // nouvelle aide dates
@@ -306,7 +309,70 @@ export default function SearchBar({
     const end = values.endDate || values.startDate;
     return d >= start && d <= end;
   };
-  const selectDay = (d: string, stats?: { full: number; amOnly: number; pmOnly: number }) => {
+
+  // Charger les bateaux disponibles pour la date de début
+  const loadAvailableBoatsForStartDate = useCallback(async (startDate: string) => {
+    if (!startDate || mode === 'experience') return;
+    setLoadingEndDates(true);
+    try {
+      const partParam = part === 'FULL' ? 'FULL' : part === 'HALF' ? 'AM' : 'AM'; // Utiliser AM comme fallback pour HALF
+      const res = await fetch(`/api/availability/boats?from=${startDate}&to=${startDate}&part=${partParam}`);
+      if (res.ok) {
+        const data = await res.json();
+        const boatIds = (data.boats || []).map((b: any) => b.id);
+        setAvailableBoatsForStartDate(boatIds);
+        console.log(`[SearchBar] Bateaux disponibles pour ${startDate}:`, boatIds);
+      } else {
+        setAvailableBoatsForStartDate([]);
+      }
+    } catch (e) {
+      console.error('[SearchBar] Erreur lors du chargement des bateaux disponibles:', e);
+      setAvailableBoatsForStartDate([]);
+    } finally {
+      setLoadingEndDates(false);
+    }
+  }, [mode, part]);
+
+  // Vérifier si une date de fin est disponible pour les bateaux de la date de début
+  // Cette fonction vérifie que les bateaux disponibles à la date de début sont aussi disponibles
+  // pour TOUTE la plage (du début à la fin), en tenant compte des réservations
+  const checkEndDateAvailability = useCallback(async (endDate: string): Promise<boolean> => {
+    if (!tempStart || availableBoatsForStartDate.length === 0 || mode === 'experience') return true;
+    
+    // Vérifier le cache
+    if (endDateAvailability.has(endDate)) {
+      return endDateAvailability.get(endDate) || false;
+    }
+
+    try {
+      const partParam = part === 'FULL' ? 'FULL' : part === 'HALF' ? 'AM' : 'AM';
+      const start = tempStart < endDate ? tempStart : endDate;
+      const end = tempStart < endDate ? endDate : tempStart;
+      
+      // Appeler l'API qui vérifie la disponibilité pour TOUTE la plage
+      // L'API exclut automatiquement les bateaux réservés pour n'importe quel jour de la plage
+      const res = await fetch(`/api/availability/boats?from=${start}&to=${end}&part=${partParam}`);
+      if (res.ok) {
+        const data = await res.json();
+        const availableBoatIds = (data.boats || []).map((b: any) => b.id);
+        // Vérifier si au moins un bateau de la date de début est disponible pour TOUTE la plage
+        // (c'est-à-dire qu'il n'est pas réservé pour aucun jour de la plage)
+        const isAvailable = availableBoatIds.some((id: number) => availableBoatsForStartDate.includes(id));
+        console.log(`[SearchBar] Vérification plage ${start} → ${end}: ${isAvailable ? 'disponible' : 'indisponible'} (bateaux disponibles: ${availableBoatIds.length}, bateaux de début: ${availableBoatsForStartDate.length})`);
+        setEndDateAvailability(prev => {
+          const next = new Map(prev);
+          next.set(endDate, isAvailable);
+          return next;
+        });
+        return isAvailable;
+      }
+    } catch (e) {
+      console.error('[SearchBar] Erreur lors de la vérification de la date de fin:', e);
+    }
+    return false;
+  }, [tempStart, availableBoatsForStartDate, part, mode, endDateAvailability]);
+
+  const selectDay = async (d: string, stats?: { full: number; amOnly: number; pmOnly: number }) => {
     setDateHint(false);
     
     // Si on a sélectionné "Journée complète" mais que la date n'a que des demi-journées disponibles,
@@ -319,26 +385,46 @@ export default function SearchBar({
     
     if (part === 'FULL' || part === 'SUNSET') {
       if (!tempStart) {
-        // Premier clic: on initialise la plage
+        // Premier clic: on initialise la plage et charge les bateaux disponibles
         setTempStart(d);
         setValues(v => ({ ...v, startDate: d, endDate: d }));
+        setEndDateAvailability(new Map()); // Réinitialiser le cache
+        await loadAvailableBoatsForStartDate(d);
       } else {
         // Second clic: on fixe la plage complète
         if (tempStart === d) {
           // Même jour re-clic: reste une journée
           setValues(v => ({ ...v, startDate: d, endDate: d }));
           setTempStart(null);
+          setAvailableBoatsForStartDate([]);
+          setEndDateAvailability(new Map());
           return;
         }
         const start = tempStart < d ? tempStart : d;
         const end = tempStart < d ? d : tempStart;
+        
+        // Vérifier si la date de fin est disponible pour les bateaux de la date de début
+        setLoadingEndDates(true);
+        const isAvailable = await checkEndDateAvailability(end);
+        setLoadingEndDates(false);
+        
+        if (!isAvailable && availableBoatsForStartDate.length > 0) {
+          // Afficher un message d'erreur ou empêcher la sélection
+          alert(currentLocale === 'fr' ? 'Aucun bateau disponible pour cette plage de dates' : 'No boat available for this date range');
+          return;
+        }
+        
         setValues(v => ({ ...v, startDate: start, endDate: end }));
         setTempStart(null);
+        setAvailableBoatsForStartDate([]);
+        setEndDateAvailability(new Map());
       }
     } else {
       // Demi-journée: toujours un seul jour
       setValues(v => ({ ...v, startDate: d, endDate: d }));
       setTempStart(null);
+      setAvailableBoatsForStartDate([]);
+      setEndDateAvailability(new Map());
     }
   };
 
@@ -493,7 +579,7 @@ export default function SearchBar({
       
       {/* Date début - APRÈS ville et créneau */}
       <div>
-        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85 [.card-popover_&]:text-white">
           {labels.search_start_date}
         </label>
         <input
@@ -510,10 +596,10 @@ export default function SearchBar({
       </div>
       {/* Date fin (multi-jours seulement si FULL) */}
       <div>
-        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85">
+        <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85 [.card-popover_&]:text-white">
           {labels.search_end_date}
           {(part !== "FULL" && part !== "SUNSET") && (
-            <span className="text-[10px] font-normal text-black dark:text-white">(= début)</span>
+            <span className="text-[10px] font-normal text-black dark:text-white [.card-popover_&]:text-white/80">(= début)</span>
           )}
         </label>
         <input
@@ -649,14 +735,14 @@ export default function SearchBar({
         </button>
       </div>
 
-      {/* Overlay plein écran pour focus */}
+      {/* Overlay plein écran pour focus - toujours affiché quand le calendrier est ouvert */}
       {pickerOpen && (
-        <div className="fixed inset-0 z-[180] bg-black/65 backdrop-blur-md animate-fadeIn" onClick={()=>setPickerOpen(false)} />
+        <div className="fixed inset-0 z-[180] bg-black/75 backdrop-blur-sm animate-fadeIn" onClick={()=>setPickerOpen(false)} />
       )}
       {/* Popover calendrier */}
       {pickerOpen && (part || partFixed) && (mode==='experience' || values.city.trim()) && (
         <div className="fixed inset-0 z-[200] flex items-start lg:items-center justify-center pt-24 sm:pt-32 lg:pt-0 px-4">
-          <div ref={popRef} className="relative w-full max-w-2xl p-6 sm:p-7 rounded-3xl card-popover text-slate-900 dark:text-slate-100 border dark:border-white/10 shadow-[0_24px_80px_-18px_rgba(0,0,0,0.6)] animate-fadeIn max-h-[85vh] overflow-auto">
+          <div ref={popRef} className="relative w-full max-w-2xl p-6 sm:p-7 rounded-3xl card-popover bg-[#0f1f29] text-white border border-white/20 shadow-[0_24px_80px_-18px_rgba(0,0,0,0.8)] animate-fadeIn max-h-[85vh] overflow-auto backdrop-blur-sm">
             <button type="button" onClick={()=>setPickerOpen(false)} className="absolute top-2 right-2 h-8 w-8 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10">✕</button>
             <div className="flex items-center justify-between mb-4">
               <button type="button" disabled={isCurrentMonth} onClick={()=>setCalMonth(m=>{ const nm = m.m-1; return { y: nm<0? m.y-1 : m.y, m: (nm+12)%12 }; })} className={`text-xs px-3 py-1.5 rounded-full border border-white/10 text-white/80 hover:bg-white/10 ${isCurrentMonth? 'opacity-30 cursor-not-allowed':''}`}>←</button>
@@ -682,10 +768,30 @@ export default function SearchBar({
                     if (!tempStart) {
                       clickable = anyAvail;
                     } else {
-                      const aDate = new Date(tempStart+'T00:00:00');
-                      const bDate = new Date(c.date+'T00:00:00');
-                      const diff = Math.abs((bDate.getTime()-aDate.getTime())/86400000)+1;
-                      clickable = diff <= 6 && anyAvail; // autoriser si au moins une demi-journée dispo
+                      // Vérifier si cette date de fin est disponible pour les bateaux de la date de début
+                      const isEndDateAvailable = endDateAvailability.get(c.date);
+                      if (isEndDateAvailable === false) {
+                        clickable = false; // Date de fin non disponible pour les bateaux de la date de début
+                      } else {
+                        const aDate = new Date(tempStart+'T00:00:00');
+                        const bDate = new Date(c.date+'T00:00:00');
+                        const diff = Math.abs((bDate.getTime()-aDate.getTime())/86400000)+1;
+                        clickable = diff <= 6 && anyAvail; // autoriser si au moins une demi-journée dispo
+                        // Si on n'a pas encore vérifié cette date, la marquer comme vérifiable (sera vérifiée au survol ou au clic)
+                        if (clickable && isEndDateAvailable === undefined && availableBoatsForStartDate.length > 0) {
+                          // Vérifier en arrière-plan
+                          checkEndDateAvailability(c.date).then(isAvail => {
+                            if (!isAvail) {
+                              // Mettre à jour le cache et forcer un re-render
+                              setEndDateAvailability(prev => {
+                                const next = new Map(prev);
+                                next.set(c.date, false);
+                                return next;
+                              });
+                            }
+                          });
+                        }
+                      }
                     }
                   } else if (part === 'HALF') {
                     // Demi-journée : disponible si FULL, AM ou PM existe
@@ -694,6 +800,8 @@ export default function SearchBar({
                 }
                 // Indisponible si jour futur mais pas clickable
                 let unavailable = false;
+                // Vérifier si la date est réservée (tous bateaux confondus)
+                const isReserved = stats && (stats as any).reserved === true;
                 if (c.date && !past) {
                   if (mode === 'experience') {
                     // Pour les expériences : indisponible si pas de stats ou pas de slots disponibles
@@ -704,9 +812,33 @@ export default function SearchBar({
                     else if (part === 'HALF') unavailable = !(stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0));
                   }
                 }
+                // S'assurer que les jours passés ou indisponibles ne sont jamais cliquables
+                // Pour les expériences à heures fixes, forcer unavailable si pas de stats
+                const isClickable = clickable && !past && !unavailable && c.date && (mode !== 'experience' || (stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0)));
+                
+                // Définir bgClass en tenant compte de isClickable
                 let bgClass = 'text-white/30';
-                if (past) {
+                // Priorité 1: Dates sélectionnées (début, fin, ou dans la plage)
+                if (selected && !past && isClickable) {
+                  if (isStart && isEnd) {
+                    // Même jour (début = fin)
+                    bgClass = ' bg-blue-500 border-2 border-blue-400 text-white font-bold shadow-lg';
+                  } else if (isStart) {
+                    // Date de début
+                    bgClass = ' bg-blue-500 border-2 border-blue-400 text-white font-bold shadow-lg';
+                  } else if (isEnd) {
+                    // Date de fin
+                    bgClass = ' bg-blue-500 border-2 border-blue-400 text-white font-bold shadow-lg';
+                  } else {
+                    // Date dans la plage (entre début et fin)
+                    bgClass = ' bg-blue-400/40 border border-blue-300/60 text-blue-100 font-semibold';
+                  }
+                } else if (past) {
                   bgClass = ' bg-white/5 text-white/30 line-through';
+                } else if (isReserved) {
+                  // Date réservée : afficher en rouge
+                  bgClass = ' bg-red-500/30 border-2 border-red-500/60 text-red-100 font-semibold';
+                  unavailable = true; // Forcer unavailable si réservé
                 } else if (unavailable) {
                   bgClass = ' bg-red-400/15 border border-red-400/40 text-red-200 opacity-50';
                 } else if (stats) {
@@ -724,19 +856,17 @@ export default function SearchBar({
                   const diff = Math.abs((bDate.getTime()-aDate.getTime())/86400000)+1;
                   if (diff<=6) bgClass = ' bg-amber-300/15 border border-amber-300/40 text-amber-200';
                 }
-                // S'assurer que les jours passés ou indisponibles ne sont jamais cliquables
-                // Pour les expériences à heures fixes, forcer unavailable si pas de stats
-                const isClickable = clickable && !past && !unavailable && c.date && (mode !== 'experience' || (stats && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0)));
                 
                 return (
                   <div key={c.key}
-                    className={`sb-day relative h-11 rounded-lg text-[11px] flex items-center justify-center font-medium transition-colors
-                    ${c.date? (isClickable? 'cursor-pointer hover:brightness-110':'cursor-not-allowed opacity-60') : ''}
+                    className={`sb-day relative h-11 rounded-lg text-[11px] flex items-center justify-center font-medium transition-all duration-200
+                    ${c.date? (isClickable? 'cursor-pointer hover:brightness-110 hover:scale-105':'cursor-not-allowed opacity-60') : ''}
                     ${bgClass}
                     ${selected && !past && isClickable? ' selected-range ' : ''}
                     ${isStart && isClickable? ' range-start ' : ''}
                     ${isEnd && isClickable? ' range-end ' : ''}
-                    ${unavailable? ' pointer-events-none' : ''}`}
+                    ${unavailable? ' pointer-events-none' : ''}
+                    ${tempStart && c.date && c.date === tempStart? ' ring-2 ring-blue-400 ring-offset-1 ' : ''}`}
                     onClick={(e)=>{ 
                       e.preventDefault();
                       e.stopPropagation();
@@ -752,10 +882,13 @@ export default function SearchBar({
                     }}
                   >
                     {c.label || ''}
-                    {stats && !past && !unavailable && (part==='FULL' || part==='SUNSET' || part==='HALF') && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0) && (
+                    {stats && !past && !unavailable && !isReserved && (part==='FULL' || part==='SUNSET' || part==='HALF') && (stats.full>0 || stats.amOnly>0 || stats.pmOnly>0) && (
                       <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-[#0f1f29]/90 border border-white/10 leading-none">{stats.full + stats.amOnly + stats.pmOnly}</span>
                     )}
-                    {!stats && c.date && !past && !unavailable && (
+                    {isReserved && (
+                      <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-red-500/80 border border-red-400/60 text-white font-bold leading-none">✕</span>
+                    )}
+                    {!stats && c.date && !past && !unavailable && !isReserved && (
                       <span className="absolute bottom-0.5 right-0.5 text-[9px] px-1 py-[1px] rounded-full bg-black/65 text-white/80 leading-none">—</span>
                     )}
                   </div>
@@ -780,7 +913,12 @@ export default function SearchBar({
                 <button type="button" onClick={()=>setPickerOpen(false)} className="text-[11px] px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm">OK</button>
               </div>
             </div>
-            {loadingMonth && <div className="absolute inset-0 rounded-3xl bg-black/70 backdrop-blur-sm flex items-center justify-center text-[11px] font-medium text-white">Chargement...</div>}
+            {loadingMonth && <div className="absolute inset-0 rounded-3xl bg-black/70 backdrop-blur-sm flex items-center justify-center text-[11px] font-medium text-white z-10">Chargement...</div>}
+            {loadingEndDates && tempStart && (
+              <div className="absolute inset-0 rounded-3xl bg-black/50 backdrop-blur-sm flex items-center justify-center text-[11px] font-medium text-white z-10">
+                {currentLocale === 'fr' ? 'Vérification des dates disponibles...' : 'Checking available dates...'}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -826,7 +964,7 @@ if (typeof document !== 'undefined') {
   if(!document.getElementById(id2)) {
     const style2 = document.createElement('style');
     style2.id = id2;
-    style2.textContent = `.sb-day.selected-range{position:relative;} .sb-day.selected-range:before{content:'';position:absolute;inset:0;border-radius:0.75rem;background:linear-gradient(135deg,var(--primary) 0%,var(--primary) 100%);opacity:0.10;} .sb-day.range-start:after,.sb-day.range-end:after{content:'';position:absolute;inset:0;border-radius:0.75rem;box-shadow:0 0 0 2px var(--primary) inset,0 0 0 1px var(--primary);opacity:0.9;} .sb-day.range-start.range-end:before{opacity:0.22;} .sb-day:hover{filter:brightness(1.15);} `;
+    style2.textContent = `.sb-day.selected-range{position:relative;z-index:1;} .sb-day.selected-range:before{content:'';position:absolute;inset:0;border-radius:0.75rem;background:linear-gradient(135deg,rgba(59,130,246,0.4) 0%,rgba(59,130,246,0.3) 100%);z-index:-1;} .sb-day.range-start:after,.sb-day.range-end:after{content:'';position:absolute;inset:0;border-radius:0.75rem;box-shadow:0 0 0 3px rgba(59,130,246,0.8) inset,0 0 0 2px rgba(59,130,246,1);z-index:0;} .sb-day.range-start.range-end:before{opacity:0.5;} .sb-day:hover{filter:brightness(1.15);transform:scale(1.05);} `;
     document.head.appendChild(style2);
   }
 }

@@ -283,7 +283,13 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
           </div>
           <div className="flex justify-between items-center pt-4 mt-4 border-t border-black/10 relative z-10">
             <Link href="/" className="text-xs text-black/50 hover:text-black underline">← Retour</Link>
-            <button type="submit" disabled={!ville || !experience || !message || !email || !part || !rgpd || !startDate} className="px-6 h-11 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm hover:shadow disabled:shadow-none">Envoyer</button>
+            <button 
+              type="submit" 
+              disabled={!ville || !experience || !message || !email || !part || !rgpd || !startDate} 
+              className="px-6 h-11 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold transition-colors disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed shadow-sm hover:shadow disabled:shadow-none disabled:hover:bg-gray-300"
+            >
+              Envoyer
+            </button>
           </div>
 
           {/* Popover calendrier */}

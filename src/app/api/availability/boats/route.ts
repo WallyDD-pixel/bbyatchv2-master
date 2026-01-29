@@ -49,7 +49,7 @@ export async function GET(req: Request) {
       part: SlotPart;
     }
 
-    const [boats, slots]: [Boat[], AvailabilitySlot[]] = await Promise.all([
+    const [boats, slots, reservations]: [Boat[], AvailabilitySlot[], any[]] = await Promise.all([
       (prisma as any).boat.findMany({
       where: { available: true },
       select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true }
@@ -57,12 +57,38 @@ export async function GET(req: Request) {
       (prisma as any).availabilitySlot.findMany({
       where: { date: { gte: start, lte: end }, status: 'available' },
       select: { boatId: true, date: true, part: true }
+      }),
+      // Récupérer les réservations actives qui chevauchent la plage demandée
+      (prisma as any).reservation.findMany({
+        where: {
+          startDate: { lte: end },
+          endDate: { gte: start },
+          status: { not: 'cancelled' }
+        },
+        select: { boatId: true, startDate: true, endDate: true, part: true }
       })
     ]);
 
+    // Créer un Set des bateaux réservés pour au moins un jour de la plage
+    const reservedBoatIds = new Set<number>();
+    for (const res of reservations) {
+      if (!res.boatId) continue;
+      const resStart = new Date(res.startDate);
+      const resEnd = new Date(res.endDate);
+      // Vérifier si la réservation chevauche au moins un jour de la plage demandée
+      if (resStart <= end && resEnd >= start) {
+        reservedBoatIds.add(res.boatId);
+        console.log(`[availability/boats] Bateau ${res.boatId} réservé du ${resStart.toISOString().slice(0,10)} au ${resEnd.toISOString().slice(0,10)}`);
+      }
+    }
+
     // Map des slots par boatId -> date -> parts
+    // Exclure les slots des bateaux réservés
     const byBoat: Record<number, Record<string, { AM?: boolean; PM?: boolean; FULL?: boolean }>> = {};
     for (const s of slots) {
+      // Ignorer les slots des bateaux réservés
+      if (reservedBoatIds.has(s.boatId)) continue;
+      
       const d = new Date(s.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const boat = (byBoat[s.boatId] ||= {});

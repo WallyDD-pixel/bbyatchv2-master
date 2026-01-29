@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadMultipleToSupabase } from '@/lib/storage';
+import { createRedirectUrl } from '@/lib/redirect';
 
 export async function POST(req: Request){
   const session = await getServerSession() as any;
@@ -154,7 +155,9 @@ export async function POST(req: Request){
       lengthM: parseFloat(String(data.get('lengthM'))),
       priceEur: (() => {
         const priceRaw = String(data.get('priceEur') || '').trim();
-        return priceRaw ? parseInt(priceRaw, 10) : null;
+        if (!priceRaw || priceRaw === '') return null;
+        const parsed = parseInt(priceRaw, 10);
+        return isNaN(parsed) ? null : parsed;
       })(),
       engines: data.get('engines')? String(data.get('engines')).trim(): null,
       engineHours: data.get('engineHours')? parseInt(String(data.get('engineHours')),10): null,
@@ -170,11 +173,23 @@ export async function POST(req: Request){
       videoUrls: videoUrls.length ? JSON.stringify(videoUrls) : null,
     };
 
-    await (prisma as any).usedBoat.update({ where:{ id }, data: update });
-    const redirectUrl = new URL(`/admin/used-boats/${id}?updated=1`, req.url);
-    return NextResponse.redirect(redirectUrl);
+    try {
+      await (prisma as any).usedBoat.update({ where:{ id }, data: update });
+      const redirectUrl = createRedirectUrl(`/admin/used-boats/${id}?updated=1`, req);
+      return NextResponse.redirect(redirectUrl, 303);
+    } catch (dbError: any) {
+      console.error('Database update error:', dbError);
+      // Si c'est une erreur de validation Prisma, retourner un message plus clair
+      if (dbError.code === 'P2002') {
+        return NextResponse.json({ error:'validation_error', details:'Un champ unique existe déjà' },{ status:400 });
+      }
+      if (dbError.code === 'P2025') {
+        return NextResponse.json({ error:'not_found', details:'Bateau introuvable' },{ status:404 });
+      }
+      throw dbError; // Relancer pour être capturé par le catch externe
+    }
   } catch(e:any){
-    console.error(e);
-    return NextResponse.json({ error:'server_error', details:e?.message },{ status:500 });
+    console.error('Error in used-boats/update:', e);
+    return NextResponse.json({ error:'server_error', details:e?.message || String(e) },{ status:500 });
   }
 }

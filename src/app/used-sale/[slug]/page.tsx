@@ -98,7 +98,16 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
               <div className="space-y-4">
                 <h1 className="text-3xl sm:text-4xl font-bold leading-tight tracking-tight">{boat.titleFr}</h1>
                 {boat.summaryFr && <p className="text-sm sm:text-base text-black/60 leading-relaxed">{boat.summaryFr}</p>}
-                {/* Prix complètement masqué - ne plus afficher même s'il existe en base */}
+                {/* Afficher le prix seulement s'il existe et est supérieur à 0, sinon afficher un message de contact */}
+                {boat.priceEur && boat.priceEur > 0 ? (
+                  <p className="text-lg sm:text-xl font-semibold text-black/80">
+                    {boat.priceEur.toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US')} €
+                  </p>
+                ) : (
+                  <p className="text-base sm:text-lg text-black/70 font-medium">
+                    {locale === 'fr' ? 'Contactez-nous pour plus d\'information' : 'Contact us for more information'}
+                  </p>
+                )}
                 {boat.status === 'sold' && (
                   <p className="text-sm text-black/40">
                     {locale === 'fr' ? 'Vendu' : 'Sold'}
@@ -133,8 +142,10 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
               )}
 
               {boat.descriptionFr && (
-                <article className="prose prose-sm sm:prose-base max-w-none prose-p:leading-relaxed">
-                  {boat.descriptionFr.split(/\n\n+/).map((para:string,i:number)=>(<p key={i}>{para}</p>))}
+                <article className="prose prose-sm sm:prose-base max-w-none">
+                  <div className="whitespace-pre-line text-black/80 leading-relaxed">
+                    {boat.descriptionFr}
+                  </div>
                 </article>
               )}
             </div>

@@ -1,6 +1,5 @@
-import { getServerSession } from 'next-auth';
+import { getServerSession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
@@ -32,7 +31,7 @@ interface AgencyRequestRow {
 export default async function AgencyRequestDetailPage(
   { params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ [key:string]: string | string[] | undefined }> }
 ) {
-  const session = await getServerSession(auth);
+  const session = await getServerSession();
   if(!session?.user) redirect('/signin');
   const role = (session.user as any)?.role || 'user';
   if(role!=='admin') redirect('/dashboard');
@@ -204,34 +203,64 @@ export default async function AgencyRequestDetailPage(
             try {
               metadataObj = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata;
             } catch {}
+            
+            // Vérifier s'il y a des informations à afficher
+            const hasInfo = metadataObj.childrenCount || 
+                           metadataObj.children !== undefined || 
+                           metadataObj.waterToys !== undefined || 
+                           metadataObj.wantsExcursion || 
+                           metadataObj.excursion !== undefined ||
+                           metadataObj.specialNeeds || 
+                           (metadataObj.optionIds && Array.isArray(metadataObj.optionIds) && metadataObj.optionIds.length > 0) ||
+                           metadataObj.needsSkipper ||
+                           metadataObj.skipperRequired ||
+                           metadataObj.bookingDate ||
+                           metadataObj.departurePort ||
+                           metadataObj.boatCapacity ||
+                           metadataObj.boatLength ||
+                           metadataObj.boatSpeed;
+            
+            if (!hasInfo) return null;
+            
             return (
               <div className='grid gap-2 text-sm'>
                 <span className='text-black/50'>{locale==='fr'? 'Informations complémentaires':'Additional information'}</span>
                 <div className='bg-black/5 rounded-lg p-4 space-y-3 text-xs'>
-                  {metadataObj.childrenCount && (
+                  {/* Nombre d'enfants */}
+                  {(metadataObj.childrenCount || metadataObj.children !== undefined) && (
                     <div>
                       <span className='font-semibold text-black/70'>{locale==='fr'? 'Nombre d\'enfants':'Number of children'}: </span>
-                      <span>{metadataObj.childrenCount}</span>
+                      <span>{metadataObj.childrenCount || metadataObj.children || '0'}</span>
                     </div>
                   )}
+                  
+                  {/* Jeux d'eau */}
                   {metadataObj.waterToys !== undefined && (
                     <div>
                       <span className='font-semibold text-black/70'>{locale==='fr'? 'Jeux d\'eau':'Water toys'}: </span>
-                      <span>{metadataObj.waterToys === 'yes' || metadataObj.waterToys === true ? (locale==='fr'? 'Oui':'Yes') : (locale==='fr'? 'Non':'No')}</span>
+                      <span>{metadataObj.waterToys === 'yes' || metadataObj.waterToys === true || metadataObj.waterToys === '1' ? (locale==='fr'? 'Oui':'Yes') : (locale==='fr'? 'Non':'No')}</span>
                     </div>
                   )}
-                  {metadataObj.wantsExcursion && (
+                  
+                  {/* Excursion */}
+                  {(metadataObj.wantsExcursion || metadataObj.excursion !== undefined) && (
                     <div>
                       <span className='font-semibold text-black/70'>{locale==='fr'? 'Excursion':'Excursion'}: </span>
-                      <span>{locale==='fr'? 'Oui':'Yes'}</span>
+                      <span>{(metadataObj.wantsExcursion || metadataObj.excursion === '1' || metadataObj.excursion === true) ? (locale==='fr'? 'Oui':'Yes') : (locale==='fr'? 'Non':'No')}</span>
                     </div>
                   )}
+                  
+                  {/* Besoins spéciaux */}
                   {metadataObj.specialNeeds && (
                     <div>
-                      <span className='font-semibold text-black/70 block mb-1'>{locale==='fr'? 'Besoins spéciaux':'Special needs'}: </span>
-                      <p className='text-black/70 whitespace-pre-line'>{decodeURIComponent(metadataObj.specialNeeds)}</p>
+                      <span className='font-semibold text-black/70 block mb-1'>{locale==='fr'? 'Besoins spéciaux / Demandes spécifiques':'Special needs / Specific requests'}: </span>
+                      <p className='text-black/70 whitespace-pre-line bg-white/50 rounded p-2 border border-black/10'>
+                        {typeof metadataObj.specialNeeds === 'string' ? decodeURIComponent(metadataObj.specialNeeds) : String(metadataObj.specialNeeds)}
+                      </p>
                     </div>
                   )}
+                  
+                  {/* Options sélectionnées */}
                   {metadataObj.optionIds && Array.isArray(metadataObj.optionIds) && metadataObj.optionIds.length > 0 && (
                     <div>
                       <span className='font-semibold text-black/70 block mb-1'>{locale==='fr'? 'Options sélectionnées':'Selected options'}: </span>
@@ -242,7 +271,7 @@ export default async function AgencyRequestDetailPage(
                             <li key={optId}>
                               {option ? (
                                 <>
-                                  {option.label} {option.price != null ? `(${option.price.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €)` : '(Inclus)'}
+                                  {option.label} {option.price != null ? `(${option.price.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €)` : (locale==='fr'? '(Inclus)':'(Included)')}
                                 </>
                               ) : (
                                 `Option ID: ${optId}`
@@ -253,28 +282,9 @@ export default async function AgencyRequestDetailPage(
                       </ul>
                     </div>
                   )}
-                  {metadataObj.needsSkipper && (
-                    <div>
-                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Skipper demandé':'Skipper requested'}: </span>
-                      <span>{locale==='fr'? 'Oui':'Yes'}</span>
-                      {metadataObj.effectiveSkipperPrice && (
-                        <span className='ml-2 text-black/50'>({metadataObj.effectiveSkipperPrice}€ HT/jour)</span>
-                      )}
-                    </div>
-                  )}
-                  {metadataObj.bookingDate && (
-                    <div>
-                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Date de réservation':'Booking date'}: </span>
-                      <span>{new Date(metadataObj.bookingDate).toLocaleDateString(locale==='fr'? 'fr-FR':'en-GB')}</span>
-                    </div>
-                  )}
-                  {metadataObj.departurePort && (
-                    <div>
-                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Port de départ':'Departure port'}: </span>
-                      <span>{metadataObj.departurePort}</span>
-                    </div>
-                  )}
-                  {metadataObj.skipperRequired && (
+                  
+                  {/* Skipper */}
+                  {(metadataObj.needsSkipper || metadataObj.skipperRequired) && (
                     <div>
                       <span className='font-semibold text-black/70'>{locale==='fr'? 'Skipper requis':'Skipper required'}: </span>
                       <span>{locale==='fr'? 'Oui':'Yes'}</span>
@@ -283,6 +293,24 @@ export default async function AgencyRequestDetailPage(
                       )}
                     </div>
                   )}
+                  
+                  {/* Date de réservation */}
+                  {metadataObj.bookingDate && (
+                    <div>
+                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Date de réservation':'Booking date'}: </span>
+                      <span>{new Date(metadataObj.bookingDate).toLocaleDateString(locale==='fr'? 'fr-FR':'en-GB')}</span>
+                    </div>
+                  )}
+                  
+                  {/* Port de départ */}
+                  {metadataObj.departurePort && (
+                    <div>
+                      <span className='font-semibold text-black/70'>{locale==='fr'? 'Port de départ':'Departure port'}: </span>
+                      <span>{metadataObj.departurePort}</span>
+                    </div>
+                  )}
+                  
+                  {/* Caractéristiques du bateau */}
                   {(metadataObj.boatCapacity || metadataObj.boatLength || metadataObj.boatSpeed) && (
                     <div className='pt-2 border-t border-black/10'>
                       <span className='font-semibold text-black/70 block mb-1'>{locale==='fr'? 'Caractéristiques du bateau':'Boat specifications'}:</span>
@@ -293,10 +321,42 @@ export default async function AgencyRequestDetailPage(
                       </ul>
                     </div>
                   )}
+                  
+                  {/* Afficher toutes les autres clés du metadata pour debug */}
+                  {Object.keys(metadataObj).filter(key => 
+                    !['childrenCount', 'children', 'waterToys', 'wantsExcursion', 'excursion', 'specialNeeds', 
+                      'optionIds', 'needsSkipper', 'skipperRequired', 'bookingDate', 'departurePort', 
+                      'boatCapacity', 'boatLength', 'boatSpeed', 'effectiveSkipperPrice'].includes(key)
+                  ).length > 0 && (
+                    <div className='pt-2 border-t border-black/10'>
+                      <span className='font-semibold text-black/70 block mb-1'>{locale==='fr'? 'Autres informations':'Other information'}:</span>
+                      <ul className='space-y-1 text-black/60'>
+                        {Object.keys(metadataObj).filter(key => 
+                          !['childrenCount', 'children', 'waterToys', 'wantsExcursion', 'excursion', 'specialNeeds', 
+                            'optionIds', 'needsSkipper', 'skipperRequired', 'bookingDate', 'departurePort', 
+                            'boatCapacity', 'boatLength', 'boatSpeed', 'effectiveSkipperPrice'].includes(key)
+                        ).map(key => (
+                          <li key={key}>
+                            <span className='font-medium'>{key}:</span> {typeof metadataObj[key] === 'object' ? JSON.stringify(metadataObj[key]) : String(metadataObj[key])}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })()}
+          
+          {/* Afficher un message si aucune métadonnée n'est disponible */}
+          {!row.metadata && (
+            <div className='grid gap-2 text-sm'>
+              <span className='text-black/50'>{locale==='fr'? 'Informations complémentaires':'Additional information'}</span>
+              <div className='bg-black/5 rounded-lg p-4 text-xs text-black/50 italic'>
+                {locale==='fr'? 'Aucune information complémentaire disponible':'No additional information available'}
+              </div>
+            </div>
+          )}
           <div className='pt-4 flex gap-2 flex-wrap'>
             <form action={`/api/admin/agency-requests/${row.id}`} method='post' className='flex gap-2 flex-wrap'>
               <input type='hidden' name='_method' value='PATCH' />

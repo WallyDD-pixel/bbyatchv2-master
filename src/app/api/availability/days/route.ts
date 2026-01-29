@@ -28,19 +28,62 @@ export async function GET(req: Request) {
   
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return NextResponse.json({ error: 'bad_range' }, { status: 400 });
   try {
+    // Récupérer les slots disponibles
     const slots: { date: Date; boatId: number; part: string }[] = await (prisma as any).availabilitySlot.findMany({
       where: { date: { gte: start, lte: end }, status: 'available' },
       select: { date: true, boatId: true, part: true }
     });
+    
+    // Récupérer les réservations actives pour identifier les dates réservées
+    const reservations = await (prisma as any).reservation.findMany({
+      where: {
+        startDate: { lte: end },
+        endDate: { gte: start },
+        status: { not: 'cancelled' }
+      },
+      select: { boatId: true, startDate: true, endDate: true, part: true }
+    });
+    
+    // Créer un Set des dates réservées par bateau
+    const reservedDatesByBoat: Record<number, Set<string>> = {};
+    for (const res of reservations) {
+      if (!res.boatId) continue;
+      const resStart = new Date(res.startDate);
+      const resEnd = new Date(res.endDate);
+      let current = new Date(resStart);
+      while (current <= resEnd) {
+        const dateKey = `${current.getUTCFullYear()}-${String(current.getUTCMonth() + 1).padStart(2, '0')}-${String(current.getUTCDate()).padStart(2, '0')}`;
+        if (!reservedDatesByBoat[res.boatId]) {
+          reservedDatesByBoat[res.boatId] = new Set();
+        }
+        reservedDatesByBoat[res.boatId].add(dateKey);
+        current = new Date(current.getTime() + 86400000);
+      }
+    }
     // Regrouper par boatId -> date -> parts (utiliser UTC pour extraire les dates)
+    // Exclure les slots pour les dates où le bateau est réservé
     const byBoat: Record<number, Record<string, { AM?: boolean; PM?: boolean; FULL?: boolean }>> = {};
     for (const s of slots) {
       const d = new Date(s.date);
       // Utiliser UTC pour correspondre au format de stockage
       const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+      
+      // Vérifier si cette date est réservée pour ce bateau
+      const isReserved = reservedDatesByBoat[s.boatId]?.has(key);
+      if (isReserved) {
+        // Ne pas inclure ce slot si la date est réservée
+        continue;
+      }
+      
       (byBoat[s.boatId] ||= {});
       (byBoat[s.boatId][key] ||= {});
       (byBoat[s.boatId][key] as any)[s.part] = true;
+    }
+    
+    // Créer un Set des dates réservées (tous bateaux confondus) pour l'affichage dans le calendrier
+    const allReservedDates = new Set<string>();
+    for (const boatId in reservedDatesByBoat) {
+      reservedDatesByBoat[boatId].forEach(date => allReservedDates.add(date));
     }
     // Agrégation par date
     const dateStats: Record<string, { any:Set<number>; full:Set<number>; amOnly:Set<number>; pmOnly:Set<number> }> = {};
@@ -70,6 +113,7 @@ export async function GET(req: Request) {
       amOnly: s.amOnly.size,
       pmOnly: s.pmOnly.size,
       boats: s.any.size, // compat ancien champ
+      reserved: allReservedDates.has(date), // Indique si la date est réservée (au moins un bateau)
     })).sort((a,b)=>a.date.localeCompare(b.date));
     return NextResponse.json({ days });
   } catch (e) {

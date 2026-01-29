@@ -36,6 +36,14 @@ export async function POST(req: Request) {
     });
     if (!boatExp?.price) return NextResponse.json({ error: 'price_missing' }, { status: 400 });
 
+    // Récupérer les options sélectionnées et calculer leur prix total
+    const optionIds = Array.isArray(raw?.optionIds) ? raw.optionIds.map(id => Number(id)) : [];
+    const boatOptions = await prisma.boatOption.findMany({
+      where: { boatId: boat.id, id: { in: optionIds } },
+      select: { id: true, label: true, price: true }
+    });
+    const optionsTotal = boatOptions.reduce((sum, opt) => sum + (opt.price || 0), 0);
+
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(start) || (end && !dateRegex.test(end))) {
       return NextResponse.json({ error: 'invalid_date' }, { status: 400 });
@@ -64,7 +72,9 @@ export async function POST(req: Request) {
     if (!slot) return NextResponse.json({ error: 'slot_unavailable' }, { status: 409 });
 
     const basePrice = boatExp.price;
-    const total = part === 'FULL' ? basePrice * days : Math.round(basePrice * 0.55);
+    const basePriceForDays = part === 'FULL' ? basePrice * days : Math.round(basePrice * 0.55);
+    // Total = prix base (bateau + expérience) + options
+    const total = basePriceForDays + optionsTotal;
 
     const settings = await prisma.settings.findFirst({
       where: { id: 1 },
@@ -107,6 +117,7 @@ export async function POST(req: Request) {
           expSlug: experience.slug,
           experienceTitleFr: experience.titleFr,
           experienceTitleEn: experience.titleEn,
+          optionIds, // Sauvegarder les IDs des options sélectionnées
           departurePort,
           preferredTime,
           children,

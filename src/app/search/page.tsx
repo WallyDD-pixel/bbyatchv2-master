@@ -93,23 +93,48 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
         if (diffDaysFull>6) {
           // hors règle -> aucun résultat
         } else {
+          // Récupérer les réservations actives pour exclure les bateaux réservés
+          const reservations = await (prisma as any).reservation.findMany({
+            where: {
+              startDate: { lte: toDateUTC },
+              endDate: { gte: fromDateUTC },
+              status: { not: 'cancelled' }
+            },
+            select: { boatId: true, startDate: true, endDate: true, part: true }
+          });
+          
+          // Créer un Set des bateaux réservés pour cette période
+          const reservedBoatIds = new Set<number>();
+          for (const res of reservations) {
+            if (res.boatId) {
+              reservedBoatIds.add(res.boatId);
+            }
+          }
+          console.log('[search] FULL - Reserved boat IDs:', Array.from(reservedBoatIds));
+          
           // Récupérer d'abord les slots normaux pour identifier les bateaux disponibles
+          // Exclure les slots des bateaux réservés
           const slots = await (prisma as any).availabilitySlot.findMany({
-            where: { date: { gte: fromDateUTC, lte: toDateUTC }, status: 'available' },
+            where: { 
+              date: { gte: fromDateUTC, lte: toDateUTC }, 
+              status: 'available',
+              boatId: reservedBoatIds.size > 0 ? { notIn: Array.from(reservedBoatIds) } : undefined
+            },
             select: { boatId:true, date:true, part:true }
           });
-          console.log('[search] FULL - Found slots:', slots.length);
+          console.log('[search] FULL - Found slots (excluding reserved boats):', slots.length);
           
           // Récupérer aussi les slots d'événements pour cette période
+          // Exclure les slots des bateaux réservés
           const expSlots = await (prisma as any).experienceAvailabilitySlot.findMany({
             where: { 
               date: { gte: fromDateUTC, lte: toDateUTC }, 
               status: 'available',
-              boatId: { not: null } // Seulement les slots liés à un bateau spécifique
+              boatId: reservedBoatIds.size > 0 ? { not: null, notIn: Array.from(reservedBoatIds) } : { not: null } // Seulement les slots liés à un bateau spécifique et non réservé
             },
             select: { boatId:true, date:true, part:true }
           });
-          console.log('[search] FULL - Found experience slots:', expSlots.length);
+          console.log('[search] FULL - Found experience slots (excluding reserved boats):', expSlots.length);
           
           // Récupérer les bateaux qui ont des slots disponibles (normaux ou événements)
           const slotBoatIds = [...new Set([...slots.map((s:any) => s.boatId), ...expSlots.map((s:any) => s.boatId)].filter(Boolean))];
@@ -164,14 +189,34 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
           }
           console.log('[search] FULL - Required days:', requiredDays);
           
-          // Inclure TOUS les bateaux qui ont au moins un slot disponible (normal ou événement) pour au moins un jour de la plage
-          // On va ajouter une propriété availableParts pour indiquer quels créneaux sont disponibles
+          // Vérifier que chaque bateau a des slots disponibles pour TOUS les jours de la plage
+          // Un bateau est disponible seulement s'il a des slots pour chaque jour ET n'est pas réservé
           boats = allBoats.map((b:any)=>{
             const days = byBoat[b.id];
             const expDays = expByBoat[b.id];
             
-            // Si pas de slots normaux ni d'événements, exclure
-            if(!days && !expDays) {
+            // Vérifier que le bateau a des slots pour TOUS les jours de la plage
+            let hasAllDays = true;
+            for(const dayKey of requiredDays) {
+              const dayParts = days?.[dayKey];
+              const expDayParts = expDays?.[dayKey];
+              
+              // Le bateau doit avoir au moins un slot (normal ou événement) pour ce jour
+              if(!dayParts && !expDayParts) {
+                hasAllDays = false;
+                break;
+              }
+            }
+            
+            // Si le bateau n'a pas de slots pour tous les jours, l'exclure
+            if(!hasAllDays) {
+              console.log(`[search] FULL - Boat ${b.id} (${b.name}) excluded: missing slots for some days`);
+              return null;
+            }
+            
+            // Vérifier que le bateau n'est pas réservé pour cette période
+            if(reservedBoatIds.has(b.id)) {
+              console.log(`[search] FULL - Boat ${b.id} (${b.name}) excluded: reserved for this period`);
               return null;
             }
             
@@ -250,23 +295,46 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
         const fromDateUTC = new Date(Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0));
         const toDateUTC = new Date(Date.UTC(startYear, startMonth - 1, startDay, 23, 59, 59, 999));
         
-        // Récupérer d'abord les slots normaux
+        // Récupérer les réservations actives pour exclure les bateaux réservés
+        const reservations = await (prisma as any).reservation.findMany({
+          where: {
+            startDate: { lte: toDateUTC },
+            endDate: { gte: fromDateUTC },
+            status: { not: 'cancelled' }
+          },
+          select: { boatId: true, startDate: true, endDate: true, part: true }
+        });
+        
+        // Créer un Set des bateaux réservés pour cette date
+        const reservedBoatIds = new Set<number>();
+        for (const res of reservations) {
+          if (res.boatId) {
+            reservedBoatIds.add(res.boatId);
+          }
+        }
+        console.log('[search] AM/PM - Reserved boat IDs:', Array.from(reservedBoatIds));
+        
+        // Récupérer d'abord les slots normaux (exclure les bateaux réservés)
         const slots = await (prisma as any).availabilitySlot.findMany({
-          where: { date: { gte: fromDateUTC, lte: toDateUTC }, status: 'available' },
+          where: { 
+            date: { gte: fromDateUTC, lte: toDateUTC }, 
+            status: 'available',
+            boatId: reservedBoatIds.size > 0 ? { notIn: Array.from(reservedBoatIds) } : undefined
+          },
           select: { boatId:true, date:true, part:true }
         });
-        console.log('[search] AM/PM - Found slots:', slots.length);
+        console.log('[search] AM/PM - Found slots (excluding reserved boats):', slots.length);
         
-        // Récupérer aussi les slots d'événements pour cette date
+        // Récupérer aussi les slots d'événements pour cette date (exclure les bateaux réservés)
         const expSlots = await (prisma as any).experienceAvailabilitySlot.findMany({
           where: { 
             date: { gte: fromDateUTC, lte: toDateUTC }, 
             status: 'available',
-            boatId: { not: null } // Seulement les slots liés à un bateau spécifique
+            boatId: reservedBoatIds.size > 0 ? { not: null, notIn: Array.from(reservedBoatIds) } : { not: null } // Seulement les slots liés à un bateau spécifique et non réservé
           },
           select: { boatId:true, date:true, part:true }
         });
-        console.log('[search] AM/PM - Found experience slots:', expSlots.length);
+        console.log('[search] AM/PM - Found experience slots (excluding reserved boats):', expSlots.length);
         
         // Récupérer les bateaux qui ont des slots disponibles (normaux ou événements)
         const slotBoatIds = [...new Set([...slots.map((s:any) => s.boatId), ...expSlots.map((s:any) => s.boatId)].filter(Boolean))];

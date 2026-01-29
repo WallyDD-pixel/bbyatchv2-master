@@ -47,17 +47,18 @@ export async function PATCH(req: Request) {
   } catch { return NextResponse.json({ error: 'failed' }, { status: 500 }); }
 }
 
-// POST toggle { experienceId, boatId?, date:'YYYY-MM-DD', part, note? }
+// POST toggle { experienceId, boatId?, date:'YYYY-MM-DD', part, note?, experiencePrice? }
 export async function POST(req: Request) {
   if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   let body: any = {}; try { body = await req.json(); } catch {}
-  const { experienceId, boatId, date, part, note } = body || {};
+  const { experienceId, boatId, date, part, note, experiencePrice } = body || {};
   if (!experienceId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   if (!['AM','PM','FULL','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
   const day = new Date(date + 'T00:00:00');
   if (isNaN(day.getTime())) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
   const expId = Number(experienceId);
   const bId = boatId ? Number(boatId) : null;
+  const price = experiencePrice != null && experiencePrice !== '' ? Number(experiencePrice) : null;
   
   try {
     // Vérifier si un créneau existe déjà (avec ou sans boatId selon le cas)
@@ -105,6 +106,21 @@ export async function POST(req: Request) {
     const created = await (prisma as any).experienceAvailabilitySlot.create({ 
       data: { experienceId: expId, boatId: bId, date: day, part, status:'available', note: note||null } 
     });
+    
+    // Si un boatId est fourni et un prix est défini, créer ou mettre à jour le BoatExperience
+    if (bId !== null && price !== null) {
+      try {
+        await (prisma as any).boatExperience.upsert({
+          where: { boatId_experienceId: { boatId: bId, experienceId: expId } },
+          update: { price: price },
+          create: { boatId: bId, experienceId: expId, price: price }
+        });
+      } catch (e: any) {
+        console.error('Error upserting BoatExperience:', e);
+        // Ne pas faire échouer la création du slot si l'upsert échoue
+      }
+    }
+    
     return NextResponse.json({ toggled:'added', slot: created });
   } catch (e: any) { 
     console.error('Error creating experience slot:', e);

@@ -196,11 +196,25 @@ export default function ReservationsTableClient({
               return (
                 <tr
                   key={r.id}
-                  className={`border-t border-black/10 hover:bg-black/[0.03] ${
+                  className={`border-t border-black/10 hover:bg-black/[0.03] cursor-pointer ${
                     selectedIds.has(r.id) ? "bg-blue-50" : ""
                   }`}
+                  onClick={(e) => {
+                    // Ne pas rediriger si on clique sur un checkbox, un input, un select, un button ou un lien
+                    const target = e.target as HTMLElement;
+                    if (
+                      target.tagName === 'INPUT' ||
+                      target.tagName === 'SELECT' ||
+                      target.tagName === 'BUTTON' ||
+                      target.tagName === 'A' ||
+                      target.closest('input, select, button, a, form')
+                    ) {
+                      return;
+                    }
+                    window.location.href = `/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`;
+                  }}
                 >
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3">
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedIds.has(r.id)}
@@ -212,47 +226,127 @@ export default function ReservationsTableClient({
                     className="py-2 sm:py-2.5 px-2 sm:px-3 text-[9px] sm:text-[10px] text-black/60 max-w-[90px] truncate hidden lg:table-cell"
                     title={r.id}
                   >
-                    {r.reference || r.id.slice(-6)}
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="text-[color:var(--primary)] hover:underline"
+                    >
+                      {r.reference || r.id.slice(-6)}
+                    </Link>
                   </td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap hidden md:table-cell">{userName}</td>
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap hidden md:table-cell">
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="block text-[color:var(--primary)] hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {userName}
+                    </Link>
+                  </td>
                   <td className="py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap text-black/60 hidden xl:table-cell">
-                    {r.user?.email}
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="block text-blue-600 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {r.user?.email}
+                    </Link>
                   </td>
                   <td className="py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap font-medium">
                     {r.boat ? (
                       <Link
-                        href={`/boats/${r.boat.slug}`}
+                        href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
                         className="text-[color:var(--primary)] hover:underline text-[10px] sm:text-xs"
                       >
                         {r.boat.name}
                       </Link>
                     ) : (
-                      "—"
+                      <Link
+                        href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                        className="text-[color:var(--primary)] hover:underline text-[10px] sm:text-xs"
+                      >
+                        {r.id.slice(-6)}
+                      </Link>
                     )}
                   </td>
                   <td className="py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap hidden lg:table-cell text-[9px] sm:text-[10px]">
-                    {dateFmt(new Date(r.startDate))}
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="block"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {dateFmt(new Date(r.startDate))}
+                    </Link>
                   </td>
                   <td className="py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap hidden lg:table-cell text-[9px] sm:text-[10px]">
-                    {dateFmt(new Date(r.endDate))}
-                  </td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-center hidden md:table-cell">{dayCount(r)}</td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[9px] sm:text-[10px]">{partLabel(r.part)}</td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-right font-medium hidden xl:table-cell text-[9px] sm:text-[10px]">
-                    {money(r.totalPrice)}
-                  </td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-right hidden xl:table-cell text-[9px] sm:text-[10px]">{money(r.depositAmount)}</td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-right hidden xl:table-cell text-[9px] sm:text-[10px]">{money(r.remainingAmount)}</td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3">
-                    <span
-                      className={`inline-flex items-center justify-center rounded-full px-2 sm:px-2.5 h-5 sm:h-6 text-[9px] sm:text-[10px] font-semibold ${badgeClass(
-                        r.status
-                      )}`}
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="block"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {statusLabel(r.status)}
-                    </span>
+                      {dateFmt(new Date(r.endDate))}
+                    </Link>
                   </td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell">
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-center hidden md:table-cell">
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="block"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {dayCount(r)}
+                    </Link>
+                  </td>
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[9px] sm:text-[10px]">
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="block"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {partLabel(r.part)}
+                    </Link>
+                  </td>
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-right font-medium hidden xl:table-cell text-[9px] sm:text-[10px]">
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="block"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {money(r.totalPrice)}
+                    </Link>
+                  </td>
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-right hidden xl:table-cell text-[9px] sm:text-[10px]">
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="block"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {money(r.depositAmount)}
+                    </Link>
+                  </td>
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-right hidden xl:table-cell text-[9px] sm:text-[10px]">
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="block"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {money(r.remainingAmount)}
+                    </Link>
+                  </td>
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3">
+                    <Link
+                      href={`/admin/reservations/${r.id}${locale === 'en' ? '?lang=en' : ''}`}
+                      className="block"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span
+                        className={`inline-flex items-center justify-center rounded-full px-2 sm:px-2.5 h-5 sm:h-6 text-[9px] sm:text-[10px] font-semibold ${badgeClass(
+                          r.status
+                        )}`}
+                      >
+                        {statusLabel(r.status)}
+                      </span>
+                    </Link>
+                  </td>
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
                     <a
                       href={`/api/invoices/${r.id}`}
                       target="_blank"
@@ -261,7 +355,7 @@ export default function ReservationsTableClient({
                       PDF
                     </a>
                   </td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell">
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
                     <a
                       href={`/api/invoices/final/${r.id}`}
                       target="_blank"
@@ -274,7 +368,7 @@ export default function ReservationsTableClient({
                       PDF
                     </a>
                   </td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 min-w-[90px] sm:min-w-[120px]">
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 min-w-[90px] sm:min-w-[120px]" onClick={(e) => e.stopPropagation()}>
                     <form action={updateFinalFuelAmount} className="flex items-center gap-1">
                       <input type="hidden" name="id" value={r.id} />
                       <input
@@ -301,7 +395,7 @@ export default function ReservationsTableClient({
                       </button>
                     </form>
                   </td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 min-w-[120px] sm:min-w-[160px]">
+                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 min-w-[120px] sm:min-w-[160px]" onClick={(e) => e.stopPropagation()}>
                     <form action={updateReservationStatus} className="flex items-center gap-1">
                       <input type="hidden" name="id" value={r.id} />
                       <select

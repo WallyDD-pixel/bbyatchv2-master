@@ -18,6 +18,17 @@ export default function ExperiencePayButton({ expSlug, boatId, start, end, part,
       }
     }
     
+    // Récupérer les options sélectionnées depuis sessionStorage
+    const selectedOptionsStr = sessionStorage.getItem('experienceSelectedOptions');
+    let optionIds: number[] = [];
+    if (selectedOptionsStr) {
+      try {
+        optionIds = JSON.parse(selectedOptionsStr);
+      } catch (e) {
+        console.error('Error parsing selected options', e);
+      }
+    }
+    
     setLoading(true); setError(null);
     try {
       const res = await fetch('/api/checkout/experience', { 
@@ -30,6 +41,7 @@ export default function ExperiencePayButton({ expSlug, boatId, start, end, part,
           end, 
           part, 
           locale,
+          optionIds, // Ajouter les options sélectionnées
           departurePort: bookingData.departurePort,
           preferredTime: bookingData.preferredTime,
           children: bookingData.children,
@@ -41,6 +53,7 @@ export default function ExperiencePayButton({ expSlug, boatId, start, end, part,
       if(json.url){ 
         // Nettoyer sessionStorage après envoi réussi
         sessionStorage.removeItem('experienceBookingData');
+        sessionStorage.removeItem('experienceSelectedOptions');
         window.location.href = json.url; 
         return; 
       }

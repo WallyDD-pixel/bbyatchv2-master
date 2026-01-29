@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import AboutUsSection from "@/components/AboutUsSection";
 import WhyChooseSection from "@/components/WhyChooseSection";
 import InfoCardsSection from "@/components/InfoCardsSection";
+import ExperienceBoatsSection from "@/components/ExperienceBoatsSection";
 import { prisma } from '@/lib/prisma';
 import { getLabelsWithSettings } from '@/lib/settings';
 
@@ -80,6 +81,7 @@ export default async function Home({
         <BoatsSection locale={locale} t={t} />
         <InfoCardsSection locale={locale} />
         <ExperiencesSection locale={locale} t={t} />
+        <ExperienceBoatsSection locale={locale} />
   {/* Section "Pourquoi choisir BB Service" retirée */}
   <AboutUsSection settings={settings} locale={locale} />
         <GallerySection locale={locale} t={t} />

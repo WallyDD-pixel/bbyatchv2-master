@@ -242,6 +242,12 @@ export async function POST(req: Request){
         const end = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
         
         console.log(`[deposit] Normalizing date ${dateStr} -> UTC start: ${start.toISOString()}, end: ${end.toISOString()}`);
+        
+        // Vérifier que les dates sont valides
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          console.error(`[deposit] ERROR: Invalid date parsed from ${dateStr}`);
+        }
+        
         return { start, end };
       };
 
@@ -285,6 +291,8 @@ export async function POST(req: Request){
           });
           console.log(`[deposit] Debug: Last 10 slots for boat ${boat.id}:`, allSlotsDebug.map(s => ({ part: s.part, date: s.date.toISOString() })));
           
+          // Rechercher les slots pour cette date
+          // dayStart et dayEnd sont déjà en UTC à minuit et fin de journée
           const daySlots = await prisma.availabilitySlot.findMany({ 
             where: { 
               boatId: boat.id, 
@@ -294,6 +302,19 @@ export async function POST(req: Request){
             select: { part: true, date: true } 
           });
           console.log(`[deposit] Checking slots for boat ${boat.id} on ${dateStr} (range: ${dayStart.toISOString()} to ${dayEnd.toISOString()}): found ${daySlots.length} slot(s)`, daySlots.map(s => ({ part: s.part, date: s.date.toISOString() })));
+          
+          // Si aucun slot trouvé, vérifier tous les slots du bateau pour cette date (debug)
+          if (daySlots.length === 0) {
+            const allBoatSlots = await prisma.availabilitySlot.findMany({ 
+              where: { 
+                boatId: boat.id,
+                status: 'available' 
+              }, 
+              select: { part: true, date: true },
+              orderBy: { date: 'asc' }
+            });
+            console.log(`[deposit] DEBUG: All available slots for boat ${boat.id} (${allBoatSlots.length} total):`, allBoatSlots.slice(0, 20).map(s => ({ part: s.part, date: s.date.toISOString().split('T')[0] })));
+          }
           const partsSet = new Set(daySlots.map(s=>s.part));
           const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
           if(!hasFullEquivalent){
@@ -305,14 +326,30 @@ export async function POST(req: Request){
         // Pour les demi-journées, vérifier seulement le jour de départ
         const { start: dayStart, end: dayEnd } = normalizeDate(start);
         
+        // Rechercher les slots pour cette date
+        // dayStart et dayEnd sont déjà en UTC à minuit et fin de journée
         const startSlots = await prisma.availabilitySlot.findMany({ 
           where: { 
             boatId: boat.id, 
             date: { gte: dayStart, lte: dayEnd }, 
             status: 'available' 
           }, 
-          select: { part: true } 
+          select: { part: true, date: true } 
         });
+        console.log(`[deposit] Checking slots for boat ${boat.id} on ${start} (range: ${dayStart.toISOString()} to ${dayEnd.toISOString()}): found ${startSlots.length} slot(s)`, startSlots.map(s => ({ part: s.part, date: s.date.toISOString() })));
+        
+        // Si aucun slot trouvé, vérifier tous les slots du bateau pour cette date (debug)
+        if (startSlots.length === 0) {
+          const allBoatSlots = await prisma.availabilitySlot.findMany({ 
+            where: { 
+              boatId: boat.id,
+              status: 'available' 
+            }, 
+            select: { part: true, date: true },
+            orderBy: { date: 'asc' }
+          });
+          console.log(`[deposit] DEBUG: All available slots for boat ${boat.id} (${allBoatSlots.length} total):`, allBoatSlots.slice(0, 20).map(s => ({ part: s.part, date: s.date.toISOString().split('T')[0] })));
+        }
         const partsSet = new Set(startSlots.map(s=>s.part));
         if(part==='AM' && !(partsSet.has('AM') || partsSet.has('FULL'))){
           console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${start} for AM, parts found:`, Array.from(partsSet));
@@ -361,14 +398,20 @@ export async function POST(req: Request){
     }
     const selectedOptions = (boatWithPrices?.options||[]).filter((o:any)=> selectedOptionIds.includes(o.id));
     const optionsTotal = selectedOptions.reduce((sum:number,o:any)=> sum + (o.price || 0), 0);
-    const grandTotal = total + optionsTotal + skipperTotal;
+    
+    // IMPORTANT: Le skipper et le carburant sont payés sur place
+    // L'acompte de 20% ne s'applique QUE sur le prix du bateau + options (sans skipper ni carburant)
+    const basePriceForDeposit = total + optionsTotal; // Prix bateau + options (sans skipper)
+    const grandTotal = basePriceForDeposit + skipperTotal; // Total incluant skipper pour référence
 
     // Settings (pour pourcentage acompte)
     const settings = await prisma.settings.findFirst({ where:{ id:1 }, select:{ stripeMode:true, stripeTestSk:true, stripeLiveSk:true, platformCommissionPct:true, currency:true } });
     // Champ depositPercent supprimé de Settings : valeur fixe 20% (adapter si réintroduit)
     const depositPct = 0.20;
-    const deposit = Math.round(grandTotal * depositPct);
-    const remaining = grandTotal - deposit;
+    // L'acompte est calculé uniquement sur le prix du bateau + options (sans skipper ni carburant)
+    const deposit = Math.round(basePriceForDeposit * depositPct);
+    // Le reste à payer = prix bateau + options - acompte (sans skipper ni carburant, payés sur place)
+    const remaining = basePriceForDeposit - deposit;
     const currency = (settings?.currency || 'eur').toLowerCase();
 
     // Générer une référence unique
