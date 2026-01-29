@@ -1,38 +1,15 @@
 import type { Metadata } from "next";
-import { Manrope, Playfair_Display, Montserrat } from "next/font/google";
 import "./globals.css";
 import { ForceLight } from '@/components/ForceLight';
 import { AppProviders } from '@/components/Providers';
 import SEOTracking from '@/components/SEOTracking';
 import { prisma } from '@/lib/prisma';
 
-// Configuration des fonts avec fallback pour éviter les timeouts pendant le build
-const manrope = Manrope({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  display: "swap",
-  fallback: ["system-ui", "arial"],
-  adjustFontFallback: false, // Désactiver l'ajustement automatique pour éviter les timeouts
-});
-
-const playfair = Playfair_Display({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-  fallback: ["Georgia", "serif"],
-  adjustFontFallback: false,
-});
-
-// Police temporaire pour Aviano (en attendant la vraie police)
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  fallback: ["system-ui", "sans-serif"],
-  adjustFontFallback: false,
-});
+// Fonts système par défaut (évite les timeouts Google Fonts pendant le build)
+// Les fonts Google seront chargées via CSS si nécessaire
+const manrope = { variable: "--font-sans" };
+const playfair = { variable: "--font-display" };
+const montserrat = { variable: "--font-montserrat" };
 
 // Variables pour les polices personnalisées (remplacées par Playfair Display et Montserrat)
 // Les polices sont maintenant directement Playfair Display et Montserrat via Google Fonts
@@ -66,6 +43,10 @@ export default async function RootLayout({
       <head>
         {/* Script d'init light forcé */}
         <script dangerouslySetInnerHTML={{__html:`(function(){try{document.documentElement.classList.remove('dark');localStorage.setItem('theme','light');}catch(e){}})();`}}/>
+        {/* Google Fonts chargées côté client (pas pendant le build) */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className={`${manrope.variable} ${playfair.variable} ${montserrat.variable} font-sans antialiased`}>
         <ForceLight />
