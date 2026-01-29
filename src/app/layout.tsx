@@ -5,18 +5,8 @@ import { AppProviders } from '@/components/Providers';
 import SEOTracking from '@/components/SEOTracking';
 import { prisma } from '@/lib/prisma';
 
-// Fonts système par défaut (évite les timeouts Google Fonts pendant le build)
-// Les fonts Google seront chargées via CSS si nécessaire
-const manrope = { variable: "--font-sans" };
-const playfair = { variable: "--font-display" };
-const montserrat = { variable: "--font-montserrat" };
-
-// Variables pour les polices personnalisées (remplacées par Playfair Display et Montserrat)
-// Les polices sont maintenant directement Playfair Display et Montserrat via Google Fonts
-const customFonts = {
-  nakilla: "--font-display", // Utilise Playfair Display
-  aviano: "--font-montserrat", // Utilise Montserrat
-};
+// Les fonts Google sont chargées via <link> dans le <head>
+// Les variables CSS sont définies dans globals.css
 
 export const metadata: Metadata = {
   title: "BB SERVICES CHARTER - Location de yachts sur la Côte d'Azur",
@@ -48,7 +38,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className={`${manrope.variable} ${playfair.variable} ${montserrat.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased" style={{ fontFamily: 'var(--font-sans)' }}>
         <ForceLight />
         <AppProviders>
           {children}

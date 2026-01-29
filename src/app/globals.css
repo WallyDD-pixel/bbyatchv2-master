@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Variables CSS pour les fonts Google */
+:root {
+  --font-sans: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-display: 'Playfair Display', serif;
+  --font-montserrat: 'Montserrat', sans-serif;
+}
+
 @keyframes slideIn {
   from {
     transform: translateY(-100%);
