@@ -43,14 +43,17 @@ export default function AdminNotificationsPage() {
     }
   };
 
-  const handleTestEmail = async () => {
+  const handleTestEmail = async (type: string = 'basic') => {
     setTesting(true);
     try {
       const res = await fetch("/api/admin/notifications/test", {
         method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
       });
       if (res.ok) {
-        alert("Email de test envoyé ! Vérifiez votre boîte de réception.");
+        const data = await res.json();
+        alert(`Email de test "${type}" envoyé ! Vérifiez votre boîte de réception.`);
       } else {
         const data = await res.json();
         alert(`Erreur: ${data.error || 'Impossible d\'envoyer l\'email de test'}`);
@@ -164,16 +167,77 @@ export default function AdminNotificationsPage() {
                 </label>
               </div>
               <div className="pt-4 border-t border-black/10">
-                <button
-                  type="button"
-                  onClick={handleTestEmail}
-                  disabled={testing}
-                  className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm font-medium disabled:opacity-50"
-                >
-                  {testing ? "Envoi..." : "Envoyer un email de test"}
-                </button>
-                <p className="text-xs text-black/50 mt-2">
-                  Envoie un email de test à l'adresse configurée ci-dessous pour vérifier la configuration SMTP.
+                <p className="text-xs text-black/50 mb-4">
+                  Testez différents types d'emails pour vérifier que tout fonctionne correctement :
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleTestEmail('basic')}
+                    disabled={testing}
+                    className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {testing ? "..." : "📧 Test basique"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestEmail('reservation')}
+                    disabled={testing}
+                    className="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {testing ? "..." : "⛵ Réservation"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestEmail('payment')}
+                    disabled={testing}
+                    className="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {testing ? "..." : "💳 Paiement"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestEmail('agency')}
+                    disabled={testing}
+                    className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {testing ? "..." : "🏢 Demande agence"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestEmail('contact')}
+                    disabled={testing}
+                    className="px-3 py-2 bg-cyan-100 hover:bg-cyan-200 text-cyan-700 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {testing ? "..." : "📮 Message contact"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestEmail('status-change')}
+                    disabled={testing}
+                    className="px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {testing ? "..." : "🔄 Changement statut"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestEmail('account-created')}
+                    disabled={testing}
+                    className="px-3 py-2 bg-teal-100 hover:bg-teal-200 text-teal-700 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {testing ? "..." : "👤 Création compte"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestEmail('welcome')}
+                    disabled={testing}
+                    className="px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {testing ? "..." : "👋 Email bienvenue"}
+                  </button>
+                </div>
+                <p className="text-xs text-black/50 mt-3">
+                  Les emails de test seront envoyés à l'adresse configurée ci-dessous.
                 </p>
               </div>
             </div>

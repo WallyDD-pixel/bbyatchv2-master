@@ -3,8 +3,7 @@ import Footer from '@/components/Footer';
 import { prisma } from '@/lib/prisma';
 import { messages, type Locale } from '@/i18n/messages';
 import PayButtonWithTerms from './pay/PayButtonWithTerms';
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 
 interface BoatOption {
   id: number;
@@ -40,7 +39,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
     if (diff>0 && diff<1000) nbJours = diff; else nbJours=1;
   }
   // Calcul du skipper (minimum 1 jour)
-  const session = await getServerSession(auth as any) as any;
+  const session = await getServerSession() as any;
   const userRole = (session?.user as any)?.role || 'user';
   const isAgency = userRole === 'agency';
   const skipperDays = (slot==='FULL' || slot==='SUNSET') ? Math.max(nbJours, 1) : 1;

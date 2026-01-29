@@ -6,6 +6,8 @@ import { messages, type Locale } from "@/i18n/messages";
 import Link from "next/link";
 import SignOutButton from "@/app/dashboard/SignOutButton";
 import ProfileCardClient from "@/app/dashboard/ProfileCardClient";
+import ReservationRow from "@/app/dashboard/ReservationRow";
+import ReservationCard from "@/app/dashboard/ReservationCard";
 import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage({ searchParams }: { searchParams?: { lang?: string } }) {
@@ -137,34 +139,25 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                       </td>
                     </tr>
                   )}
-                  {reservations.map(r => (
-                    <tr key={r.id} className="border-t border-black/5 hover:bg-black/[0.025] transition">
-                      <td className="py-2.5 pl-3 pr-4 whitespace-nowrap align-top">
-                        <Link href={`/boats/${r.boat?.slug || ''}`} className="text-[color:var(--primary)] hover:underline font-medium">
-                          {r.boat?.name || '—'}
-                        </Link>
-                        {(() => { const m=getExp(r); if(!m) return null; const title = locale==='fr'? (m.experienceTitleFr||m.expSlug) : (m.experienceTitleEn||m.experienceTitleFr||m.expSlug); if(!title) return null; return <div className="mt-0.5 text-[10px] inline-flex items-center gap-1 px-2 py-[2px] rounded-full bg-[color:var(--primary)]/10 text-[color:var(--primary)] font-medium tracking-wide">{locale==='fr'? 'Expérience':'Experience'}: {title}</div>; })()}
-                      </td>
-                      <td className="py-2.5 px-4 whitespace-nowrap">{dateFmt(new Date(r.startDate))}</td>
-                      <td className="py-2.5 px-4 whitespace-nowrap">{dateFmt(new Date(r.endDate))}</td>
-                      <td className="py-2.5 px-4 whitespace-nowrap text-center hidden md:table-cell">{dayCount(r)}</td>
-                      <td className="py-2.5 px-4 whitespace-nowrap hidden lg:table-cell">{partLabel(r.part)}</td>
-                      <td className="py-2.5 px-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center rounded-full px-2.5 h-6 text-xs font-semibold ${statusClass(r.status)}`}>{statusLabel(r.status)}</span>
-                      </td>
-                      <td className="py-2.5 px-4 whitespace-nowrap hidden md:table-cell">
-                        <a href={`/api/invoices/${r.id}`} target="_blank" rel="noopener noreferrer" className="text-xs inline-flex items-center rounded-full border border-black/15 px-3 h-7 hover:bg-black/5">
-                          {locale==='fr'? 'Voir':'View'}
-                        </a>
-                      </td>
-                      <td className="py-2.5 px-4 whitespace-nowrap hidden lg:table-cell">
-                        <a href={`/api/invoices/final/${r.id}`} target="_blank" rel="noopener noreferrer" className={`text-xs inline-flex items-center rounded-full border border-black/15 px-3 h-7 hover:bg-black/5 ${r.status!=='completed' ? 'pointer-events-none opacity-40' : ''}`} aria-disabled={r.status!=='completed'}>
-                          {locale==='fr'? 'Voir':'View'}
-                        </a>
-                      </td>
-                      <td className="py-2.5 pl-4 pr-3 text-right whitespace-nowrap font-medium">{fmt(r.totalPrice)}</td>
-                    </tr>
-                  ))}
+                  {reservations.map(r => {
+                    const m = getExp(r);
+                    const experienceTitle = m ? (locale==='fr'? (m.experienceTitleFr||m.expSlug) : (m.experienceTitleEn||m.experienceTitleFr||m.expSlug)) : null;
+                    return (
+                      <ReservationRow
+                        key={r.id}
+                        reservation={r}
+                        locale={locale}
+                        startDateFormatted={dateFmt(new Date(r.startDate))}
+                        endDateFormatted={dateFmt(new Date(r.endDate))}
+                        dayCount={dayCount(r)}
+                        partLabel={partLabel(r.part)}
+                        statusLabel={statusLabel(r.status)}
+                        statusClass={statusClass(r.status)}
+                        totalPriceFormatted={fmt(r.totalPrice)}
+                        experienceTitle={experienceTitle}
+                      />
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -181,40 +174,25 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   </div>
                 </div>
               )}
-              {reservations.map(r => (
-                <div key={r.id} className="rounded-xl border border-black/10 bg-white/70 backdrop-blur-sm p-4 shadow-sm hover:shadow-md transition">
-                  <div className="flex justify-between items-start gap-3">
-                    <div>
-                      <Link href={`/boats/${r.boat?.slug || ''}`} className="font-semibold text-[color:var(--primary)] hover:underline">{r.boat?.name || '—'}</Link>
-                      {(() => { const m=getExp(r); if(!m) return null; const title = locale==='fr'? (m.experienceTitleFr||m.expSlug) : (m.experienceTitleEn||m.experienceTitleFr||m.expSlug); if(!title) return null; return <div className="mt-0.5 text-[10px] inline-flex items-center gap-1 px-2 py-[2px] rounded-full bg-[color:var(--primary)]/10 text-[color:var(--primary)] font-medium">{locale==='fr'? 'Expérience':'Experience'}: {title}</div>; })()}
-                      <div className="mt-1 text-xs text-black/60">{dateFmt(new Date(r.startDate))} → {dateFmt(new Date(r.endDate))}</div>
-                    </div>
-                    <span className={`inline-flex items-center rounded-full px-2.5 h-6 text-[11px] font-semibold ${statusClass(r.status)}`}>{statusLabel(r.status)}</span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                    <div className="space-y-1">
-                      <div className="font-medium text-black/70">{locale==='fr'? 'Jours':'Days'}</div>
-                      <div className="text-sm font-semibold">{dayCount(r)}</div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="font-medium text-black/70">{locale==='fr'? 'Partie':'Part'}</div>
-                      <div className="text-sm font-semibold">{partLabel(r.part)}</div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="font-medium text-black/70">{locale==='fr'? 'Acompte':'Deposit'}</div>
-                      <a href={`/api/invoices/${r.id}`} target="_blank" className="inline-block rounded-full border border-black/15 px-3 h-7 leading-7 text-[11px] font-medium hover:bg-black/5">PDF</a>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="font-medium text-black/70">{locale==='fr'? 'Finale':'Final'}</div>
-                      <a href={`/api/invoices/final/${r.id}`} target="_blank" className={`inline-block rounded-full border border-black/15 px-3 h-7 leading-7 text-[11px] font-medium hover:bg-black/5 ${r.status!=='completed' ? 'pointer-events-none opacity-40' : ''}`}>PDF</a>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-sm font-semibold">
-                    <span className="text-black/60">Total</span>
-                    <span>{fmt(r.totalPrice)}</span>
-                  </div>
-                </div>
-              ))}
+              {reservations.map(r => {
+                const m = getExp(r);
+                const experienceTitle = m ? (locale==='fr'? (m.experienceTitleFr||m.expSlug) : (m.experienceTitleEn||m.experienceTitleFr||m.expSlug)) : null;
+                return (
+                  <ReservationCard
+                    key={r.id}
+                    reservation={r}
+                    locale={locale}
+                    startDateFormatted={dateFmt(new Date(r.startDate))}
+                    endDateFormatted={dateFmt(new Date(r.endDate))}
+                    dayCount={dayCount(r)}
+                    partLabel={partLabel(r.part)}
+                    statusLabel={statusLabel(r.status)}
+                    statusClass={statusClass(r.status)}
+                    totalPriceFormatted={fmt(r.totalPrice)}
+                    experienceTitle={experienceTitle}
+                  />
+                );
+              })}
             </div>
           </div>
 

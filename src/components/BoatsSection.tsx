@@ -1,8 +1,7 @@
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { type Locale } from "@/i18n/messages";
-import { getServerSession } from "next-auth";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 
 // Type minimal local pour éviter les any implicites tant que Prisma Client n'est pas rechargé par TS
 type Boat = {
@@ -25,7 +24,7 @@ type Boat = {
 
 export default async function BoatsSection({ locale, t }: { locale: Locale; t: Record<string, string> }) {
   // Vérifier si l'utilisateur est une agence
-  const session = await getServerSession(auth as any) as any;
+  const session = await getServerSession() as any;
   let isAgency = false;
   if (session?.user?.email) {
     try {

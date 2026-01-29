@@ -2,8 +2,7 @@ import { prisma } from '@/lib/prisma';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import ExperiencePayButton from './pay-button';
 import ExperienceBookingDisplay from './ExperienceBookingDisplay';
@@ -48,7 +47,7 @@ export default async function BookingExperiencePage({ searchParams }:{ searchPar
   const deposit = Math.round(computedPrice * 0.2);
   const remaining = computedPrice - deposit;
 
-  const session = await getServerSession(auth as any) as any;
+  const session = await getServerSession() as any;
   const user = session?.user || null;
 
   const checkoutUrl = (boat ? `/checkout?exp=${encodeURIComponent(experience.slug)}&boat=${encodeURIComponent(boat.slug)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&part=${encodeURIComponent(part)}` : null);

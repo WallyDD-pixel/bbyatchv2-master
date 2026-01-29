@@ -1,13 +1,12 @@
-import { getServerSession } from 'next-auth';
+import { getServerSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 import LegalPageForm from '../LegalPageForm';
 
 export default async function AdminLegalNew({ searchParams }: { searchParams?: { lang?: string; slug?: string; titleFr?: string; titleEn?: string } }){
-  const session = await getServerSession(auth as any) as any;
+  const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   if((session.user as any).role !== 'admin') redirect('/dashboard');
   const locale: Locale = searchParams?.lang==='en'? 'en':'fr';

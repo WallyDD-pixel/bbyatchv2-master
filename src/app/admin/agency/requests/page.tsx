@@ -1,13 +1,12 @@
-import { getServerSession } from 'next-auth';
+import { getServerSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 
 export default async function AdminAgencyRequestsPage({ searchParams }: { searchParams?: { lang?: string } }){
-  const session = await getServerSession(auth as any) as any;
+  const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   const role = (session.user as any)?.role || 'user';
   if(role!=='admin') redirect('/dashboard');
@@ -84,7 +83,7 @@ export default async function AdminAgencyRequestsPage({ searchParams }: { search
                     <td className='py-2.5 px-3 text-right font-medium'>{r.totalPrice!=null? (r.totalPrice.toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €'):'—'}</td>
                     <td className='py-2.5 px-3'><span className={`inline-flex items-center rounded-full px-2.5 h-6 text-[10px] font-semibold ${badge(r.status)}`}>{statusLabel(r.status)}</span></td>
                     <td className='py-2.5 px-3 min-w-[170px]'>
-                      <form action={async(formData)=>{ 'use server'; const id=formData.get('id') as string; const action=formData.get('action') as string; const session= await getServerSession(auth as any) as any; if(!session?.user) return; const me= await prisma.user.findUnique({ where:{ email: session.user.email }, select:{ role:true } }); if(me?.role!=='admin') return; if(!id||!action) return; const map:any={ approve:'approved', reject:'rejected', convert:'converted' }; const newStatus=map[action]; if(!newStatus) return; await prisma.agencyRequest.update({ where:{ id }, data:{ status:newStatus } }); if(newStatus==='converted' && !r.reservationId){
+                      <form action={async(formData)=>{ 'use server'; const { getServerSession } = await import('@/lib/auth'); const id=formData.get('id') as string; const action=formData.get('action') as string; const session= await getServerSession() as any; if(!session?.user) return; const me= await prisma.user.findUnique({ where:{ email: session.user.email }, select:{ role:true } }); if(me?.role!=='admin') return; if(!id||!action) return; const map:any={ approve:'approved', reject:'rejected', convert:'converted' }; const newStatus=map[action]; if(!newStatus) return; await prisma.agencyRequest.update({ where:{ id }, data:{ status:newStatus } }); if(newStatus==='converted' && !r.reservationId){
                         // Vérification overlap avant conversion
                         const overlap = await prisma.reservation.findFirst({ where:{ boatId: r.boatId || undefined, status:{ not:'cancelled' }, startDate:{ lte: r.endDate }, endDate:{ gte: r.startDate }, OR:[ { part:'FULL' }, { part: r.part }, ...(r.part==='FULL'? [{ part:'AM' },{ part:'PM' }]:[]), { part:null } ] }, select:{ id:true } });
                         if(overlap) return; // on ne crée pas (créneau déjà pris)

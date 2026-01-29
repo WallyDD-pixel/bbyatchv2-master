@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
+import { getServerSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from "next/link";
@@ -8,7 +7,7 @@ import DeleteExperienceButton from './DeleteExperienceButton';
 import AdminInstructions from "@/components/AdminInstructions";
 
 export default async function AdminExperiencesPage({ searchParams }: { searchParams?: { lang?: string } }) {
-  const session = (await getServerSession(auth as any)) as any;
+  const session = await getServerSession() as any;
   if (!session?.user) redirect("/signin");
   const role = (session.user as any)?.role ?? "user";
   if (role !== "admin") redirect("/dashboard");

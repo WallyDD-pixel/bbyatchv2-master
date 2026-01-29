@@ -1,6 +1,5 @@
-import { getServerSession } from 'next-auth';
+import { getServerSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { messages, type Locale } from '@/i18n/messages';
@@ -19,7 +18,7 @@ const LEGAL_PAGES = [
 ];
 
 export default async function AdminLegalPages({ searchParams }: { searchParams?: { lang?: string } }){
-  const session = await getServerSession(auth as any) as any;
+  const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   if((session.user as any).role !== 'admin') redirect('/dashboard');
   const locale: Locale = searchParams?.lang==='en'? 'en':'fr';

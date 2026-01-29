@@ -80,7 +80,7 @@ export const authOptions: NextAuthOptions = {
 export const auth = authOptions;
 
 // Export getServerSession for use in server components and API routes
-// Now uses Supabase Auth instead of NextAuth
+// Using Supabase Auth
 export { getServerSession } from './auth-supabase';
 
 // Route handlers - NextAuth v4 avec Next.js 15 App Router

@@ -5,41 +5,124 @@ import { messages, type Locale } from '@/i18n/messages';
 import { notFound } from 'next/navigation';
 import Stripe from 'stripe';
 
-interface Props { searchParams?: { lang?: string; res?: string } }
+interface Props { searchParams?: { lang?: string; session_id?: string; res?: string } }
 
 export default async function CheckoutSuccessPage({ searchParams }: Props){
   const sp = searchParams || {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
-  const resId = sp?.res;
-  if(!resId) notFound();
-  let reservation = await prisma.reservation.findUnique({ where:{ id: resId }, include:{ boat:true, user:true } });
-  if(!reservation) notFound();
-
-  // Vérification manuelle Stripe si pas encore marqué payé
-  if(!reservation.depositPaidAt && reservation.stripeSessionId){
-    const settings = await prisma.settings.findFirst({ where:{ id:1 }, select:{ stripeMode:true, stripeTestSk:true, stripeLiveSk:true } });
-    const mode = settings?.stripeMode === 'live' ? 'live' : 'test';
-    const secretKey = mode==='live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
-    if(secretKey){
+  const sessionId = sp?.session_id || sp?.res; // Support both session_id and res for backward compatibility
+  
+  if(!sessionId) notFound();
+  
+  const settings = await prisma.settings.findFirst({ where:{ id:1 }, select:{ stripeMode:true, stripeTestSk:true, stripeLiveSk:true, platformCommissionPct:true } });
+  const mode = settings?.stripeMode === 'live' ? 'live' : 'test';
+  const secretKey = mode==='live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
+  
+  if(!secretKey) notFound();
+  
+  let reservation = await prisma.reservation.findFirst({ 
+    where: { stripeSessionId: sessionId }, 
+    include: { boat: true, user: true } 
+  });
+  
+  // Si la réservation n'existe pas encore, la créer depuis les metadata Stripe (fallback si webhook n'a pas fonctionné)
+  if(!reservation) {
+    try {
+      const stripe = new Stripe(secretKey, { apiVersion: '2025-07-30.basil' });
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      
+      // Vérifier que le paiement a bien été effectué
+      if(session.payment_status !== 'paid') {
+        console.error('[success] Session non payée:', session.payment_status);
+        notFound();
+      }
+      
+      const metadata = session.metadata;
+      if(!metadata || !metadata.userId || !metadata.boatId) {
+        console.error('[success] Metadata manquantes dans la session Stripe');
+        notFound();
+      }
+      
+      // Créer la réservation maintenant
+      console.log('[success] Création de la réservation depuis la page de succès (fallback)');
+      reservation = await prisma.reservation.create({
+        data: {
+          userId: metadata.userId,
+          boatId: parseInt(metadata.boatId, 10),
+          reference: metadata.reference,
+          startDate: new Date(metadata.startDate),
+          endDate: new Date(metadata.endDate),
+          part: metadata.part,
+          passengers: metadata.passengers ? parseInt(metadata.passengers, 10) : null,
+          totalPrice: parseFloat(metadata.totalPrice),
+          depositAmount: parseFloat(metadata.depositAmount),
+          remainingAmount: parseFloat(metadata.remainingAmount),
+          depositPercent: parseInt(metadata.depositPercent, 10),
+          status: 'deposit_paid',
+          locale: metadata.locale || 'fr',
+          currency: metadata.currency || 'eur',
+          metadata: metadata.metadata,
+          stripeSessionId: session.id,
+          depositPaidAt: new Date(),
+          stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent as any)?.id,
+          stripeCustomerId: typeof session.customer === 'string' ? session.customer : (session.customer as any)?.id,
+          commissionAmount: settings?.platformCommissionPct ? Math.round(parseFloat(metadata.totalPrice) * (settings.platformCommissionPct / 100)) : undefined,
+        },
+        include: { boat: true, user: true }
+      });
+      
+      console.log(`[success] ✅ Réservation créée: ${reservation.id} (${reservation.reference})`);
+      
+      // Envoyer une notification
       try {
-        const stripe = new Stripe(secretKey, { apiVersion: '2025-07-30.basil' });
-        const session = await stripe.checkout.sessions.retrieve(reservation.stripeSessionId);
-        if(session.payment_status === 'paid'){
-          reservation = await prisma.reservation.update({
-            where:{ id: reservation.id },
-            data:{
-              depositPaidAt: new Date(),
-              status: 'deposit_paid',
-              stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent as any)?.id,
-              stripeCustomerId: typeof session.customer === 'string' ? session.customer : (session.customer as any)?.id,
-            },
-            include:{ boat:true, user:true }
-          });
+        const { sendEmail, getNotificationEmail, isNotificationEnabled } = await import('@/lib/email');
+        const { newReservationEmail, paymentReceivedEmail } = await import('@/lib/email-templates');
+        
+        if (reservation.user && reservation.boat) {
+          const userName = reservation.user.name || `${reservation.user.firstName || ''} ${reservation.user.lastName || ''}`.trim() || reservation.user.email || 'Client';
+          const locale = (metadata.locale as 'fr' | 'en') || 'fr';
+          const meta = metadata.metadata ? JSON.parse(metadata.metadata) : {};
+          const experienceTitle = meta.experienceTitleFr || meta.experienceTitleEn || undefined;
+          
+          const reservationData = {
+            id: reservation.id,
+            reference: reservation.reference,
+            boatName: reservation.boat.name,
+            userName,
+            userEmail: reservation.user.email || '',
+            startDate: metadata.startDate.split('T')[0],
+            endDate: metadata.endDate.split('T')[0],
+            part: metadata.part,
+            passengers: reservation.passengers,
+            totalPrice: reservation.totalPrice,
+            depositAmount: reservation.depositAmount,
+            status: reservation.status,
+            experienceTitle,
+          };
+          
+          const notificationEmail = await getNotificationEmail();
+          
+          if (await isNotificationEnabled('reservation')) {
+            const { subject, html } = newReservationEmail(reservationData, locale);
+            await sendEmail({ to: notificationEmail, subject, html });
+          }
+          
+          if (await isNotificationEnabled('paymentReceived') && reservation.depositAmount) {
+            const { subject, html } = paymentReceivedEmail(reservationData, reservation.depositAmount, locale);
+            await sendEmail({ to: notificationEmail, subject, html });
+          }
         }
-      } catch(e){ /* silencieux */ }
+      } catch (emailErr) {
+        console.error('Error sending success page notification emails:', emailErr);
+      }
+    } catch(e) {
+      console.error('[success] Erreur lors de la création de la réservation:', e);
+      notFound();
     }
   }
+  
+  if(!reservation) notFound();
 
   const paid = !!reservation.depositPaidAt;
   const start = reservation.startDate.toISOString().slice(0,10);

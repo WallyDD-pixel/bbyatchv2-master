@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
+import { getServerSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { messages, type Locale } from "@/i18n/messages";
 import UsersActionsClient from "@/app/admin/users/UsersActionsClient";
@@ -9,7 +8,7 @@ import AdminInstructions from "@/components/AdminInstructions";
 import Link from "next/link";
 
 export default async function AdminUsersPage({ searchParams }: { searchParams?: { lang?: string } }) {
-  const session = (await getServerSession(auth as any)) as any;
+  const session = await getServerSession() as any;
   if (!session?.user) redirect("/signin");
   const role = (session.user as any)?.role ?? "user";
   if (role !== "admin") redirect("/dashboard");

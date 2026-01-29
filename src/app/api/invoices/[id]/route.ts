@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import fs from 'fs/promises';
 import path from 'path';
@@ -63,7 +62,7 @@ export async function GET(_req: Request, context: any) {
     const id = params?.id as string;
     if(!id) return NextResponse.json({ error: 'missing_id' }, { status: 400 });
 
-    const session = await getServerSession(auth as any) as any;
+    const session = await getServerSession() as any;
     if(!session?.user?.email) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     const sessionEmail = session.user.email as string;
     let role: string | undefined = (session.user as any)?.role;

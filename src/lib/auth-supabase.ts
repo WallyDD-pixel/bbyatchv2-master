@@ -5,10 +5,19 @@ import { prisma } from './prisma';
 // Compatible avec la table User existante pour les rôles
 export async function getServerSession() {
   try {
+    console.log('[getServerSession] ===== START =====');
     const supabase = await createClient();
+    
+    // Récupérer l'utilisateur directement (getUser() vérifie aussi la session)
     const { data: { user }, error } = await supabase.auth.getUser();
 
+    console.log('[getServerSession] Error:', error);
+    console.log('[getServerSession] User exists:', !!user);
+    console.log('[getServerSession] User email:', user?.email);
+
     if (error || !user) {
+      console.log('[getServerSession] ❌ No user, returning null');
+      console.log('[getServerSession] ===== END (null) =====');
       return null;
     }
 
@@ -16,33 +25,47 @@ export async function getServerSession() {
     const dbUser = await prisma.user.findUnique({
       where: { email: user.email! },
       select: { id: true, email: true, name: true, image: true, role: true }
-    }).catch(() => null);
+    }).catch((e) => {
+      console.log('[getServerSession] DB error:', e);
+      return null;
+    });
+
+    console.log('[getServerSession] DB user found:', !!dbUser);
+    console.log('[getServerSession] DB user role:', dbUser?.role);
 
     if (dbUser) {
-      return {
+      const sessionData = {
         user: {
           id: dbUser.id.toString(),
           email: dbUser.email,
           name: dbUser.name,
           image: dbUser.image,
           role: dbUser.role || 'user'
-        },
-        expires: user.user_metadata?.expires
+        }
       } as any;
+      
+      console.log('[getServerSession] ✅ Returning session with DB user');
+      console.log('[getServerSession] ===== END (DB user) =====');
+      return sessionData;
     }
 
     // Fallback: utiliser les infos de Supabase Auth si pas dans la table User
-    return {
+    const fallbackSession = {
       user: {
         id: user.id,
         email: user.email,
         name: user.user_metadata?.name || user.email?.split('@')[0],
         image: user.user_metadata?.image,
         role: user.user_metadata?.role || 'user'
-      },
-      expires: user.user_metadata?.expires
+      }
     } as any;
+    
+    console.log('[getServerSession] ✅ Returning session with Supabase user');
+    console.log('[getServerSession] ===== END (Supabase user) =====');
+    return fallbackSession;
   } catch (error) {
+    console.error('[getServerSession] ❌ Exception:', error);
+    console.log('[getServerSession] ===== END (exception) =====');
     return null;
   }
 }

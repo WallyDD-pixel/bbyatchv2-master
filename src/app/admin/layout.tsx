@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { type Locale } from "@/i18n/messages";
 import AdminSidebar from "@/components/AdminSidebar";
@@ -10,18 +9,28 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = (await getServerSession(auth as any)) as any;
-  if (!session?.user) redirect("/signin");
+  const session = await getServerSession();
+  
+  console.log('[AdminLayout] ===== START =====');
+  console.log('[AdminLayout] Session exists:', !!session);
+  console.log('[AdminLayout] Session:', JSON.stringify(session, null, 2));
+  
+  if (!session || !session.user) {
+    console.log('[AdminLayout] ❌ No session or user, redirecting to /signin');
+    redirect("/signin");
+  }
 
   // Vérifier le rôle
-  let role: string | undefined = (session.user as any)?.role;
-  if (!role && session.user?.email) {
-    try {
-      const u = await (prisma as any).user.findUnique({ where: { email: session.user.email }, select: { role: true } });
-      role = u?.role || "user";
-    } catch {}
+  const role = (session.user as any)?.role || "user";
+  console.log('[AdminLayout] Role:', role);
+  
+  if (role !== "admin") {
+    console.log('[AdminLayout] ❌ Role is not admin, redirecting to /dashboard');
+    redirect("/dashboard");
   }
-  if ((role || "user") !== "admin") redirect("/dashboard");
+  
+  console.log('[AdminLayout] ✅ Access granted');
+  console.log('[AdminLayout] ===== END =====');
 
   const locale: Locale = "fr"; // Par défaut, la sidebar utilisera useSearchParams côté client
 

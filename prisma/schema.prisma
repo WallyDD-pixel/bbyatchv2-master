@@ -38,8 +38,10 @@ model Experience {
 model Settings {
   stripeTestPk                               String?
   stripeTestSk                               String?
+  stripeTestWebhookSecret                    String? // Secret webhook pour mode test
   stripeLivePk                               String?
   stripeLiveSk                               String?
+  stripeLiveWebhookSecret                    String? // Secret webhook pour mode live
   id                                         Int       @id @default(1)
   experiencesHeadlineFr                      String?
   experiencesHeadlineEn                      String?

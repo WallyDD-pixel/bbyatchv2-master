@@ -1,17 +1,17 @@
 "use client";
 import { useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 
 export default function SignInFormClient() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -22,39 +22,58 @@ export default function SignInFormClient() {
       return;
     }
     setLoading(true);
+    setLoadingStep("Connexion en cours...");
+    
     try {
-      // Utiliser l'endpoint API Supabase
-      const res = await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
+      const supabase = createClient();
+      
+      // Essayer de se connecter avec Supabase
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
 
-      const data = await res.json();
-      console.log("🔍 signIn response:", data);
+      if (signInError) {
+        // Si l'utilisateur n'existe pas dans Supabase, créer le compte via l'API
+        if (signInError.message.includes('Invalid login credentials')) {
+          setLoadingStep("Création du compte...");
+          const res = await fetch("/api/auth/signin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+            credentials: "include",
+          });
 
-      if (!res.ok || data.error) {
-        console.error("❌ signIn error:", data.error);
-        setError(data.error || "Identifiants invalides.");
-        return;
+          if (!res.ok) {
+            const errorData = await res.json();
+            setError(errorData.error || "Identifiants invalides.");
+            setLoadingStep(null);
+            setLoading(false);
+            return;
+          }
+
+          // Après création, se reconnecter
+          const { error: retryError } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+
+          if (retryError) {
+            setError("Erreur lors de la connexion.");
+            setLoadingStep(null);
+            setLoading(false);
+            return;
+          }
+        } else {
+          setError(signInError.message || "Identifiants invalides.");
+          setLoadingStep(null);
+          setLoading(false);
+          return;
+        }
       }
 
-      console.log("✅ signIn success, checking session...");
-
-      // Attendre un peu pour que les cookies soient définis
-      await new Promise((r) => setTimeout(r, 300));
-
-      // Vérifier la session Supabase
-      const supabase = createClient();
-      const { data: { user }, error: sessionError } = await supabase.auth.getUser();
-
-      if (sessionError || !user) {
-        console.error("❌ Session error:", sessionError);
-        setError("Erreur lors de la récupération de la session.");
-        return;
-      }
-
+      setLoadingStep("Récupération du profil...");
+      
       // Récupérer le rôle depuis l'API profile
       let role = "user";
       try {
@@ -70,18 +89,23 @@ export default function SignInFormClient() {
         console.error("❌ Profile fetch error:", e);
       }
 
-      console.log(`🎯 Rôle final: ${role}, redirection...`);
+      setLoadingStep("Redirection en cours...");
+      
+      // Attendre un peu pour que les cookies soient synchronisés
+      await new Promise((r) => setTimeout(r, 500));
 
       // Rediriger selon le rôle
       if (role === "admin") {
-        router.push("/admin");
+        window.location.href = "/admin";
+      } else if (role === "agency") {
+        window.location.href = "/agency";
       } else {
-        router.push(callbackUrl);
+        window.location.href = callbackUrl;
       }
     } catch (err) {
       console.error("❌ Sign in error:", err);
       setError("Impossible de se connecter pour le moment.");
-    } finally {
+      setLoadingStep(null);
       setLoading(false);
     }
   };
@@ -140,10 +164,17 @@ export default function SignInFormClient() {
             <button
               disabled={loading || !email || !password}
               type="submit"
-              className="w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               style={{ backgroundColor: loading || !email || !password ? '#93c5fd' : '#2563eb' }}
             >
-              {loading ? "Connexion…" : "Connexion"}
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  <span>{loadingStep || "Connexion en cours..."}</span>
+                </>
+              ) : (
+                "Connexion"
+              )}
             </button>
 
             <div className="mt-6 text-sm text-black/70 dark:text-slate-400">

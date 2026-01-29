@@ -3,7 +3,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { messages, type Locale } from "@/i18n/messages";
 import { useState, useEffect } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { createClient } from "@/lib/supabase-client";
 
 interface NavbarItem {
   id: number;
@@ -21,12 +21,56 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
   const [open, setOpen] = useState(false);
   const locale = (searchParams.get("lang") as Locale) || initialLocale || "fr";
   const t = messages[locale];
-  const { data: session } = useSession();
-  const userRole = (session?.user as any)?.role || 'user';
+  const [session, setSession] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string>('user');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const defaultLogo = "/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png";
   const [logoUrl, setLogoUrl] = useState<string>(defaultLogo);
   const [navbarItems, setNavbarItems] = useState<NavbarItem[]>([]);
+
+  // Vérifier la session Supabase
+  useEffect(() => {
+    async function checkSession() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Récupérer le rôle depuis l'API profile
+        try {
+          const res = await fetch("/api/profile", {
+            method: "GET",
+            credentials: "include",
+          });
+          const data = await res.json();
+          setUserRole(data?.user?.role || 'user');
+          setSession({ user: { ...user, role: data?.user?.role || 'user' } });
+        } catch (e) {
+          setUserRole('user');
+          setSession({ user });
+        }
+      } else {
+        setSession(null);
+        setUserRole('user');
+      }
+    }
+
+    checkSession();
+
+    // Écouter les changements de session Supabase
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        checkSession();
+      } else {
+        setSession(null);
+        setUserRole('user');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     async function fetchLogo() {
@@ -220,7 +264,11 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                       </>
                     )}
                     <div className="my-1 h-px bg-gradient-to-r from-transparent via-slate-300/70 dark:via-white/10 to-transparent" />
-                    <button onClick={()=>signOut({ callbackUrl: '/?lang='+locale })} className="w-full text-left flex items-center gap-3 px-3 h-10 rounded-xl hover:bg-red-50 active:bg-red-100 dark:hover:bg-red-500/10 dark:active:bg-red-500/20 text-red-600 dark:text-red-400 font-medium">
+                    <button onClick={async ()=>{
+                      const supabase = createClient();
+                      await supabase.auth.signOut();
+                      router.push(`/?lang=${locale}`);
+                    }} className="w-full text-left flex items-center gap-3 px-3 h-10 rounded-xl hover:bg-red-50 active:bg-red-100 dark:hover:bg-red-500/10 dark:active:bg-red-500/20 text-red-600 dark:text-red-400 font-medium">
                       <span className="text-[15px]">↩</span><span>{locale==='fr'? 'Déconnexion':'Sign out'}</span>
                     </button>
                   </div>
@@ -357,7 +405,12 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                     <span>{locale==='fr'? 'Dashboard':'Dashboard'}</span>
                   </a>
                   <button
-                    onClick={()=>{ setOpen(false); signOut({ callbackUrl: '/?lang='+locale }); }}
+                    onClick={async ()=>{ 
+                      setOpen(false); 
+                      const supabase = createClient();
+                      await supabase.auth.signOut();
+                      router.push(`/?lang=${locale}`);
+                    }}
                     className="w-full rounded-2xl min-h-[56px] text-base font-semibold border-2 border-red-400 text-red-600 hover:bg-red-50 hover:border-red-500 active:bg-red-100 transition-all duration-200 active:scale-[0.98]"
                   >
                     {locale==='fr'? 'Déconnexion':'Sign out'}

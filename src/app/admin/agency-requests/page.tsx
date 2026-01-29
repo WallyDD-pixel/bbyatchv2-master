@@ -23,7 +23,7 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
   try {
     rows = await (prisma as any).agencyRequest.findMany({
       orderBy: { createdAt: 'desc' },
-      include:{ user:{ select:{ email:true, firstName:true, lastName:true } }, boat:{ select:{ name:true } }, reservation:{ select:{ id:true, startDate:true } } }
+      include:{ user:{ select:{ email:true, firstName:true, lastName:true, phone:true } }, boat:{ select:{ name:true } }, reservation:{ select:{ id:true, startDate:true } } }
     });
   } catch {}
 
@@ -66,6 +66,7 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell'>ID</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell'>{locale==='fr'? 'Créé':'Created'}</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell'>{locale==='fr'? 'Utilisateur':'User'}</th>
+                <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell'>{locale==='fr'? 'Téléphone':'Phone'}</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3'>{locale==='fr'? 'Bateau':'Boat'}</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell'>{locale==='fr'? 'Dates':'Dates'}</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell'>{locale==='fr'? 'Partie':'Part'}</th>
@@ -77,7 +78,7 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
             </thead>
             <tbody>
               {rows.length===0 && (
-                <tr><td colSpan={9} className='text-center py-6 sm:py-8 text-black/60 text-xs sm:text-sm'>{locale==='fr'? 'Aucune demande.':'No requests.'}</td></tr>
+                <tr><td colSpan={10} className='text-center py-6 sm:py-8 text-black/60 text-xs sm:text-sm'>{locale==='fr'? 'Aucune demande.':'No requests.'}</td></tr>
               )}
               {rows.map(r=>{
                 const start = r.startDate ? new Date(r.startDate).toISOString().slice(0,10):'';
@@ -89,6 +90,13 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 font-mono text-[9px] sm:text-[11px] hidden md:table-cell'>{r.id.slice(0,8)}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 text-[9px] sm:text-xs hidden lg:table-cell'>{new Date(r.createdAt).toLocaleDateString(locale==='fr'? 'fr-FR':'en-GB')}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell text-[10px] sm:text-xs'>{userName}</td>
+                    <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[10px] sm:text-xs'>
+                      {r.user?.phone ? (
+                        <a href={`tel:${r.user.phone}`} className='text-[color:var(--primary)] hover:underline'>
+                          {r.user.phone}
+                        </a>
+                      ) : '—'}
+                    </td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 font-medium text-[10px] sm:text-xs'>{r.boat?.name||'—'}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[9px] sm:text-xs'>{dateDisplay}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell text-[9px] sm:text-xs'>{r.part ? (r.part === 'AM' ? (locale==='fr'? 'Matin':'AM') : r.part === 'PM' ? (locale==='fr'? 'Après-midi':'PM') : r.part) : (locale==='fr'? 'Journée':'FULL')}</td>

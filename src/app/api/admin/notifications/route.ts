@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 async function ensureAdmin() {
-  const session = (await getServerSession(auth as any)) as any;
+  const session = await getServerSession() as any;
   if (!session?.user) return null;
   if ((session.user as any)?.role === 'admin') return session.user;
   if (session.user?.email) {
@@ -32,12 +31,22 @@ export async function POST(req: Request) {
     const smtpFromEmail = (data.get('smtpFromEmail') || '').toString().trim() || null;
     const smtpFromName = (data.get('smtpFromName') || '').toString().trim() || null;
 
-    if (smtpHost) updateData.smtpHost = smtpHost;
-    if (smtpPort) updateData.smtpPort = parseInt(smtpPort, 10) || 587;
-    if (smtpUser) updateData.smtpUser = smtpUser;
-    if (smtpPassword) updateData.smtpPassword = smtpPassword;
-    if (smtpFromEmail) updateData.smtpFromEmail = smtpFromEmail;
-    if (smtpFromName) updateData.smtpFromName = smtpFromName;
+    // Toujours mettre à jour les champs SMTP (même si vides, pour permettre la suppression)
+    updateData.smtpHost = smtpHost;
+    updateData.smtpPort = smtpPort ? (parseInt(smtpPort, 10) || 587) : 587;
+    updateData.smtpUser = smtpUser;
+    updateData.smtpPassword = smtpPassword;
+    updateData.smtpFromEmail = smtpFromEmail;
+    updateData.smtpFromName = smtpFromName;
+
+    console.log('[notifications] Saving SMTP config:', {
+      smtpHost: smtpHost ? '✅ Set' : '❌ Empty',
+      smtpPort: updateData.smtpPort,
+      smtpUser: smtpUser ? '✅ Set' : '❌ Empty',
+      smtpPassword: smtpPassword ? '✅ Set (hidden)' : '❌ Empty',
+      smtpFromEmail: smtpFromEmail || 'Using default',
+      smtpFromName: smtpFromName || 'Using default',
+    });
 
     // Email destinataire
     const notificationEmailTo = (data.get('notificationEmailTo') || '').toString().trim() || null;

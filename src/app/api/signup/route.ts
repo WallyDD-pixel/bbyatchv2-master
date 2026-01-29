@@ -63,15 +63,76 @@ export async function POST(req: Request) {
 
   // Create user via ORM or raw SQL fallback
   const hash = await bcrypt.hash(password, 10);
+  let createdUser: any = null;
+  const now = new Date();
+  
   if (client.user?.create) {
-    await client.user.create({ data: { email, name, password: hash, firstName, lastName, phone: body?.phone ?? null, address: body?.address ?? null, city: body?.city ?? null, zip: body?.zip ?? null, country: body?.country ?? null } });
+    createdUser = await client.user.create({ 
+      data: { 
+        email, 
+        name, 
+        password: hash, 
+        firstName, 
+        lastName, 
+        phone: body?.phone ?? null, 
+        address: body?.address ?? null, 
+        city: body?.city ?? null, 
+        zip: body?.zip ?? null, 
+        country: body?.country ?? null 
+      } 
+    });
   } else {
     const id = randomUUID();
-    const now = new Date();
     const image: string | null = null;
     const emailVerified: Date | null = null;
     await prisma.$executeRaw`INSERT INTO "User" (id, name, email, password, image, emailVerified, createdAt, updatedAt, firstName, lastName, phone, address, city, zip, country)
       VALUES (${id}, ${name}, ${email}, ${hash}, ${image}, ${emailVerified}, ${now}, ${now}, ${firstName ?? null}, ${lastName ?? null}, ${body?.phone ?? null}, ${body?.address ?? null}, ${body?.city ?? null}, ${body?.zip ?? null}, ${body?.country ?? null})`;
+    createdUser = { id, email, name, firstName, lastName, phone: body?.phone ?? null, createdAt: now };
+  }
+
+  // Envoyer une notification par email pour la nouvelle création de compte (admin)
+  try {
+    const { sendEmail, getNotificationEmail, isNotificationEnabled } = await import('@/lib/email');
+    const { newUserAccountEmail, welcomeEmail } = await import('@/lib/email-templates');
+    
+    const settings = await prisma.settings.findFirst({ select: { logoUrl: true } });
+    const logoUrl = (settings as any)?.logoUrl || null;
+    
+    const accountData = {
+      email: createdUser.email || email,
+      name: createdUser.name || name,
+      firstName: createdUser.firstName || firstName || null,
+      lastName: createdUser.lastName || lastName || null,
+      phone: createdUser.phone || body?.phone || null,
+      createdAt: createdUser.createdAt || now,
+    };
+    
+    // Email de notification à l'admin
+    if (await isNotificationEnabled('accountCreated')) {
+      const notificationEmail = await getNotificationEmail();
+      const { subject, html } = newUserAccountEmail(accountData, 'fr', logoUrl);
+      
+      await sendEmail({
+        to: notificationEmail,
+        subject,
+        html,
+      });
+    }
+    
+    // Email de bienvenue à l'utilisateur
+    try {
+      const { subject: welcomeSubject, html: welcomeHtml } = welcomeEmail(accountData, 'fr', logoUrl);
+      await sendEmail({
+        to: accountData.email,
+        subject: welcomeSubject,
+        html: welcomeHtml,
+      });
+    } catch (welcomeErr) {
+      console.error('Error sending welcome email:', welcomeErr);
+    }
+  } catch (emailErr) {
+    // Ne pas bloquer la création de compte si l'email échoue
+    console.error('Error sending account creation notification email:', emailErr);
   }
 
   return NextResponse.json({ ok: true });

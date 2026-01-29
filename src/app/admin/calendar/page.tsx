@@ -1,12 +1,11 @@
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { messages, type Locale } from '@/i18n/messages';
 import CalendarClient from './CalendarClient';
 import AdminInstructions from '@/components/AdminInstructions';
 
 export default async function CalendarPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
-  const session = (await getServerSession(auth as any)) as any;
+  const session = await getServerSession() as any;
   if (!session?.user) redirect('/signin');
   if ((session.user as any)?.role !== 'admin') redirect('/dashboard');
   const sp = (await searchParams) || {};

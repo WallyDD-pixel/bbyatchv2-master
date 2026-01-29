@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { uploadMultipleToSupabase } from "@/lib/storage";
 import { createRedirectUrl } from "@/lib/redirect";
@@ -10,7 +9,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const session = (await getServerSession(auth as any)) as any;
+  const session = await getServerSession() as any;
   if (!session?.user || (session.user as any)?.role !== "admin") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

@@ -6,6 +6,11 @@ interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
 }
 
 /**
@@ -21,6 +26,12 @@ async function createTransporter() {
   // Si pas de configuration SMTP, utiliser un transporteur de test (console)
   if (!settings.smtpHost || !settings.smtpUser || !settings.smtpPassword) {
     console.warn('⚠️ SMTP not configured. Emails will be logged to console only.');
+    console.warn('📋 SMTP Configuration status:', {
+      smtpHost: settings.smtpHost ? '✅ Set' : '❌ Missing',
+      smtpUser: settings.smtpUser ? '✅ Set' : '❌ Missing',
+      smtpPassword: settings.smtpPassword ? '✅ Set' : '❌ Missing',
+      smtpPort: settings.smtpPort || 'Using default (587)',
+    });
     return nodemailer.createTransport({
       jsonTransport: true, // Log emails to console
     });
@@ -53,13 +64,22 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     const fromEmail = settings.smtpFromEmail || 'noreply@bb-yachts.com';
     const fromName = settings.smtpFromName || 'BB YACHTS';
 
-    const mailOptions = {
+    const mailOptions: any = {
       from: `"${fromName}" <${fromEmail}>`,
       to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
       subject: options.subject,
       text: options.text || options.html.replace(/<[^>]*>/g, ''),
       html: options.html,
     };
+
+    // Ajouter les pièces jointes si présentes
+    if (options.attachments && options.attachments.length > 0) {
+      mailOptions.attachments = options.attachments.map(att => ({
+        filename: att.filename,
+        content: att.content,
+        contentType: att.contentType || 'application/pdf',
+      }));
+    }
 
     const info = await transporter.sendMail(mailOptions);
     
@@ -88,7 +108,7 @@ export async function getNotificationEmail(): Promise<string> {
 /**
  * Vérifie si un type de notification est activé
  */
-export async function isNotificationEnabled(type: 'reservation' | 'reservationStatusChange' | 'agencyRequest' | 'agencyRequestStatusChange' | 'contactMessage' | 'paymentReceived'): Promise<boolean> {
+export async function isNotificationEnabled(type: 'reservation' | 'reservationStatusChange' | 'agencyRequest' | 'agencyRequestStatusChange' | 'contactMessage' | 'paymentReceived' | 'accountCreated'): Promise<boolean> {
   const settings = await prisma.settings.findFirst();
   if (!settings?.notificationEmailEnabled) return false;
 
@@ -105,6 +125,8 @@ export async function isNotificationEnabled(type: 'reservation' | 'reservationSt
       return settings.notificationEmailContactMessage ?? true;
     case 'paymentReceived':
       return settings.notificationEmailPaymentReceived ?? true;
+    case 'accountCreated':
+      return (settings as any).notificationEmailAccountCreated ?? true;
     default:
       return false;
   }

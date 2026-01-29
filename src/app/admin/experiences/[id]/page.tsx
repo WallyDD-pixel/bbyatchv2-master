@@ -1,5 +1,4 @@
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { redirect, notFound } from 'next/navigation';
 import HeaderBar from '@/components/HeaderBar';
@@ -8,7 +7,7 @@ import Link from 'next/link';
 import ExperienceEditClient from './ExperienceEditClient';
 
 export default async function AdminExperienceEditPage({ params, searchParams }: { params: Promise<{ id:string }>, searchParams?: Promise<{ lang?: string }> }){
-  const session = await getServerSession(auth as any) as any;
+  const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   const role = (session.user as any)?.role||'user';
   if(role!=='admin') redirect('/dashboard');

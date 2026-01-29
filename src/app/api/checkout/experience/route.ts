@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import Stripe from 'stripe';
 import type { ExperienceCheckoutBody, DayPart, SettingsStripe } from '@/types/domain';
-import type { Session } from 'next-auth';
 
 export async function POST(req: Request) {
   try {
@@ -87,7 +85,7 @@ export async function POST(req: Request) {
     const remaining = total - deposit;
     const currency = (settings?.currency || 'eur').toLowerCase();
 
-    const session: Session | null = await getServerSession(auth);
+    const session = await getServerSession() as any;
     if (!session?.user?.email) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
     if (!user) return NextResponse.json({ error: 'user_not_found' }, { status: 401 });
@@ -138,7 +136,7 @@ export async function POST(req: Request) {
 
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
     const successUrl = `${baseUrl}/booking/experience/success?res=${reservation.id}`;
-    const cancelUrl = `${baseUrl}/booking/experience?exp=${encodeURIComponent(expSlug)}&boat=${boat.id}&start=${start}&end=${end}&part=${part}`;
+    const cancelUrl = `${baseUrl}/checkout/cancel?res=${reservation.id}${locale === 'en' ? '&lang=en' : ''}`;
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -186,7 +184,9 @@ export async function POST(req: Request) {
           experienceTitle: locale === 'fr' ? experience.titleFr : experience.titleEn,
         };
         
-        const { subject, html } = newReservationEmail(emailData, locale as 'fr' | 'en');
+        const settings = await prisma.settings.findFirst({ select: { logoUrl: true } });
+        const logoUrl = (settings as any)?.logoUrl || null;
+        const { subject, html } = await newReservationEmail(emailData, locale as 'fr' | 'en', logoUrl);
         const notificationEmail = await getNotificationEmail();
         
         await sendEmail({

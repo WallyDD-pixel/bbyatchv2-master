@@ -17,20 +17,34 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
-          response = NextResponse.next({
-            request,
+          // Créer une nouvelle réponse pour chaque cookie à définir
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Définir les options par défaut pour la persistance
+            const cookieOptions = {
+              ...options,
+              path: options?.path || '/',
+              sameSite: options?.sameSite || 'lax' as const,
+              httpOnly: options?.httpOnly ?? true,
+              secure: options?.secure ?? (process.env.NODE_ENV === 'production'),
+              maxAge: options?.maxAge || 60 * 60 * 24 * 365, // 1 an par défaut
+            };
+            
+            // Mettre à jour la réponse avec le cookie
+            response.cookies.set(name, value, cookieOptions);
           });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
         },
       },
     }
   );
 
   // Rafraîchir la session si nécessaire
-  await supabase.auth.getUser();
+  // Appeler getSession() pour rafraîchir la session et mettre à jour les cookies
+  const { data: { session }, error } = await supabase.auth.getSession();
+  
+  // Si la session existe, s'assurer qu'elle est rafraîchie
+  if (session && !error) {
+    await supabase.auth.getUser();
+  }
 
   return response;
 }

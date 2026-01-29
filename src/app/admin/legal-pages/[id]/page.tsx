@@ -1,6 +1,5 @@
-import { getServerSession } from 'next-auth';
+import { getServerSession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
@@ -9,7 +8,7 @@ import DeleteLegalPageButton from '../DeleteLegalPageButton';
 import LegalPageForm from '../LegalPageForm';
 
 export default async function AdminLegalEdit({ params, searchParams }: { params:{ id:string }, searchParams?: { lang?: string } }){
-  const session = await getServerSession(auth as any) as any;
+  const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   if((session.user as any).role !== 'admin') redirect('/dashboard');
   const locale: Locale = searchParams?.lang==='en'? 'en':'fr';

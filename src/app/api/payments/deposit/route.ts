@@ -504,48 +504,46 @@ Détails complets disponibles dans le tableau de bord admin.
       return NextResponse.json({ status: 'agency_request_created', requestId: agencyReq.id });
     }
 
-    // Flux normal (utilisateur ou admin) => réservation + Stripe
-    const reservation = await prisma.reservation.create({
-      data: {
-        userId,
-        boatId: boat.id,
-        reference,
-        startDate: s,
-        endDate: e,
-        part,
-        passengers: pax? Number(pax): undefined,
-        totalPrice: grandTotal,
-        depositAmount: deposit,
-        remainingAmount: remaining,
-        depositPercent: Math.round(depositPct*100),
-        status: 'pending_deposit',
-        locale,
-        currency,
-        metadata: JSON.stringify({
-          waterToys: waterToysBool,
-          childrenCount,
-          specialNeeds: specialNeedsStr,
-          wantsExcursion: wantsExcursionBool,
-          optionIds: selectedOptionIds, // Stocker les IDs des options sélectionnées
-          // Informations supplémentaires pour la facturation
-          boatCapacity: boat.capacity,
-          boatLength: boat.lengthM,
-          boatSpeed: boat.speedKn,
-          departurePort: body.departurePort || 'Port à définir',
-          bookingDate: new Date().toISOString(),
-          userRole: userRole,
-          skipperRequired: boat.skipperRequired,
-          effectiveSkipperPrice: boat.skipperRequired ? effectiveSkipperPrice : null,
-        }),
-      }
-    });
+    // Flux normal (utilisateur ou admin) => Stripe SANS créer la réservation
+    // La réservation sera créée uniquement après paiement confirmé (dans le webhook ou la page de succès)
     const mode = settings?.stripeMode === 'live' ? 'live' : 'test';
     const secretKey = mode==='live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
     if(!secretKey) return NextResponse.json({ error: 'stripe_key_missing' }, { status: 500 });
-  const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
+    const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
     const lineName = locale==='fr' ? `Acompte ${boat.name}` : `Deposit ${boat.name}`;
-    const successUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout/success?res=${reservation.id}`;
-    const cancelUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout?boat=${boat.slug}&start=${start}${(part==='FULL' || part==='SUNSET') && end? '&end='+end:''}&part=${part}`;
+    
+    // Préparer toutes les données nécessaires pour créer la réservation après paiement
+    const reservationMetadata = {
+      userId,
+      boatId: String(boat.id),
+      reference,
+      startDate: s.toISOString(),
+      endDate: e.toISOString(),
+      part,
+      passengers: pax ? String(pax) : '',
+      totalPrice: String(grandTotal),
+      depositAmount: String(deposit),
+      remainingAmount: String(remaining),
+      depositPercent: String(Math.round(depositPct*100)),
+      locale,
+      currency,
+      // Metadata JSON stringifié
+      metadata: JSON.stringify({
+        waterToys: waterToysBool,
+        childrenCount,
+        specialNeeds: specialNeedsStr,
+        wantsExcursion: wantsExcursionBool,
+        optionIds: selectedOptionIds,
+        boatCapacity: boat.capacity,
+        boatLength: boat.lengthM,
+        boatSpeed: boat.speedKn,
+        departurePort: body.departurePort || 'Port à définir',
+        bookingDate: new Date().toISOString(),
+        userRole: userRole,
+        skipperRequired: boat.skipperRequired,
+        effectiveSkipperPrice: boat.skipperRequired ? effectiveSkipperPrice : null,
+      }),
+    };
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -553,56 +551,15 @@ Détails complets disponibles dans le tableau de bord admin.
       line_items: [
         { price_data: { currency, unit_amount: deposit * 100, product_data: { name: lineName } }, quantity: 1 }
       ],
-      metadata: { reservationId: reservation.id, boatId: String(boat.id), part, start, end: end || start },
-      success_url: successUrl,
-      cancel_url: cancelUrl,
+      metadata: reservationMetadata, // Toutes les données nécessaires pour créer la réservation après paiement
+      success_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout/success?session_id={CHECKOUT_SESSION_ID}${locale === 'en' ? '&lang=en' : ''}`,
+      cancel_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout/cancel${locale === 'en' ? '?lang=en' : ''}`,
+      expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // Expire après 30 minutes
     });
 
-    await prisma.reservation.update({ where:{ id: reservation.id }, data:{ stripeSessionId: checkoutSession.id } });
+    console.log('[deposit] Stripe session créée, réservation sera créée après paiement confirmé');
 
-    // Envoyer une notification par email pour la nouvelle réservation
-    try {
-      const { sendEmail, getNotificationEmail, isNotificationEnabled } = await import('@/lib/email');
-      const { newReservationEmail } = await import('@/lib/email-templates');
-      
-      if (await isNotificationEnabled('reservation')) {
-        const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, firstName: true, lastName: true, email: true } });
-        const userName = user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Client';
-        
-        const meta = JSON.parse(reservation.metadata || '{}');
-        const experienceTitle = meta.experienceTitleFr || meta.experienceTitleEn || undefined;
-        
-        const emailData = {
-          id: reservation.id,
-          reference: reservation.reference,
-          boatName: boat.name,
-          userName,
-          userEmail: user?.email || '',
-          startDate: start,
-          endDate: end || start,
-          part,
-          passengers: reservation.passengers,
-          totalPrice: reservation.totalPrice,
-          depositAmount: reservation.depositAmount,
-          status: reservation.status,
-          experienceTitle,
-        };
-        
-        const { subject, html } = newReservationEmail(emailData, locale as 'fr' | 'en');
-        const notificationEmail = await getNotificationEmail();
-        
-        await sendEmail({
-          to: notificationEmail,
-          subject,
-          html,
-        });
-      }
-    } catch (emailErr) {
-      console.error('Error sending reservation notification email:', emailErr);
-      // Ne pas bloquer la création de la réservation si l'email échoue
-    }
-
-    return NextResponse.json({ url: checkoutSession.url, reservationId: reservation.id });
+    return NextResponse.json({ url: checkoutSession.url, sessionId: checkoutSession.id });
   } catch (e:any) {
     console.error(e);
     return NextResponse.json({ error: 'server_error' }, { status: 500 });

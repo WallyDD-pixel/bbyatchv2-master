@@ -1,11 +1,10 @@
-import { getServerSession } from 'next-auth';
+import { getServerSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import AdminInstructions from '@/components/AdminInstructions';
 
 export default async function StripeSettingsPage(){
-  const session = (await getServerSession(auth as any)) as any;
+  const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   let role: string | undefined = (session.user as any)?.role;
   if(!role && session.user?.email){
@@ -13,8 +12,8 @@ export default async function StripeSettingsPage(){
   }
   if((role||'user') !== 'admin') redirect('/dashboard');
 
-  let settings = await prisma.settings.findFirst({ where:{ id:1 } });
-  if(!settings){ settings = await prisma.settings.create({ data:{ id:1 } as any }); }
+  let settings = await (prisma as any).settings.findFirst({ where:{ id:1 } });
+  if(!settings){ settings = await (prisma as any).settings.create({ data:{ id:1 } as any }); }
 
   return (
     <div className='max-w-3xl mx-auto w-full py-10 px-4'>
@@ -43,6 +42,10 @@ export default async function StripeSettingsPage(){
             {
               title: "Tester les paiements",
               description: "En mode test, utilisez les cartes de test Stripe (ex: 4242 4242 4242 4242) pour simuler des paiements sans frais réels."
+            },
+            {
+              title: "Webhook Secrets",
+              description: "Les secrets webhook (whsec_...) sont utilisés pour vérifier l'authenticité des événements Stripe. Vous pouvez les obtenir depuis votre tableau de bord Stripe > Développeurs > Webhooks. Configurez l'URL du webhook sur: https://votre-domaine.com/api/payments/webhook"
             }
           ]}
         />
@@ -52,12 +55,31 @@ export default async function StripeSettingsPage(){
         const mode = formData.get('mode') as string | null;
         const testPk = formData.get('testPk') as string | null;
         const testSk = formData.get('testSk') as string | null;
+        const testWebhook = formData.get('testWebhook') as string | null;
         const livePk = formData.get('livePk') as string | null;
         const liveSk = formData.get('liveSk') as string | null;
+        const liveWebhook = formData.get('liveWebhook') as string | null;
         await prisma.settings.upsert({
           where:{ id:1 },
-          update:{ stripeMode: mode||undefined, stripeTestPk: testPk||undefined, stripeTestSk: testSk||undefined, stripeLivePk: livePk||undefined, stripeLiveSk: liveSk||undefined },
-          create:{ id:1, stripeMode: mode||'test', stripeTestPk: testPk||undefined, stripeTestSk: testSk||undefined, stripeLivePk: livePk||undefined, stripeLiveSk: liveSk||undefined }
+          update:{ 
+            stripeMode: mode||undefined, 
+            stripeTestPk: testPk||undefined, 
+            stripeTestSk: testSk||undefined, 
+            stripeTestWebhookSecret: testWebhook||undefined,
+            stripeLivePk: livePk||undefined, 
+            stripeLiveSk: liveSk||undefined,
+            stripeLiveWebhookSecret: liveWebhook||undefined
+          },
+          create:{ 
+            id:1, 
+            stripeMode: mode||'test', 
+            stripeTestPk: testPk||undefined, 
+            stripeTestSk: testSk||undefined, 
+            stripeTestWebhookSecret: testWebhook||undefined,
+            stripeLivePk: livePk||undefined, 
+            stripeLiveSk: liveSk||undefined,
+            stripeLiveWebhookSecret: liveWebhook||undefined
+          }
         });
       }} className='space-y-6'>
         <div>
@@ -67,22 +89,36 @@ export default async function StripeSettingsPage(){
             <option value='live'>Live</option>
           </select>
         </div>
-        <div className='grid sm:grid-cols-2 gap-4'>
-          <div>
-            <label className='text-xs font-medium text-black/60'>Test Publishable Key</label>
-            <input name='testPk' defaultValue={settings?.stripeTestPk||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='pk_test_...' />
-          </div>
-          <div>
-            <label className='text-xs font-medium text-black/60'>Test Secret Key</label>
-            <input name='testSk' defaultValue={settings?.stripeTestSk||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='sk_test_...' />
-          </div>
-          <div>
-            <label className='text-xs font-medium text-black/60'>Live Publishable Key</label>
-            <input name='livePk' defaultValue={settings?.stripeLivePk||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='pk_live_...' />
-          </div>
+        <div className='space-y-4'>
+          <div className='grid sm:grid-cols-2 gap-4'>
             <div>
-            <label className='text-xs font-medium text-black/60'>Live Secret Key</label>
-            <input name='liveSk' defaultValue={settings?.stripeLiveSk||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='sk_live_...' />
+              <label className='text-xs font-medium text-black/60'>Test Publishable Key</label>
+              <input name='testPk' defaultValue={settings?.stripeTestPk||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='pk_test_...' />
+            </div>
+            <div>
+              <label className='text-xs font-medium text-black/60'>Test Secret Key</label>
+              <input name='testSk' type='password' defaultValue={settings?.stripeTestSk||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='sk_test_...' />
+            </div>
+            <div>
+              <label className='text-xs font-medium text-black/60'>Test Webhook Secret</label>
+              <input name='testWebhook' type='password' defaultValue={settings?.stripeTestWebhookSecret||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='whsec_...' />
+              <p className='mt-1 text-[10px] text-black/40'>Secret du webhook Stripe en mode test (whsec_...)</p>
+            </div>
+          </div>
+          <div className='grid sm:grid-cols-2 gap-4'>
+            <div>
+              <label className='text-xs font-medium text-black/60'>Live Publishable Key</label>
+              <input name='livePk' defaultValue={settings?.stripeLivePk||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='pk_live_...' />
+            </div>
+            <div>
+              <label className='text-xs font-medium text-black/60'>Live Secret Key</label>
+              <input name='liveSk' type='password' defaultValue={settings?.stripeLiveSk||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='sk_live_...' />
+            </div>
+            <div>
+              <label className='text-xs font-medium text-black/60'>Live Webhook Secret</label>
+              <input name='liveWebhook' type='password' defaultValue={settings?.stripeLiveWebhookSecret||''} className='mt-1 w-full h-10 rounded-lg border border-black/15 px-3 bg-white' placeholder='whsec_...' />
+              <p className='mt-1 text-[10px] text-black/40'>Secret du webhook Stripe en mode live (whsec_...)</p>
+            </div>
           </div>
         </div>
         <button type='submit' className='h-11 px-6 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold inline-flex items-center transition-all duration-200 shadow-sm hover:shadow' style={{ backgroundColor: '#2563eb' }}>Enregistrer</button>

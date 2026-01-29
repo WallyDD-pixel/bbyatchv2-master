@@ -209,16 +209,6 @@ export default async function ExperienceBoatsSection({ locale }: { locale: Local
                     <span className="text-xs font-bold text-black/80 uppercase tracking-wide">
                       {item.boatName}
                     </span>
-                    {item.boatCapacity && (
-                      <span className="text-[10px] text-black/60 ml-2">
-                        • {item.boatCapacity} {locale === 'fr' ? 'pax' : 'pax'}
-                      </span>
-                    )}
-                    {item.boatSpeedKn && (
-                      <span className="text-[10px] text-black/60 ml-1">
-                        • {item.boatSpeedKn} kn
-                      </span>
-                    )}
                   </div>
                 </div>
                 
@@ -253,29 +243,6 @@ export default async function ExperienceBoatsSection({ locale }: { locale: Local
                     ? `Profitez d'un événement exclusif` 
                     : `Enjoy an exclusive event`}
                 </p>
-                
-                {/* Informations du bateau */}
-                <div className="flex items-center gap-3 mb-4 text-xs text-black/60">
-                  {item.boatCapacity && (
-                    <div className="flex items-center gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                        <circle cx="9" cy="7" r="4" />
-                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                      </svg>
-                      <span>{item.boatCapacity} {locale === 'fr' ? 'personnes' : 'people'}</span>
-                    </div>
-                  )}
-                  {item.boatSpeedKn && (
-                    <div className="flex items-center gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                      </svg>
-                      <span>{item.boatSpeedKn} kn</span>
-                    </div>
-                  )}
-                </div>
                 
                 {/* Bouton de réservation */}
                 <Link 

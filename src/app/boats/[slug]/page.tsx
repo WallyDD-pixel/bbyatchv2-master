@@ -7,8 +7,7 @@ import Link from 'next/link';
 import BoatMediaCarousel from '@/components/BoatMediaCarousel';
 import RequestBookingButton from '@/components/RequestBookingButton';
 import BoatOptionsAndBooking from '@/components/BoatOptionsAndBooking';
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { getLabelsWithSettings } from '@/lib/settings';
 
 interface Props { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; start?: string; end?: string; startTime?: string; endTime?: string; part?: string; }> }
@@ -51,7 +50,7 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
   };
 
   // Vérifier si l'utilisateur est une agence
-  const session = await getServerSession(auth as any) as any;
+  const session = await getServerSession() as any;
   let isAgency = false;
   if (session?.user?.email) {
     try {

@@ -5,18 +5,32 @@ import { messages, type Locale } from "@/i18n/messages";
 import Link from 'next/link';
 
 export default async function AdminPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> | { lang?: string } }) {
-  const session = (await getServerSession()) as any;
-  if (!session?.user) redirect("/signin");
-
-  // Fallback DB si la session n'expose pas encore le rôle
-  let role: string | undefined = (session.user as any)?.role;
-  if (!role && session.user?.email) {
-    try {
-      const u = await (prisma as any).user.findUnique({ where: { email: session.user.email }, select: { role: true } });
-      role = u?.role || "user";
-    } catch {}
+  const session = await getServerSession();
+  
+  console.log('[AdminPage] ===== START =====');
+  console.log('[AdminPage] Session exists:', !!session);
+  console.log('[AdminPage] Session:', JSON.stringify(session, null, 2));
+  
+  if (!session) {
+    console.log('[AdminPage] ❌ No session, redirecting to /signin');
+    redirect("/signin");
   }
-  if ((role || "user") !== "admin") redirect("/dashboard");
+  
+  if (!session.user) {
+    console.log('[AdminPage] ❌ No user in session, redirecting to /signin');
+    redirect("/signin");
+  }
+  
+  const role = (session.user as any)?.role || "user";
+  console.log('[AdminPage] Role:', role);
+  
+  if (role !== "admin") {
+    console.log('[AdminPage] ❌ Role is not admin, redirecting to /dashboard');
+    redirect("/dashboard");
+  }
+  
+  console.log('[AdminPage] ✅ Access granted, rendering page');
+  console.log('[AdminPage] ===== END =====');
 
   // Next.js 16: searchParams is a Promise
   const resolvedSearchParams = searchParams ? (await Promise.resolve(searchParams)) : {};

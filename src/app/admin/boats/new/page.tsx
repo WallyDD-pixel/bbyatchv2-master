@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
+import { getServerSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import HeaderBar from "@/components/HeaderBar";
 import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
@@ -8,7 +7,7 @@ import Link from 'next/link';
 import BoatNewClient from './BoatNewClient';
 
 export default async function AdminBoatsNewPage({ searchParams }: { searchParams?: { lang?: string } }) {
-  const session = (await getServerSession(auth as any)) as any;
+  const session = await getServerSession() as any;
   if (!session?.user) redirect("/signin");
   const role = (session.user as any)?.role ?? "user";
   if (role !== "admin") redirect("/dashboard");

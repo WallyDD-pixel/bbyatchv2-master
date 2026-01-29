@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { auth } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 // GET: liste des demandes agence (admin ou agence propriétaire)
 export async function GET(req: Request){
   try {
-    const session = await getServerSession(auth as any) as any;
+    const session = await getServerSession() as any;
     if(!session?.user?.email) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     const user = await prisma.user.findUnique({ where:{ email: session.user.email }, select:{ id:true, role:true } });
     if(!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
@@ -23,7 +22,7 @@ export async function GET(req: Request){
 // POST: créer une demande (si utilisateur role=agency)
 export async function POST(req: Request){
   try {
-    const session = await getServerSession(auth as any) as any;
+    const session = await getServerSession() as any;
     if(!session?.user?.email) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     const user = await prisma.user.findUnique({ where:{ email: session.user.email }, select:{ id:true, role:true } });
     if(!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
@@ -126,7 +125,7 @@ export async function POST(req: Request){
 // PATCH: changer statut (admin)
 export async function PATCH(req: Request){
   try {
-    const session = await getServerSession(auth as any) as any;
+    const session = await getServerSession() as any;
     if(!session?.user?.email) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     const user = await prisma.user.findUnique({ where:{ email: session.user.email }, select:{ id:true, role:true } });
     if(!user || user.role!=='admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 });

@@ -19,7 +19,7 @@ interface AgencyRequestRow {
   totalPrice: number | null;
   metadata: string | null;
   boatId: number | null;
-  user: { email: string | null; firstName: string | null; lastName: string | null } | null;
+  user: { email: string | null; firstName: string | null; lastName: string | null; phone: string | null } | null;
   boat: { 
     name: string | null; 
     slug: string | null;
@@ -55,7 +55,7 @@ export default async function AgencyRequestDetailPage(
       totalPrice:true,
       metadata:true,
       boatId:true,
-      user:{ select:{ email:true, firstName:true, lastName:true } },
+      user:{ select:{ email:true, firstName:true, lastName:true, phone:true } },
       boat:{ 
         select:{ 
           name:true, 
@@ -145,15 +145,25 @@ export default async function AgencyRequestDetailPage(
                 <li>{locale==='fr'? 'S\'assurer que toutes les informations sont correctes (dates, nombre de passagers, prix)':'Ensure all information is correct (dates, number of passengers, price)'}</li>
                 <li>{locale==='fr'? 'Une fois acceptée, la demande peut être convertie en réservation':'Once approved, the request can be converted into a reservation'}</li>
               </ul>
-              {row.user?.email && (
-                <div className='mt-3 pt-3 border-t border-blue-200'>
+              {(row.user?.email || row.user?.phone) && (
+                <div className='mt-3 pt-3 border-t border-blue-200 space-y-2'>
                   <p className='text-xs text-blue-700/70 mb-1'>{locale==='fr'? 'Contact agence':'Agency contact'}:</p>
-                  <a 
-                    href={`mailto:${row.user.email}?subject=${encodeURIComponent(locale==='fr'? 'Demande de réservation':'Booking request')} ${row.id.slice(0,8)}`}
-                    className='text-sm text-blue-700 hover:underline font-medium'
-                  >
-                    ✉ {row.user.email}
-                  </a>
+                  {row.user?.email && (
+                    <a 
+                      href={`mailto:${row.user.email}?subject=${encodeURIComponent(locale==='fr'? 'Demande de réservation':'Booking request')} ${row.id.slice(0,8)}`}
+                      className='block text-sm text-blue-700 hover:underline font-medium'
+                    >
+                      ✉ {row.user.email}
+                    </a>
+                  )}
+                  {row.user?.phone && (
+                    <a 
+                      href={`tel:${row.user.phone}`}
+                      className='block text-sm text-blue-700 hover:underline font-medium'
+                    >
+                      📞 {row.user.phone}
+                    </a>
+                  )}
                 </div>
               )}
             </div>
@@ -169,6 +179,11 @@ export default async function AgencyRequestDetailPage(
             <span className='text-black/50'>{locale==='fr'? 'Utilisateur':'User'}</span>
             <span>{userName}</span>
             <span className='text-xs text-black/60'>{row.user?.email}</span>
+            {row.user?.phone && (
+              <span className='text-xs text-black/60'>
+                {locale==='fr'? 'Téléphone':'Phone'}: <a href={`tel:${row.user.phone}`} className='text-[color:var(--primary)] hover:underline'>{row.user.phone}</a>
+              </span>
+            )}
           </div>
           <div className='grid gap-1 text-sm'>
             <span className='text-black/50'>{locale==='fr'? 'Bateau':'Boat'}</span>
