@@ -10,10 +10,17 @@ function loadEnv() {
     envFile.split('\n').forEach(line => {
       const trimmedLine = line.trim();
       if (trimmedLine && !trimmedLine.startsWith('#')) {
-        const [key, ...valueParts] = trimmedLine.split('=');
-        if (key && valueParts.length > 0) {
-          const value = valueParts.join('=').replace(/^["']|["']$/g, '');
-          process.env[key.trim()] = value.trim();
+        // Gérer les valeurs entre guillemets
+        const match = trimmedLine.match(/^([^=]+)=(.*)$/);
+        if (match) {
+          const key = match[1].trim();
+          let value = match[2].trim();
+          // Retirer les guillemets au début et à la fin si présents
+          if ((value.startsWith('"') && value.endsWith('"')) || 
+              (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+          }
+          process.env[key] = value;
         }
       }
     });
