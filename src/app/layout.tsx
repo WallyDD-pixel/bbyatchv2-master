@@ -6,15 +6,20 @@ import { AppProviders } from '@/components/Providers';
 import SEOTracking from '@/components/SEOTracking';
 import { prisma } from '@/lib/prisma';
 
+// Configuration des fonts avec fallback pour éviter les timeouts pendant le build
 const manrope = Manrope({
   variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
+  fallback: ["system-ui", "arial"],
 });
 
 const playfair = Playfair_Display({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["400", "700"],
+  display: "swap",
+  fallback: ["Georgia", "serif"],
 });
 
 // Police temporaire pour Aviano (en attendant la vraie police)
@@ -22,6 +27,8 @@ const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
 });
 
 // Variables pour les polices personnalisées (remplacées par Playfair Display et Montserrat)

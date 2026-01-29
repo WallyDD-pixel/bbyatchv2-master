@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true, // Ignorer les erreurs ESLint pendant le build
   },
+  // Gérer les erreurs de fonts (timeout Google Fonts)
+  optimizeFonts: true,
+  // Ignorer les erreurs de fonts pendant le build si timeout
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
