@@ -95,25 +95,27 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
       <div className="w-full max-w-7xl relative">
         {/* Barre principale ultra-moderne */}
         <div className="flex items-center gap-4 rounded-3xl bg-gradient-to-r from-white/96 via-white/92 to-white/96 dark:from-slate-900/95 dark:via-slate-800/95 dark:to-slate-900/95 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)] dark:shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)] px-4 sm:px-6 py-3 ring-1 ring-[color:var(--primary)]/15 hover:ring-[color:var(--primary)]/25 transition-all duration-300 group">
-          {/* Logo avec animation sophistiquée - masqué sur mobile */}
-          <a href={homeBase} className="hidden sm:flex items-center group hover:scale-[1.02] transition-all duration-300 ease-out" aria-label={t.app_name}>
-            <div className="relative h-12 w-auto">
+          {/* Logo avec animation sophistiquée - visible sur mobile et desktop */}
+          <a href={homeBase} className="flex items-center group hover:scale-[1.02] transition-all duration-300 ease-out" aria-label={t.app_name}>
+            <div className="relative h-10 sm:h-12 w-auto">
               <img 
-                src={logoUrl} 
+                src={logoUrl || defaultLogo} 
                 alt="BB YACHTS" 
-                className="h-12 w-auto object-contain drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300" 
-                key={logoUrl}
+                className="h-10 sm:h-12 w-auto object-contain drop-shadow-lg group-hover:drop-shadow-xl transition-all duration-300" 
+                key={logoUrl || defaultLogo}
+                style={{ display: 'block', maxWidth: '180px' }}
                 onError={(e) => {
                   // En cas d'erreur de chargement, utiliser le logo par défaut
                   const target = e.target as HTMLImageElement;
+                  console.error('Erreur chargement logo:', target.src);
                   if (target.src !== defaultLogo && !target.src.includes(defaultLogo)) {
                     target.src = defaultLogo;
                     setLogoUrl(defaultLogo);
                   }
                 }}
-                onLoad={() => {
+                onLoad={(e) => {
                   // Vérifier que l'image s'est bien chargée
-                  console.log('Logo loaded:', logoUrl);
+                  console.log('Logo loaded:', (e.target as HTMLImageElement).src);
                 }}
               />
             </div>
@@ -236,14 +238,14 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
             onClick={() => setOpen((v) => !v)}
             type="button"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-all duration-300 ${open ? 'rotate-90 scale-110' : 'group-hover:scale-110'}`}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-all duration-300 ${open ? 'rotate-90 scale-110 opacity-70' : 'group-hover:scale-110'}`}>
               {open ? (
                 <path d="M18 6L6 18M6 6l12 12" />
               ) : (
                 <>
-                  <line x1="3" y1="6" x2="21" y2="6" className="transform origin-center transition-transform duration-300" />
-                  <line x1="3" y1="12" x2="21" y2="12" className="transform origin-center transition-transform duration-300" />
-                  <line x1="3" y1="18" x2="21" y2="18" className="transform origin-center transition-transform duration-300" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
                 </>
               )}
             </svg>
@@ -253,94 +255,115 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
         {/* Menu mobile */}
         {open && (
           <>
-            <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[100] md:hidden" onClick={() => setOpen(false)} />
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] md:hidden transition-opacity duration-300" onClick={() => setOpen(false)} />
             <div
               id="mobile-menu"
               role="dialog"
               aria-modal="true"
-              className="md:hidden fixed left-1/2 -translate-x-1/2 top-[76px] w-[94%] max-w-6xl rounded-3xl bg-gradient-to-b from-white/98 via-white/95 to-white/92 dark:from-[#1f2c38]/96 dark:via-[#203241]/96 dark:to-[#1f2c38]/96 border border-white/70 dark:border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)] p-5 z-[110] backdrop-blur-xl"
+              className="md:hidden fixed left-1/2 -translate-x-1/2 top-[76px] w-[92%] max-w-md rounded-3xl bg-white border border-slate-200/80 shadow-2xl p-6 z-[110] backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-300"
             >
               {/* Logo dans le menu mobile */}
-              <div className="flex justify-center mb-4 pb-4 border-b border-slate-200/50 dark:border-white/10">
-                <a href={homeBase} onClick={() => setOpen(false)} className="flex items-center" aria-label={t.app_name}>
+              <div className="flex justify-center mb-6 pb-5 border-b border-slate-200">
+                <a href={homeBase} onClick={() => setOpen(false)} className="flex items-center justify-center hover:opacity-80 transition-opacity" aria-label={t.app_name}>
                   <img 
-                    src={logoUrl} 
+                    src={logoUrl || defaultLogo} 
                     alt="BB YACHTS" 
-                    className="h-10 w-auto object-contain" 
+                    className="h-14 w-auto object-contain max-w-[220px] min-h-[40px]" 
+                    style={{ display: 'block' }}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
+                      console.error('Erreur chargement logo:', target.src);
                       if (target.src !== defaultLogo && !target.src.includes(defaultLogo)) {
                         target.src = defaultLogo;
+                        setLogoUrl(defaultLogo);
                       }
+                    }}
+                    onLoad={(e) => {
+                      console.log('Logo mobile chargé avec succès:', (e.target as HTMLImageElement).src);
                     }}
                   />
                 </a>
               </div>
-              <nav className="flex flex-col gap-1 text-sm">
+              <nav className="flex flex-col gap-2 text-sm">
                 {navbarItems.map(l => (
                   <a
                     key={l.href}
                     href={l.href}
                     target={l.target}
                     onClick={()=>setOpen(false)}
-                    className="group px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition relative bg-transparent"
+                    className="group px-5 py-4 rounded-2xl font-semibold flex items-center justify-between transition-all duration-200 relative bg-slate-50 hover:bg-blue-50 active:bg-blue-100 border border-slate-200 hover:border-blue-200"
                   >
-                    {/* icons: force light color for dark overlay */}
-                    <span className="text-lg opacity-90 group-hover:opacity-100 text-white drop-shadow-sm">{l.icon}</span>
-                    {/* labels: strong white for maximum contrast on dark blurred background */}
-                    <span className="text-white font-semibold drop-shadow-sm">{locale === 'fr' ? l.labelFr : l.labelEn}</span>
-                    <span className="absolute inset-0 rounded-xl bg-[color:var(--primary)]/7 opacity-0 group-hover:opacity-100 group-active:bg-[color:var(--primary)]/12 transition pointer-events-none"/>
+                    {/* labels: texte sombre pour meilleure lisibilité */}
+                    <span className="text-slate-900 text-base font-semibold">{locale === 'fr' ? l.labelFr : l.labelEn}</span>
+                    {/* Flèche indicateur */}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all duration-200">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
                   </a>
                 ))}
               </nav>
-              <div className="my-4 h-px bg-gradient-to-r from-transparent via-slate-300/70 dark:via-white/15 to-transparent" />
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                <div className="flex items-center gap-1 rounded-full border border-slate-300/80 dark:border-white/15 p-1 flex-1 justify-center bg-white/80 dark:bg-white/5 shadow-inner">
-                  {/* active state stays primary, inactive state forced to white for readability */}
-                  <button
-                    className={`h-9 px-4 rounded-full text-sm font-semibold transition leading-none ${locale === "fr" ? "bg-blue-600 text-white shadow" : "text-white/90 dark:text-white/90 hover:bg-white/10"}`}
-                    style={locale === "fr" ? { backgroundColor: '#2563eb' } : {}}
-                    aria-pressed={locale === "fr"}
-                    onClick={() => setLocale("fr")}
-                    type="button"
-                  >FR</button>
-                  <button
-                    className={`h-9 px-4 rounded-full text-sm font-semibold transition leading-none ${locale === "en" ? "bg-blue-600 text-white shadow" : "text-white/90 dark:text-white/90 hover:bg-white/10"}`}
-                    style={locale === "en" ? { backgroundColor: '#2563eb' } : {}}
-                    aria-pressed={locale === "en"}
-                    onClick={() => setLocale("en")}
-                    type="button"
-                  >EN</button>
-                </div>
-                {!session && (
-                  <a
-                    href="/signin"
-                    className="w-full sm:flex-1 rounded-2xl px-6 py-4 min-h-[56px] flex items-center justify-center text-base font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-lg"
-                    onClick={() => setOpen(false)}
-                    style={{letterSpacing: '0.2px', backgroundColor: '#2563eb'}}
-                  >{t.auth_signin}</a>
-                )}
-                {session && (
-                  <div className="flex flex-col sm:flex-row flex-1 gap-3">
-                    <a
-                      href={userRole==='admin'? '/admin': userRole==='agency'? '/agency':'/dashboard'}
-                      onClick={()=>setOpen(false)}
-                      className="group flex-1 rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white min-h-[56px] flex items-center justify-center gap-2 text-base sm:text-lg font-semibold shadow-[0_6px_18px_-4px_rgba(0,0,0,0.35)] transition-colors tracking-wide"
-                      style={{ backgroundColor: '#2563eb' }}
-                    >
-                      <span className="text-lg drop-shadow-sm">📊</span>
-                      <span className="relative">
-                        {locale==='fr'? 'Dashboard':'Dashboard'}
-                        <span className="absolute -bottom-0.5 left-0 w-0 group-hover:w-full transition-all h-0.5 bg-white/60 rounded-full" />
-                      </span>
-                    </a>
-                    <button
-                      onClick={()=>{ setOpen(false); signOut({ callbackUrl: '/?lang='+locale }); }}
-                      className="flex-1 rounded-2xl min-h-[56px] text-base font-semibold border border-red-400/60 dark:border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 active:bg-red-100/70 dark:active:bg-red-500/20 transition shadow-inner"
-                    >{locale==='fr'? 'Déconnexion':'Sign out'}</button>
-                  </div>
-                )}
+              <div className="my-5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+              
+              {/* Sélecteur de langue */}
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-300 p-1.5 bg-slate-50 mb-4">
+                <button
+                  className={`flex-1 h-11 rounded-xl text-sm font-bold transition-all duration-200 ${
+                    locale === "fr" 
+                      ? "bg-blue-600 text-white shadow-lg scale-[1.02]" 
+                      : "text-slate-700 hover:text-slate-900 hover:bg-white"
+                  }`}
+                  style={locale === "fr" ? { backgroundColor: '#2563eb' } : {}}
+                  aria-pressed={locale === "fr"}
+                  onClick={() => setLocale("fr")}
+                  type="button"
+                >
+                  FR
+                </button>
+                <button
+                  className={`flex-1 h-11 rounded-xl text-sm font-bold transition-all duration-200 ${
+                    locale === "en" 
+                      ? "bg-blue-600 text-white shadow-lg scale-[1.02]" 
+                      : "text-slate-700 hover:text-slate-900 hover:bg-white"
+                  }`}
+                  style={locale === "en" ? { backgroundColor: '#2563eb' } : {}}
+                  aria-pressed={locale === "en"}
+                  onClick={() => setLocale("en")}
+                  type="button"
+                >
+                  EN
+                </button>
               </div>
+
+              {/* Actions utilisateur */}
+              {!session && (
+                <a
+                  href="/signin"
+                  className="w-full rounded-2xl px-6 py-4 min-h-[56px] flex items-center justify-center gap-2 text-base font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98]"
+                  onClick={() => setOpen(false)}
+                  style={{ backgroundColor: '#2563eb' }}
+                >
+                  {t.auth_signin}
+                </a>
+              )}
+              {session && (
+                <div className="flex flex-col gap-3">
+                  <a
+                    href={userRole==='admin'? '/admin': userRole==='agency'? '/agency':'/dashboard'}
+                    onClick={()=>setOpen(false)}
+                    className="group w-full rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white min-h-[56px] flex items-center justify-center gap-2 text-base font-bold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98]"
+                    style={{ backgroundColor: '#2563eb' }}
+                  >
+                    <span className="text-lg">📊</span>
+                    <span>{locale==='fr'? 'Dashboard':'Dashboard'}</span>
+                  </a>
+                  <button
+                    onClick={()=>{ setOpen(false); signOut({ callbackUrl: '/?lang='+locale }); }}
+                    className="w-full rounded-2xl min-h-[56px] text-base font-semibold border-2 border-red-400 text-red-600 hover:bg-red-50 hover:border-red-500 active:bg-red-100 transition-all duration-200 active:scale-[0.98]"
+                  >
+                    {locale==='fr'? 'Déconnexion':'Sign out'}
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
