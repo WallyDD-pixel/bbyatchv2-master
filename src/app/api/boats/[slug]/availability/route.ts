@@ -3,13 +3,13 @@ import { prisma } from '@/lib/prisma';
 
 // GET /api/boats/[slug]/availability?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Retourne les disponibilités pour un bateau spécifique
-export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> | { slug: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const url = new URL(_req.url);
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   
-  // Gérer params comme Promise (Next.js 16)
-  const resolvedParams = params instanceof Promise ? await params : params;
+  // Next.js 15: params is a Promise
+  const resolvedParams = await params;
   
   try {
     console.log(`[boat-availability] Request for boat: ${resolvedParams.slug}, from: ${from}, to: ${to}`);
