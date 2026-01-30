@@ -103,14 +103,34 @@ export default async function CheckoutSuccessPage({ searchParams }: Props){
           
           const notificationEmail = await getNotificationEmail();
           
+          // Récupérer le logo pour les emails
+          const settingsForLogo = await prisma.settings.findFirst({ select: { logoUrl: true } });
+          const logoUrl = (settingsForLogo as any)?.logoUrl || null;
+          
           if (await isNotificationEnabled('reservation')) {
-            const { subject, html } = newReservationEmail(reservationData, locale);
-            await sendEmail({ to: notificationEmail, subject, html });
+            try {
+              const emailResult = await newReservationEmail(reservationData, locale, logoUrl);
+              if (emailResult && emailResult.subject && emailResult.html) {
+                await sendEmail({ to: notificationEmail, subject: emailResult.subject, html: emailResult.html });
+              } else {
+                console.error('❌ newReservationEmail returned invalid data:', emailResult);
+              }
+            } catch (emailTemplateErr) {
+              console.error('❌ Error generating reservation email template:', emailTemplateErr);
+            }
           }
           
           if (await isNotificationEnabled('paymentReceived') && reservation.depositAmount) {
-            const { subject, html } = paymentReceivedEmail(reservationData, reservation.depositAmount, locale);
-            await sendEmail({ to: notificationEmail, subject, html });
+            try {
+              const emailResult = paymentReceivedEmail(reservationData, reservation.depositAmount, locale);
+              if (emailResult && emailResult.subject && emailResult.html) {
+                await sendEmail({ to: notificationEmail, subject: emailResult.subject, html: emailResult.html });
+              } else {
+                console.error('❌ paymentReceivedEmail returned invalid data:', emailResult);
+              }
+            } catch (emailTemplateErr) {
+              console.error('❌ Error generating payment email template:', emailTemplateErr);
+            }
           }
         }
       } catch (emailErr) {

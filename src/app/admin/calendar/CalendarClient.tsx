@@ -1227,6 +1227,41 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                         </span>
                       </div>
                     </div>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={async () => {
+                          if (!confirm(locale === 'fr' 
+                            ? 'Êtes-vous sûr de vouloir supprimer cette disponibilité ?' 
+                            : 'Are you sure you want to delete this availability?')) {
+                            return;
+                          }
+                          
+                          try {
+                            const res = await fetch(`/api/admin/availability/slot/${slotInfo.id}`, {
+                              method: 'DELETE',
+                            });
+                            
+                            if (res.ok) {
+                              setSlotInfo(null);
+                              setCalendarUpdateKey(prev => prev + 1);
+                              await load(date);
+                              alert(locale === 'fr' ? 'Disponibilité supprimée avec succès' : 'Availability deleted successfully');
+                            } else {
+                              const error = await res.json().catch(() => ({}));
+                              alert(locale === 'fr' 
+                                ? `Erreur lors de la suppression: ${error.error || 'Erreur inconnue'}` 
+                                : `Error deleting: ${error.error || 'Unknown error'}`);
+                            }
+                          } catch (error) {
+                            console.error('Error deleting slot:', error);
+                            alert(locale === 'fr' ? 'Erreur lors de la suppression' : 'Error deleting availability');
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
+                      >
+                        🗑️ {locale === 'fr' ? 'Supprimer' : 'Delete'}
+                      </button>
+                    </div>
                   </>
                 );
               })()}
@@ -1295,6 +1330,68 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                         <div className="text-base mt-1">{expSlotInfo.note}</div>
                       </div>
                     )}
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={async () => {
+                          if (!confirm(locale === 'fr' 
+                            ? 'Êtes-vous sûr de vouloir supprimer cette disponibilité d\'expérience ?' 
+                            : 'Are you sure you want to delete this experience availability?')) {
+                            return;
+                          }
+                          
+                          try {
+                            // Pour les expériences, on utilise la même logique de toggle (POST avec les mêmes paramètres supprime)
+                            // La date peut être une string YYYY-MM-DD ou un objet Date
+                            let dateStr: string;
+                            if (typeof expSlotInfo.date === 'string') {
+                              // Si c'est déjà une string, extraire juste la partie date (avant le T si ISO)
+                              dateStr = expSlotInfo.date.split('T')[0];
+                            } else if (expSlotInfo.date instanceof Date) {
+                              dateStr = format(expSlotInfo.date, 'yyyy-MM-dd');
+                            } else {
+                              // Si c'est un objet avec des propriétés de date, utiliser localKey
+                              dateStr = localKey(expSlotInfo.date);
+                            }
+                            
+                            const res = await fetch('/api/admin/availability/experiences', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                experienceId: expSlotInfo.experienceId,
+                                boatId: expSlotInfo.boatId || null,
+                                date: dateStr,
+                                part: expSlotInfo.part,
+                              }),
+                            });
+                            
+                            if (res.ok) {
+                              const data = await res.json();
+                              if (data.toggled === 'removed') {
+                                setExpSlotInfo(null);
+                                setCalendarUpdateKey(prev => prev + 1);
+                                await load(date);
+                                alert(locale === 'fr' ? 'Disponibilité d\'expérience supprimée avec succès' : 'Experience availability deleted successfully');
+                              } else {
+                                alert(locale === 'fr' 
+                                  ? 'Erreur: le créneau n\'a pas été supprimé' 
+                                  : 'Error: slot was not deleted');
+                              }
+                            } else {
+                              const error = await res.json().catch(() => ({}));
+                              alert(locale === 'fr' 
+                                ? `Erreur lors de la suppression: ${error.error || 'Erreur inconnue'}` 
+                                : `Error deleting: ${error.error || 'Unknown error'}`);
+                            }
+                          } catch (error) {
+                            console.error('Error deleting experience slot:', error);
+                            alert(locale === 'fr' ? 'Erreur lors de la suppression' : 'Error deleting experience availability');
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
+                      >
+                        🗑️ {locale === 'fr' ? 'Supprimer' : 'Delete'}
+                      </button>
+                    </div>
                   </>
                 );
               })()}

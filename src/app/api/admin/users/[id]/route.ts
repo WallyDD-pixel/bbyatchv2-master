@@ -1,16 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth";
+import { ensureAdmin } from "@/lib/security/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-
-async function ensureAdmin() {
-  const session = (await getServerSession()) as any;
-  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const email = session.user.email as string;
-  const me = await (prisma as any).user.findUnique({ where: { email }, select: { role: true } }).catch(() => null);
-  if (me?.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  return null;
-}
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const guard = await ensureAdmin();

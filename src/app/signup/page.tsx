@@ -3,9 +3,9 @@ import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import SignUpFormClient from "./SignUpFormClient";
 
-export default async function SignUpPage({ searchParams }: { searchParams?: { lang?: string } }) {
-  const sp = searchParams || {};
-  const locale: Locale = sp?.lang === "en" ? "en" : "fr";
+export default async function SignUpPage({ searchParams }: { searchParams?: Promise<{ lang?: string; redirect?: string }> | { lang?: string; redirect?: string } }) {
+  const resolvedParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+  const locale: Locale = resolvedParams?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 
   return (

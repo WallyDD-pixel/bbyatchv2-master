@@ -44,6 +44,13 @@ export async function POST(req: Request){
       // Utiliser uniquement les photos qui sont dans kept ET dans existingPhotos
       basePhotos = kept.filter(p=> existingPhotos.includes(p));
       console.log('📸 basePhotos après filtrage:', basePhotos.length, 'photos');
+      console.log('📸 Photos gardées:', basePhotos);
+      console.log('📸 Photos existantes non gardées:', existingPhotos.filter(p => !kept.includes(p)));
+      
+      // IMPORTANT : Si keepPhotos est [] (vide) mais qu'il y a des photos existantes,
+      // cela signifie que l'utilisateur n'a pas de photos secondaires à garder (seulement l'image principale)
+      // Mais on doit quand même préserver les photos existantes qui viennent d'être uploadées
+      // On les ajoutera dans mergedPhotos si elles ne sont pas déjà dans basePhotos
     } else {
       // Si keepPhotos n'a pas été envoyé du tout, garder toutes les photos existantes
       basePhotos = [...existingPhotos];
@@ -66,25 +73,34 @@ export async function POST(req: Request){
           console.log('📸 mainImage mise à jour vers:', mainChoice);
         }
       } else if(!mainChoice) {
-        // mainImageChoice est vide explicitement -> supprimer l'image principale
-        console.log('📸 mainImageChoice est vide, suppression de l\'image principale');
-        if(mainImage && !basePhotos.includes(mainImage)) {
-          basePhotos.unshift(mainImage);
-        }
-        mainImage = null;
+        // mainImageChoice est vide explicitement -> NE PAS supprimer si c'est juste une absence de valeur
+        // Seulement supprimer si l'utilisateur a explicitement choisi de ne pas avoir d'image principale
+        // Pour l'instant, on conserve l'image principale existante si mainImageChoice est vide
+        console.log('📸 mainImageChoice est vide, conservation de l\'image principale existante:', mainImage || '(aucune)');
+        // Ne pas modifier mainImage si elle existe déjà
       }
+    } else {
+      // Si mainImageChoice n'est pas envoyé du tout, conserver l'image principale existante
+      console.log('📸 mainImageChoice non envoyé, conservation de l\'image principale existante:', mainImage || '(aucune)');
     }
 
-    // Upload nouvelles images vers Supabase Storage
+    // Upload nouvelles images vers Supabase Storage avec validation
     const imageFiles = data.getAll('images') as File[];
     const newUrls: string[] = [];
     if(imageFiles && imageFiles.length){
       try {
-        const validFiles = imageFiles.filter(file => {
-          if (!file || !(file instanceof File) || file.size === 0) return false;
-          const mime = file.type || '';
-          return mime.startsWith('image/');
-        });
+        const { validateImageFile } = await import('@/lib/security/file-validation');
+        const validFiles: File[] = [];
+        
+        for (const file of imageFiles) {
+          if (!(file instanceof File) || file.size === 0) continue;
+          const validation = await validateImageFile(file);
+          if (validation.valid) {
+            validFiles.push(file);
+          } else {
+            console.warn(`⚠️ Used boat image rejected: ${file.name} - ${validation.error}`);
+          }
+        }
         
         if (validFiles.length > 0) {
           const urls = await uploadMultipleToSupabase(validFiles, 'used-boats');
@@ -102,8 +118,46 @@ export async function POST(req: Request){
     }
 
     // Fusion finale (ordre: basePhotos existantes réordonnées + nouvelles)
-    const mergedPhotos = Array.from(new Set([...basePhotos, ...newUrls]));
+    // Important : s'assurer que toutes les nouvelles images sont ajoutées
+    const allPhotos = [...basePhotos];
+    
+    // Ajouter toutes les nouvelles URLs qui ne sont pas déjà dans basePhotos
+    newUrls.forEach(url => {
+      if (url && !allPhotos.includes(url)) {
+        allPhotos.push(url);
+      }
+    });
+    
+    // Si keepPhotos était vide ([]) mais qu'il y a des photos existantes,
+    // on doit vérifier si ces photos existantes doivent être conservées
+    // Si l'utilisateur a ajouté de nouvelles images, les photos existantes uploadées récemment doivent être conservées
+    if (kept !== null && kept.length === 0 && existingPhotos.length > 0) {
+      // Cas spécial : keepPhotos est [] mais il y a des photos existantes
+      // Si on a des nouvelles images à uploader, cela signifie que l'utilisateur ajoute des images
+      // Dans ce cas, on doit conserver les photos existantes qui viennent d'être uploadées
+      // (elles sont dans existingPhotos mais pas dans kept car elles viennent d'une soumission précédente)
+      if (newUrls.length > 0) {
+        // L'utilisateur ajoute de nouvelles images, donc on conserve TOUTES les photos existantes uploadées
+        // (car elles viennent probablement d'une soumission précédente où l'utilisateur a ajouté des images)
+        console.log('⚠️ keepPhotos est [] mais nouvelles images présentes, conservation de TOUTES les photos existantes uploadées');
+        existingPhotos.forEach(url => {
+          // Conserver toutes les photos existantes qui sont des URLs Supabase (uploadées)
+          // et qui ne sont pas déjà dans allPhotos et qui ne sont pas l'image principale
+          if (url && url.includes('supabase.co') && !allPhotos.includes(url) && url !== mainImage) {
+            console.log('📸 Conservation d\'une photo existante uploadée:', url.substring(url.length - 50));
+            allPhotos.push(url);
+          }
+        });
+      } else {
+        // Pas de nouvelles images, keepPhotos est [] signifie vraiment qu'il n'y a pas de photos secondaires
+        // On ne les ajoute pas dans ce cas
+        console.log('⚠️ keepPhotos est [] et pas de nouvelles images, suppression des photos secondaires');
+      }
+    }
+    
+    const mergedPhotos = Array.from(new Set(allPhotos));
     console.log('📸 mergedPhotos final:', mergedPhotos.length, 'photos');
+    console.log('📸 basePhotos:', basePhotos.length, 'newUrls:', newUrls.length, 'existingPhotos:', existingPhotos.length);
     console.log('📸 mainImage final:', mainImage || '(null)');
 
     // Gestion des vidéos
@@ -126,16 +180,22 @@ export async function POST(req: Request){
       }
     }
     
-    // Upload fichiers vidéo vers Supabase Storage (si présents dans le formulaire)
+    // Upload fichiers vidéo vers Supabase Storage (si présents dans le formulaire) avec validation
     const videoFiles = data.getAll('videoFiles') as File[];
     if (videoFiles && videoFiles.length) {
       try {
-        const validVideos = videoFiles.filter(file => {
-          if (!file || !(file instanceof File) || file.size === 0) return false;
-          const mime = file.type || '';
-          const allowedMimes = ['video/mp4', 'video/webm', 'video/ogg', 'video/mov'];
-          return allowedMimes.includes(mime) || mime.startsWith('video/');
-        });
+        const { validateVideoFile } = await import('@/lib/security/file-validation');
+        const validVideos: File[] = [];
+        
+        for (const file of videoFiles) {
+          if (!(file instanceof File) || file.size === 0) continue;
+          const validation = await validateVideoFile(file);
+          if (validation.valid) {
+            validVideos.push(file);
+          } else {
+            console.warn(`⚠️ Used boat video rejected: ${file.name} - ${validation.error}`);
+          }
+        }
         
         if (validVideos.length > 0) {
           const urls = await uploadMultipleToSupabase(validVideos, 'used-boats/videos');

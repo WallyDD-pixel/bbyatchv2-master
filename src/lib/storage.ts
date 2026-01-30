@@ -1,4 +1,5 @@
 import { supabase, STORAGE_BUCKET } from './supabase';
+import { validateFile, generateSecureFileName, ALLOWED_IMAGE_TYPES, ALLOWED_VIDEO_TYPES } from './security/file-validation';
 
 export interface UploadResult {
   url: string;
@@ -6,7 +7,7 @@ export interface UploadResult {
 }
 
 /**
- * Upload un fichier vers Supabase Storage
+ * Upload un fichier vers Supabase Storage avec validation de sécurité
  * @param file - Le fichier à uploader
  * @param folder - Dossier dans le bucket (optionnel, ex: 'images', 'videos')
  * @returns L'URL publique du fichier uploadé
@@ -16,30 +17,35 @@ export async function uploadToSupabase(
   folder: string = 'images'
 ): Promise<UploadResult | null> {
   try {
-    // Générer un nom de fichier unique
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).slice(2, 8);
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${timestamp}-${randomStr}.${ext}`;
+    // Déterminer les types autorisés selon le dossier
+    const allowedTypes = folder.includes('video') 
+      ? ALLOWED_VIDEO_TYPES 
+      : ALLOWED_IMAGE_TYPES;
+
+    // Validation de sécurité du fichier (magic bytes, taille, type)
+    const validation = await validateFile(file, allowedTypes);
+    if (!validation.valid) {
+      console.error(`❌ File validation failed: ${validation.error}`);
+      return null;
+    }
+
+    // Utiliser le type détecté ou déclaré
+    const mimeType = validation.detectedType || file.type;
+
+    // Générer un nom de fichier sécurisé
+    const fileName = generateSecureFileName(file.name, mimeType);
     const filePath = `${folder}/${fileName}`;
 
     // Convertir le fichier en ArrayBuffer puis en Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Vérifier la taille du fichier
-    const maxSize = file.type.startsWith('video/') ? 100 * 1024 * 1024 : 10 * 1024 * 1024; // 100MB vidéo, 10MB image (augmenté de 5MB à 10MB)
-    if (buffer.length > maxSize) {
-      console.error(`File too large: ${(buffer.length / 1024 / 1024).toFixed(2)}MB (max: ${(maxSize / 1024 / 1024).toFixed(2)}MB)`);
-      return null;
-    }
-
     // Upload vers Supabase Storage
-    console.log(`📤 Uploading to bucket: ${STORAGE_BUCKET}, path: ${filePath}, size: ${buffer.length} bytes`);
+    console.log(`📤 Uploading to bucket: ${STORAGE_BUCKET}, path: ${filePath}, size: ${buffer.length} bytes, type: ${mimeType}`);
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(filePath, buffer, {
-        contentType: file.type || 'image/jpeg',
+        contentType: mimeType,
         upsert: false, // Ne pas écraser les fichiers existants
         cacheControl: '3600',
       });

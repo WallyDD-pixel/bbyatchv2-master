@@ -45,33 +45,70 @@ export async function POST(req: Request) {
     if (c > 50) break; // garde-fou
   }
 
-  // Upload images et vidéos vers Supabase Storage
+  // Upload images et vidéos vers Supabase Storage avec validation de sécurité
   const savedImageUrls: string[] = [];
   const savedVideoUrls: string[] = [];
   const allowedImages = ['image/jpeg','image/png','image/webp','image/gif'];
   const allowedVideos = ['video/mp4','video/webm','video/ogg'];
   
   try {
-    // Upload images
+    // Upload images avec validation
     if (multiImageFiles.length) {
-      const imageFiles = multiImageFiles.filter(f => {
-        const mime = (f as any).type;
-        return allowedImages.includes(mime);
-      });
-      if (imageFiles.length > 0) {
-        const urls = await uploadMultipleToSupabase(imageFiles, 'boats');
+      const { validateImageFile } = await import('@/lib/security/file-validation');
+      const validImageFiles: File[] = [];
+      
+      for (const file of multiImageFiles) {
+        const mime = (file as any).type;
+        if (allowedImages.includes(mime)) {
+          const validation = await validateImageFile(file);
+          if (validation.valid) {
+            validImageFiles.push(file);
+          } else {
+            console.warn(`⚠️ Image file rejected: ${file.name} - ${validation.error}`);
+          }
+        }
+      }
+      
+      if (validImageFiles.length > 0) {
+        const urls = await uploadMultipleToSupabase(validImageFiles, 'boats');
         savedImageUrls.push(...urls);
       }
     } else if (singleImageFile) {
       const mime = (singleImageFile as any).type;
       if (allowedImages.includes(mime)) {
-        const result = await uploadMultipleToSupabase([singleImageFile], 'boats');
-        if (result.length > 0) savedImageUrls.push(...result);
+        const { validateImageFile } = await import('@/lib/security/file-validation');
+        const validation = await validateImageFile(singleImageFile);
+        if (validation.valid) {
+          const result = await uploadMultipleToSupabase([singleImageFile], 'boats');
+          if (result.length > 0) savedImageUrls.push(...result);
+        } else {
+          console.warn(`⚠️ Image file rejected: ${singleImageFile.name} - ${validation.error}`);
+        }
       }
     }
     
-    // Upload vidéos
+    // Upload vidéos avec validation
     if (videoFiles.length) {
+      const { validateVideoFile } = await import('@/lib/security/file-validation');
+      const validVideoFiles: File[] = [];
+      
+      for (const file of videoFiles) {
+        const mime = (file as any).type;
+        if (allowedVideos.includes(mime)) {
+          const validation = await validateVideoFile(file);
+          if (validation.valid) {
+            validVideoFiles.push(file);
+          } else {
+            console.warn(`⚠️ Video file rejected: ${file.name} - ${validation.error}`);
+          }
+        }
+      }
+      
+      if (validVideoFiles.length > 0) {
+        const urls = await uploadMultipleToSupabase(validVideoFiles, 'boats/videos');
+        savedVideoUrls.push(...urls);
+      }
+    } {
       const validVideos = videoFiles.filter(f => {
         const mime = (f as any).type;
         return allowedVideos.includes(mime);

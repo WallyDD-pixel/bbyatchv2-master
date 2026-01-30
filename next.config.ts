@@ -1,28 +1,80 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "50mb", // augmentation limite upload (images formulaire)
-    },
-  },
-  typescript: {
-    ignoreBuildErrors: true, // Méthode 1: laisser passer la build malgré les écarts de typage générés
-  },
-  eslint: {
-    ignoreDuringBuilds: true, // Ignorer les erreurs ESLint pendant le build
-  },
+  /* config options here */
+  reactStrictMode: true,
+
+  // Configuration des images (pour Next.js Image component)
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "images.unsplash.com" },
-      { protocol: "https", hostname: "plus.unsplash.com" },
-      { protocol: "https", hostname: "*.supabase.co" },
-      { protocol: "https", hostname: "nbovypcvctbtwxflbkmh.supabase.co" },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'nbovypcvctbtwxflbkmh.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
     ],
-    // Désactiver l'optimisation pour les images locales (servies directement par Nginx)
-    unoptimized: true,
   },
-  // Note: eslint configuration moved to eslint.config.mjs in Next.js 16
+
+  // Headers de sécurité
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on'
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin'
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()'
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' data: https: blob:",
+              "font-src 'self' https://fonts.gstatic.com data:",
+              "connect-src 'self' https://*.supabase.co https://api.stripe.com http://localhost:* ws://localhost:* wss://localhost:*",
+              "frame-src https://js.stripe.com https://hooks.stripe.com",
+              "object-src 'self' data:",
+              "base-uri 'self'",
+              "form-action 'self' http://localhost:* https://localhost:*",
+              "frame-ancestors 'none'",
+              process.env.NODE_ENV === 'production' ? "upgrade-insecure-requests" : "",
+            ].filter(Boolean).join('; ')
+          }
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

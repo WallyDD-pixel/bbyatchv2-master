@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
   // adapter: PrismaAdapter(prisma) as any,
   session: { 
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 7 * 24 * 60 * 60, // 7 days (réduit de 30 jours pour sécurité)
   },
   secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
   pages: {

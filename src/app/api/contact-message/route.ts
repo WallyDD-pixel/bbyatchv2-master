@@ -1,20 +1,56 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createRedirectUrl } from '@/lib/redirect';
+import { validateEmail, validateName, validatePhone, sanitizeHtml } from '@/lib/security/validation';
+import { checkContactRateLimit, getClientIP } from '@/lib/security/rate-limit';
 
 export async function POST(req: Request){
   try {
+    // Rate limiting
+    const ip = getClientIP(req);
+    const rateLimit = checkContactRateLimit(ip);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { ok: false, error: 'rate_limit_exceeded', retryAfter: Math.ceil((rateLimit.resetAt - Date.now()) / 1000) },
+        { status: 429 }
+      );
+    }
+
     const form = await req.formData();
-    const name = (form.get('name')||'').toString().slice(0,200).trim();
-    const email = (form.get('email')||'').toString().slice(0,320).trim();
-    const phone = (form.get('phone')||'').toString().slice(0,50).trim() || null;
-    const message = (form.get('message')||'').toString().slice(0,5000).trim();
+    const nameRaw = (form.get('name')||'').toString();
+    const emailRaw = (form.get('email')||'').toString();
+    const phoneRaw = (form.get('phone')||'').toString();
+    const messageRaw = (form.get('message')||'').toString();
     const usedBoatIdRaw = form.get('usedBoatId');
     const slug = (form.get('slug')||'').toString();
     const locale = (form.get('locale')||'').toString();
-    if(!name || !email || !message){
+
+    // Validation des champs requis
+    if(!nameRaw || !emailRaw || !messageRaw){
       return NextResponse.json({ ok:false, error:'missing_fields' }, { status:400 });
     }
+
+    // Validation et sanitization
+    const nameValidation = validateName(nameRaw, 200);
+    if (!nameValidation.valid) {
+      return NextResponse.json({ ok: false, error: 'invalid_name', details: nameValidation.error }, { status: 400 });
+    }
+    const name = nameValidation.sanitized!;
+
+    const emailValidation = validateEmail(emailRaw);
+    if (!emailValidation.valid) {
+      return NextResponse.json({ ok: false, error: 'invalid_email', details: emailValidation.error }, { status: 400 });
+    }
+    const email = emailValidation.normalized!;
+
+    const phoneValidation = validatePhone(phoneRaw || null);
+    if (!phoneValidation.valid) {
+      return NextResponse.json({ ok: false, error: 'invalid_phone', details: phoneValidation.error }, { status: 400 });
+    }
+    const phone = phoneValidation.normalized || null;
+
+    // Sanitizer le message HTML
+    const message = sanitizeHtml(messageRaw, 5000);
     let usedBoatId: number | undefined = undefined;
     if(usedBoatIdRaw){ const n = Number(usedBoatIdRaw); if(Number.isInteger(n)) usedBoatId = n; }
     const sourcePage = slug || 'contact';

@@ -3,6 +3,7 @@ import "./globals.css";
 import { ForceLight } from '@/components/ForceLight';
 import { AppProviders } from '@/components/Providers';
 import SEOTracking from '@/components/SEOTracking';
+import PageLoader from '@/components/PageLoader';
 import { prisma } from '@/lib/prisma';
 
 // Les fonts Google sont chargées via <link> dans le <head>
@@ -41,6 +42,7 @@ export default async function RootLayout({
       <body className="font-sans antialiased" style={{ fontFamily: 'var(--font-sans)' }}>
         <ForceLight />
         <AppProviders>
+          <PageLoader />
           {children}
         </AppProviders>
         <SEOTracking 

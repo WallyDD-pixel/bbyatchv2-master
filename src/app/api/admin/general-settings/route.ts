@@ -73,7 +73,8 @@ export async function POST(req: Request) {
       data: updateData,
     });
 
-    return NextResponse.redirect(new URL('/admin/general-settings?success=1', req.url));
+    // Retourner JSON au lieu de rediriger pour que le client puisse gérer la redirection
+    return NextResponse.json({ success: true });
   } catch (e: any) {
     console.error('Error updating general settings:', e);
     return NextResponse.json({ error: 'server_error', details: e?.message }, { status: 500 });

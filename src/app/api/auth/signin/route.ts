@@ -2,45 +2,67 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { checkAuthRateLimit, getClientIP } from '@/lib/security/rate-limit';
+import { validateEmail } from '@/lib/security/validation';
 
 export async function POST(req: Request) {
   try {
+    // Rate limiting
+    const ip = getClientIP(req);
+    const rateLimit = checkAuthRateLimit(ip);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de tentatives. Veuillez réessayer plus tard.', retryAfter: Math.ceil((rateLimit.resetAt - Date.now()) / 1000) },
+        { status: 429 }
+      );
+    }
+
     const { email, password } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email et mot de passe requis' }, { status: 400 });
     }
 
+    // Validation email
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      // Protection contre timing attack: toujours exécuter bcrypt
+      await bcrypt.hash(password, 10);
+      return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 });
+    }
+    const normalizedEmail = emailValidation.normalized!;
+
     // 1. Vérifier si l'utilisateur existe dans la table User (ancien système)
     const dbUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       select: { id: true, email: true, name: true, image: true, role: true, password: true }
     });
 
-    if (!dbUser || !dbUser.password) {
-      return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 });
-    }
-
-    // 2. Vérifier le mot de passe
-    const passwordValid = await bcrypt.compare(password, dbUser.password);
-    if (!passwordValid) {
+    // Protection contre timing attack: toujours exécuter bcrypt même si l'utilisateur n'existe pas
+    const dummyHash = '$2a$10$dummy.hash.for.timing.attack.protection.abcdefghijklmnopqrstuvwxyz';
+    const userHash = dbUser?.password || dummyHash;
+    
+    // 2. Vérifier le mot de passe (toujours exécuter pour éviter les timing attacks)
+    const passwordValid = await bcrypt.compare(password, userHash);
+    
+    if (!dbUser || !dbUser.password || !passwordValid) {
       return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 });
     }
 
     // 3. Vérifier si l'utilisateur existe dans Supabase Auth
     const supabase = await createClient();
     
-    // Essayer de se connecter d'abord
+    // Essayer de se connecter d'abord (utiliser l'email normalisé)
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password
     });
 
     // Si l'utilisateur n'existe pas dans Supabase Auth, le créer
     if (signInError && signInError.message.includes('Invalid login credentials')) {
-      // Créer le compte dans Supabase Auth avec le même mot de passe
+      // Créer le compte dans Supabase Auth avec le même mot de passe (utiliser l'email normalisé)
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           data: {
@@ -55,9 +77,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Erreur lors de la création du compte' }, { status: 500 });
       }
 
-      // Après création, se connecter
+      // Après création, se connecter (utiliser l'email normalisé)
       const { data: finalSignIn, error: finalError } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password
       });
 

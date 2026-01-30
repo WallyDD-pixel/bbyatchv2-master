@@ -32,15 +32,22 @@ export default function ImageGalleryManager({
       items.push({ url: initialMainImage, isMain: true });
     }
     
-    // Ajouter les autres photos
+    // Ajouter les autres photos (en excluant l'image principale pour éviter les doublons)
+    const uniquePhotos = new Set<string>();
+    if (initialMainImage) {
+      uniquePhotos.add(initialMainImage);
+    }
+    
     initialPhotos.forEach(url => {
-      // Éviter les doublons avec l'image principale
-      if (url !== initialMainImage) {
+      // Éviter les doublons avec l'image principale et entre les photos
+      if (url && url.trim() && !uniquePhotos.has(url) && url !== initialMainImage) {
         items.push({ url, isMain: false });
+        uniquePhotos.add(url);
       }
     });
     
-    console.log('🖼️ Images initiales:', items);
+    console.log('🖼️ Images initiales:', items.length, 'items');
+    console.log('🖼️ Détail:', items.map(img => ({ url: img.url.substring(0, 50) + '...', isMain: img.isMain })));
     return items;
   });
 
@@ -54,34 +61,42 @@ export default function ImageGalleryManager({
   // Mettre à jour les champs cachés quand les images changent
   useEffect(() => {
     console.log('🔄 Mise à jour des champs cachés, images:', images.length);
-    const mainImage = images.find(img => img.isMain && !img.isTemp);
-    const otherImages = images.filter(img => !img.isMain && !img.isTemp);
     
-    console.log('📊 Images analysées - mainImage:', mainImage ? 'trouvée' : 'absente', 'otherImages:', otherImages.length);
-    
-    if (mainImageInputRef.current) {
-      mainImageInputRef.current.value = mainImage?.url || '';
-      console.log('✅ mainImageInput mis à jour:', mainImage?.url || '(vide)');
-    } else {
-      console.warn('⚠️ mainImageInputRef.current est null');
-    }
-    
-    if (keepPhotosInputRef.current) {
-      // Filtrer uniquement les images existantes (pas les nouvelles temporaires)
-      const existingPhotos = otherImages.map(img => img.url);
-      const jsonValue = JSON.stringify(existingPhotos);
-      keepPhotosInputRef.current.value = jsonValue;
-      console.log('✅ keepPhotosInput mis à jour:', existingPhotos.length, 'photos, valeur:', jsonValue);
-      console.log('🔍 URLs des photos à conserver:', existingPhotos);
-    } else {
-      console.warn('⚠️ keepPhotosInputRef.current est null');
-    }
+    // Utiliser requestAnimationFrame pour s'assurer que les refs sont bien attachées
+    requestAnimationFrame(() => {
+      // Trouver l'image principale (priorité aux images existantes, sinon la première image principale)
+      const mainImage = images.find(img => img.isMain && !img.isTemp) || images.find(img => img.isMain);
+      const otherImages = images.filter(img => !img.isMain && !img.isTemp);
+      
+      console.log('📊 Images analysées - mainImage:', mainImage ? 'trouvée' : 'absente', 'otherImages:', otherImages.length);
+      console.log('📊 Détail mainImage:', mainImage ? { url: mainImage.url.substring(0, 50) + '...', isTemp: mainImage.isTemp } : 'aucune');
+      
+      if (mainImageInputRef.current) {
+        // Toujours définir une valeur, même si vide, pour que l'API sache qu'on a envoyé le champ
+        const mainImageValue = mainImage?.url || '';
+        mainImageInputRef.current.value = mainImageValue;
+        console.log('✅ mainImageInput mis à jour:', mainImageValue || '(vide)');
+      } else {
+        console.warn('⚠️ mainImageInputRef.current est null');
+      }
+      
+      if (keepPhotosInputRef.current) {
+        // Filtrer uniquement les images existantes (pas les nouvelles temporaires)
+        const existingPhotos = otherImages.map(img => img.url);
+        const jsonValue = JSON.stringify(existingPhotos);
+        keepPhotosInputRef.current.value = jsonValue;
+        console.log('✅ keepPhotosInput mis à jour:', existingPhotos.length, 'photos, valeur:', jsonValue);
+        console.log('🔍 URLs des photos à conserver:', existingPhotos);
+      } else {
+        console.warn('⚠️ keepPhotosInputRef.current est null');
+      }
 
-    // Notifier les nouveaux fichiers
-    if (onNewFilesChange) {
-      const newFiles = images.filter(img => img.isTemp && img.file).map(img => img.file!);
-      onNewFilesChange(newFiles);
-    }
+      // Notifier les nouveaux fichiers
+      if (onNewFilesChange) {
+        const newFiles = images.filter(img => img.isTemp && img.file).map(img => img.file!);
+        onNewFilesChange(newFiles);
+      }
+    });
   }, [images, onNewFilesChange]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

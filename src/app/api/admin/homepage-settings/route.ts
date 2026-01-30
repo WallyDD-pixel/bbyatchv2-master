@@ -42,19 +42,19 @@ export async function POST(req: Request) {
     const aboutUsText = (data.get('aboutUsText') || '').toString().trim();
     const whyChooseImageFile = data.get('whyChooseImageFile') as File | null;
 
-  // Gestion upload image "Pourquoi choisir" vers Supabase Storage
+  // Gestion upload image "Pourquoi choisir" vers Supabase Storage avec validation
   let whyChooseImageUrl: string | undefined;
   if (whyChooseImageFile && whyChooseImageFile instanceof File && whyChooseImageFile.size > 0) {
     try {
-      const name = whyChooseImageFile.name || '';
-      const ext = name.split('.').pop()?.toLowerCase() || '';
-      const mime = whyChooseImageFile.type || '';
-      const allowedExt = new Set(['jpg','jpeg','png','webp','gif','avif']);
-      if ((ext && allowedExt.has(ext)) || mime.startsWith('image/')) {
+      const { validateImageFile } = await import('@/lib/security/file-validation');
+      const validation = await validateImageFile(whyChooseImageFile);
+      if (validation.valid) {
         const result = await uploadToSupabase(whyChooseImageFile, 'homepage');
         if (result) {
           whyChooseImageUrl = result.url;
         }
+      } else {
+        console.warn(`⚠️ WhyChoose image rejected: ${whyChooseImageFile.name} - ${validation.error}`);
       }
     } catch (e: any) {
       console.error('Error uploading whyChoose image to Supabase Storage:', e?.message || e);
@@ -62,20 +62,25 @@ export async function POST(req: Request) {
     }
   }
 
-  // Gestion upload images slider vers Supabase Storage (multi + legacy)
+  // Gestion upload images slider vers Supabase Storage (multi + legacy) avec validation
   let mainSliderImageUrl: string | undefined;
   let uploadedUrls: string[] = [];
-  const allowedExt = new Set(['jpg','jpeg','png','webp','gif','avif']);
   try {
+    const { validateImageFile } = await import('@/lib/security/file-validation');
+    
     // Multi-images si présentes
     if (Array.isArray(mainSliderImagesFiles) && mainSliderImagesFiles.length > 0) {
-      const validFiles = mainSliderImagesFiles.filter(file => {
-        if (!file || !(file instanceof File) || file.size === 0) return false;
-        const name = file.name || '';
-        const ext = name.split('.').pop()?.toLowerCase() || '';
-        const mime = file.type || '';
-        return (ext && allowedExt.has(ext)) || mime.startsWith('image/');
-      });
+      const validFiles: File[] = [];
+      
+      for (const file of mainSliderImagesFiles) {
+        if (!file || !(file instanceof File) || file.size === 0) continue;
+        const validation = await validateImageFile(file);
+        if (validation.valid) {
+          validFiles.push(file);
+        } else {
+          console.warn(`⚠️ Slider image rejected: ${file.name} - ${validation.error}`);
+        }
+      }
       
       if (validFiles.length > 0) {
         const urls = await uploadMultipleToSupabase(validFiles, 'homepage');
@@ -88,15 +93,15 @@ export async function POST(req: Request) {
 
     // Legacy: un seul fichier si pas de multi fourni
     if (!mainSliderImageUrl && mainSliderImageFile && mainSliderImageFile instanceof File && mainSliderImageFile.size > 0) {
-      const name = mainSliderImageFile.name || '';
-      const ext = name.split('.').pop()?.toLowerCase() || '';
-      const mime = mainSliderImageFile.type || '';
-      if ((ext && allowedExt.has(ext)) || mime.startsWith('image/')) {
+      const validation = await validateImageFile(mainSliderImageFile);
+      if (validation.valid) {
         const result = await uploadMultipleToSupabase([mainSliderImageFile], 'homepage');
         if (result.length > 0) {
           mainSliderImageUrl = result[0];
           uploadedUrls = [mainSliderImageUrl];
         }
+      } else {
+        console.warn(`⚠️ Slider image rejected: ${mainSliderImageFile.name} - ${validation.error}`);
       }
     }
   } catch (e: any) {

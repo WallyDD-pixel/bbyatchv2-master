@@ -31,12 +31,24 @@ export async function POST(req: Request){
     const rawTitleFr = String(data.get('titleFr')).trim();
     const baseSlug = slugify(rawTitleFr);
 
-    // Gestion fichiers images (si fournis) - Upload vers Supabase Storage
+    // Gestion fichiers images (si fournis) - Upload vers Supabase Storage avec validation
     const imageFiles = data.getAll('images') as File[];
     const savedUrls: string[] = [];
     if(imageFiles && imageFiles.length){
       try {
-        const validFiles = imageFiles.filter(file => (file as any).arrayBuffer);
+        const { validateImageFile } = await import('@/lib/security/file-validation');
+        const validFiles: File[] = [];
+        
+        for (const file of imageFiles) {
+          if (!(file instanceof File) || file.size === 0) continue;
+          const validation = await validateImageFile(file);
+          if (validation.valid) {
+            validFiles.push(file);
+          } else {
+            console.warn(`⚠️ Used boat image rejected: ${file.name} - ${validation.error}`);
+          }
+        }
+        
         if(validFiles.length > 0){
           const urls = await uploadMultipleToSupabase(validFiles, 'used-boats');
           savedUrls.push(...urls);

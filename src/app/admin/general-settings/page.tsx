@@ -26,19 +26,39 @@ export default function AdminGeneralSettingsPage() {
     const formData = new FormData(e.currentTarget);
 
     try {
-      const res = await fetch("/api/admin/general-settings", {
+      // Utiliser une URL relative pour éviter les problèmes SSL en local
+      const apiUrl = "/api/admin/general-settings";
+      const res = await fetch(apiUrl, {
         method: "POST",
         body: formData,
       });
+      
       if (res.ok) {
-        router.push("/admin/general-settings?success=1");
-        router.refresh();
+        const result = await res.json().catch(() => ({}));
+        if (result.success) {
+          // Utiliser window.location au lieu de router.push pour éviter les problèmes de protocole
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set('success', '1');
+          // Forcer HTTP en développement pour éviter les erreurs SSL
+          if (currentUrl.protocol === 'https:' && currentUrl.hostname === 'localhost') {
+            currentUrl.protocol = 'http:';
+          }
+          window.location.href = currentUrl.pathname + currentUrl.search;
+        } else {
+          alert(result?.error || "Erreur lors de la sauvegarde");
+        }
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData?.error || errorData?.details || "Erreur lors de la sauvegarde");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde:", error);
+      // Vérifier si c'est une erreur réseau/SSL
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        alert("Erreur de connexion. Vérifiez que vous utilisez http://localhost:3000 (et non https://)");
       } else {
         alert("Erreur lors de la sauvegarde");
       }
-    } catch (error) {
-      console.error(error);
-      alert("Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
     }
@@ -102,11 +122,33 @@ export default function AdminGeneralSettingsPage() {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
+                      // Vérifier le type de fichier
+                      if (!file.type.startsWith('image/')) {
+                        alert('Veuillez sélectionner un fichier image');
+                        e.target.value = ''; // Réinitialiser l'input
+                        return;
+                      }
+                      
+                      // Vérifier la taille (max 5MB)
+                      if (file.size > 5 * 1024 * 1024) {
+                        alert('Le fichier est trop volumineux (max 5MB)');
+                        e.target.value = ''; // Réinitialiser l'input
+                        return;
+                      }
+                      
                       const reader = new FileReader();
                       reader.onload = (ev) => {
-                        setLogoPreview(ev.target?.result as string);
+                        if (ev.target?.result) {
+                          setLogoPreview(ev.target.result as string);
+                        }
+                      };
+                      reader.onerror = () => {
+                        alert('Erreur lors de la lecture du fichier');
+                        e.target.value = ''; // Réinitialiser l'input
                       };
                       reader.readAsDataURL(file);
+                    } else {
+                      setLogoPreview(null);
                     }
                   }}
                   className="w-full mt-1 border border-black/15 rounded-lg px-3 py-2 text-sm"

@@ -1,24 +1,21 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { ensureAdmin, getCurrentUser } from '@/lib/security/auth-helpers';
 
-async function ensureAdmin() {
-  const session = (await getServerSession()) as any;
-  if (!session?.user) return null;
-  if ((session.user as any)?.role === 'admin') return session.user;
-  // fallback DB
-  if (session.user?.email) {
-    try {
-      const u = await (prisma as any).user.findUnique({ where: { email: session.user.email }, select: { role: true } });
-      if (u?.role === 'admin') return session.user;
-    } catch {}
-  }
-  return null;
+// Fonction helper pour obtenir l'admin (retourne l'utilisateur ou null)
+async function getAdminUser() {
+  const guard = await ensureAdmin();
+  if (guard) return null; // Erreur d'autorisation
+  return await getCurrentUser();
 }
 
 // GET /api/admin/availability?from=YYYY-MM-DD&to=YYYY-MM-DD
 export async function GET(req: Request) {
-  if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const adminUser = await getAdminUser();
+  if (!adminUser) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  
   const { searchParams } = new URL(req.url);
   const from = searchParams.get('from');
   const to = searchParams.get('to');
@@ -89,7 +86,8 @@ export async function GET(req: Request) {
 
 // PATCH note update { id, note }
 export async function PATCH(req: Request) {
-  if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const guard = await ensureAdmin();
+  if (guard) return guard;
   let body: any = {};
   try { body = await req.json(); } catch {}
   const { id, note } = body || {};
@@ -102,7 +100,8 @@ export async function PATCH(req: Request) {
 
 // POST create/toggle { boatId, date: 'YYYY-MM-DD', part: 'AM'|'PM'|'FULL', note? }
 export async function POST(req: Request) {
-  if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const guard = await ensureAdmin();
+  if (guard) return guard;
   let body: any = {};
   try { body = await req.json(); } catch {}
   const { boatId, date, part, note } = body || {};

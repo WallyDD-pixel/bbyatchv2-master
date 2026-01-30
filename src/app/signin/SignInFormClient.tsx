@@ -179,7 +179,7 @@ export default function SignInFormClient() {
 
             <div className="mt-6 text-sm text-black/70 dark:text-slate-400">
               <span>Pas de compte ? </span>
-              <a href="/signup" className="text-[color:var(--primary)] font-medium hover:underline">Créer un compte</a>
+              <a href={`/signup?redirect=${encodeURIComponent(callbackUrl)}`} className="text-[color:var(--primary)] font-medium hover:underline">Créer un compte</a>
             </div>
           </form>
         </div>

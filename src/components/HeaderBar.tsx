@@ -24,6 +24,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
   const [session, setSession] = useState<any>(null);
   const [userRole, setUserRole] = useState<string>('user');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true); // État de chargement initial
   const defaultLogo = "/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png";
   const [logoUrl, setLogoUrl] = useState<string>(defaultLogo);
   const [navbarItems, setNavbarItems] = useState<NavbarItem[]>([]);
@@ -31,6 +32,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
   // Vérifier la session Supabase
   useEffect(() => {
     async function checkSession() {
+      setIsCheckingSession(true);
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -52,6 +54,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
         setSession(null);
         setUserRole('user');
       }
+      setIsCheckingSession(false);
     }
 
     checkSession();
@@ -217,8 +220,12 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                 {locale === "en" && <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-50" />}
               </button>
             </div>
+            {/* État de chargement - afficher un placeholder pendant la vérification */}
+            {isCheckingSession && (
+              <div className="h-11 w-24 rounded-2xl bg-slate-200/50 dark:bg-slate-700/50 animate-pulse" />
+            )}
             {/* Bouton de connexion premium */}
-            {!session && (
+            {!isCheckingSession && !session && (
               <a
                 href="/signin"
                 className="group relative rounded-2xl px-6 h-11 flex items-center text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 transition-all duration-300 shadow-lg hover:shadow-xl overflow-hidden"
@@ -233,7 +240,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
               </a>
             )}
             {/* Menu utilisateur premium */}
-            {session && (
+            {!isCheckingSession && session && (
               <div className="relative">
                 <button 
                   type="button" 
@@ -383,7 +390,10 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
               </div>
 
               {/* Actions utilisateur */}
-              {!session && (
+              {isCheckingSession && (
+                <div className="w-full rounded-2xl px-6 py-4 min-h-[56px] flex items-center justify-center bg-slate-200/50 dark:bg-slate-700/50 animate-pulse" />
+              )}
+              {!isCheckingSession && !session && (
                 <a
                   href="/signin"
                   className="w-full rounded-2xl px-6 py-4 min-h-[56px] flex items-center justify-center gap-2 text-base font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98]"
@@ -393,7 +403,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                   {t.auth_signin}
                 </a>
               )}
-              {session && (
+              {!isCheckingSession && session && (
                 <div className="flex flex-col gap-3">
                   <a
                     href={userRole==='admin'? '/admin': userRole==='agency'? '/agency':'/dashboard'}

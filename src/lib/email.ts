@@ -64,11 +64,17 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     const fromEmail = settings.smtpFromEmail || 'noreply@bb-yachts.com';
     const fromName = settings.smtpFromName || 'BB YACHTS';
 
+    // Validation des paramètres requis
+    if (!options.html) {
+      console.error('❌ Error sending email: html content is missing');
+      return false;
+    }
+
     const mailOptions: any = {
       from: `"${fromName}" <${fromEmail}>`,
       to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
-      subject: options.subject,
-      text: options.text || options.html.replace(/<[^>]*>/g, ''),
+      subject: options.subject || 'Notification',
+      text: options.text || (options.html ? options.html.replace(/<[^>]*>/g, '') : ''),
       html: options.html,
     };
 

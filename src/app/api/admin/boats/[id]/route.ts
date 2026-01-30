@@ -1,15 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth";
+import { ensureAdmin } from "@/lib/security/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { uploadMultipleToSupabase } from "@/lib/storage";
-
-async function ensureAdmin() {
-  const session = await getServerSession() as any;
-  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const me = await (prisma as any).user.findUnique({ where: { email: session.user.email }, select: { role: true } }).catch(() => null);
-  if (me?.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  return null;
-}
 
 export async function PUT(req: Request, ctx: { params: { id: string } }) {
   const guard = await ensureAdmin();
@@ -78,39 +70,67 @@ export async function PUT(req: Request, ctx: { params: { id: string } }) {
     return [];
   };
 
-  // Gestion upload vers Supabase Storage
+  // Gestion upload vers Supabase Storage avec validation de sécurité
   const allowed = ['image/jpeg','image/png','image/webp','image/gif'];
   const allowedVideo = ['video/mp4','video/webm','video/ogg'];
   
   let uploaded: string[] = [];
   let uploadedVideos: string[] = [];
   try {
-    // Upload images
+    // Upload images avec validation
     if (newFiles.length) {
-      const imageFiles = newFiles.filter(f => {
-        const mime = (f as any).type;
-        return allowed.includes(mime);
-      });
-      if (imageFiles.length > 0) {
-        const urls = await uploadMultipleToSupabase(imageFiles, 'boats');
+      const { validateImageFile } = await import('@/lib/security/file-validation');
+      const validImageFiles: File[] = [];
+      
+      for (const file of newFiles) {
+        const mime = (file as any).type;
+        if (allowed.includes(mime)) {
+          const validation = await validateImageFile(file);
+          if (validation.valid) {
+            validImageFiles.push(file);
+          } else {
+            console.warn(`⚠️ Image file rejected: ${file.name} - ${validation.error}`);
+          }
+        }
+      }
+      
+      if (validImageFiles.length > 0) {
+        const urls = await uploadMultipleToSupabase(validImageFiles, 'boats');
         uploaded.push(...urls);
       }
     } else if (singleFile) {
       const mime = (singleFile as any).type;
       if (allowed.includes(mime)) {
-        const result = await uploadMultipleToSupabase([singleFile], 'boats');
-        if (result.length > 0) uploaded.push(...result);
+        const { validateImageFile } = await import('@/lib/security/file-validation');
+        const validation = await validateImageFile(singleFile);
+        if (validation.valid) {
+          const result = await uploadMultipleToSupabase([singleFile], 'boats');
+          if (result.length > 0) uploaded.push(...result);
+        } else {
+          console.warn(`⚠️ Image file rejected: ${singleFile.name} - ${validation.error}`);
+        }
       }
     }
     
-    // Upload vidéos
+    // Upload vidéos avec validation
     if (videoFiles.length) {
-      const validVideos = videoFiles.filter(f => {
-        const mime = (f as any).type;
-        return allowedVideo.includes(mime);
-      });
-      if (validVideos.length > 0) {
-        const urls = await uploadMultipleToSupabase(validVideos, 'boats/videos');
+      const { validateVideoFile } = await import('@/lib/security/file-validation');
+      const validVideoFiles: File[] = [];
+      
+      for (const file of videoFiles) {
+        const mime = (file as any).type;
+        if (allowedVideo.includes(mime)) {
+          const validation = await validateVideoFile(file);
+          if (validation.valid) {
+            validVideoFiles.push(file);
+          } else {
+            console.warn(`⚠️ Video file rejected: ${file.name} - ${validation.error}`);
+          }
+        }
+      }
+      
+      if (validVideoFiles.length > 0) {
+        const urls = await uploadMultipleToSupabase(validVideoFiles, 'boats/videos');
         uploadedVideos.push(...urls);
       }
     }
