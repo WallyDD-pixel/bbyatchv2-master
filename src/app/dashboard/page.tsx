@@ -10,11 +10,12 @@ import ReservationRow from "@/app/dashboard/ReservationRow";
 import ReservationCard from "@/app/dashboard/ReservationCard";
 import { prisma } from "@/lib/prisma";
 
-export default async function DashboardPage({ searchParams }: { searchParams?: { lang?: string } }) {
+export default async function DashboardPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = (await getServerSession()) as any;
   if (!session?.user) redirect("/signin");
 
-  const sp = searchParams || {};
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
   const locale: Locale = sp?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 

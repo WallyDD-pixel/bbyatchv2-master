@@ -5,13 +5,14 @@ import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import ImageUploadClient from "../ImageUploadClient";
 
-export default async function AdminInfoCardsNewPage({ searchParams }: { searchParams?: { lang?: string } }) {
+export default async function AdminInfoCardsNewPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = await getServerSession() as any;
   if (!session?.user) redirect("/signin");
   const role = (session.user as any)?.role ?? "user";
   if (role !== "admin") redirect("/dashboard");
 
-  const sp = searchParams || {} as { lang?: string };
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
   const locale: Locale = sp?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 

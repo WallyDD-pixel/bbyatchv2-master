@@ -7,12 +7,14 @@ import { messages, type Locale } from '@/i18n/messages';
 import SEOTrackingForm from './SEOTrackingForm';
 import AdminInstructions from '@/components/AdminInstructions';
 
-export default async function SEOTrackingPage({ searchParams }: { searchParams?: { lang?: string } }) {
+export default async function SEOTrackingPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = await getServerSession() as any;
   if (!session?.user) redirect('/signin');
   if ((session.user as any)?.role !== 'admin') redirect('/dashboard');
   
-  const locale: Locale = searchParams?.lang === 'en' ? 'en' : 'fr';
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
+  const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
 
   const settings = await prisma.settings.findFirst();

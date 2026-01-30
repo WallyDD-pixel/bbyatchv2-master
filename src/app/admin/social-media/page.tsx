@@ -21,9 +21,11 @@ const FacebookIcon = () => (
 export default async function AdminSocialMediaPage({ 
   searchParams 
 }: { 
-  searchParams?: { lang?: string } 
+  searchParams?: Promise<{ lang?: string }> 
 }) {
-  const locale: Locale = searchParams?.lang === "en" ? "en" : "fr";
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
+  const locale: Locale = sp?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 
   return (

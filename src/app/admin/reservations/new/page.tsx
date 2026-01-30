@@ -7,13 +7,14 @@ import { messages, type Locale } from "@/i18n/messages";
 import Link from 'next/link';
 import CreateReservationForm from './CreateReservationForm';
 
-export default async function AdminCreateReservationPage({ searchParams }: { searchParams?: { lang?: string } }) {
+export default async function AdminCreateReservationPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = await getServerSession() as any;
   if (!session?.user) redirect("/signin");
   const role = (session.user as any)?.role ?? "user";
   if (role !== "admin") redirect("/dashboard");
 
-  const sp = searchParams || {};
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
   const locale: Locale = (sp.lang === "en") ? "en" : "fr";
   const t = messages[locale];
 

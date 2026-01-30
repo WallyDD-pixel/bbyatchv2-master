@@ -17,11 +17,13 @@ const LEGAL_PAGES = [
   { slug: 'carburant-depot', titleFr: 'Carburant & dépôt', titleEn: 'Fuel & Security Deposit' },
 ];
 
-export default async function AdminLegalPages({ searchParams }: { searchParams?: { lang?: string } }){
+export default async function AdminLegalPages({ searchParams }: { searchParams?: Promise<{ lang?: string }> }){
   const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   if((session.user as any).role !== 'admin') redirect('/dashboard');
-  const locale: Locale = searchParams?.lang==='en'? 'en':'fr';
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
+  const locale: Locale = sp?.lang==='en'? 'en':'fr';
   const t = messages[locale];
 
   // Récupérer toutes les pages légales existantes pour vérifier lesquelles existent déjà

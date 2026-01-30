@@ -5,16 +5,18 @@ import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 import LegalPageForm from '../LegalPageForm';
 
-export default async function AdminLegalNew({ searchParams }: { searchParams?: { lang?: string; slug?: string; titleFr?: string; titleEn?: string } }){
+export default async function AdminLegalNew({ searchParams }: { searchParams?: Promise<{ lang?: string; slug?: string; titleFr?: string; titleEn?: string }> }){
   const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   if((session.user as any).role !== 'admin') redirect('/dashboard');
-  const locale: Locale = searchParams?.lang==='en'? 'en':'fr';
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
+  const locale: Locale = sp?.lang==='en'? 'en':'fr';
   const t = messages[locale];
 
-  const defaultSlug = searchParams?.slug || '';
-  const defaultTitleFr = searchParams?.titleFr || '';
-  const defaultTitleEn = searchParams?.titleEn || '';
+  const defaultSlug = sp?.slug || '';
+  const defaultTitleFr = sp?.titleFr || '';
+  const defaultTitleEn = sp?.titleEn || '';
 
   return (
     <div className='min-h-screen flex flex-col'>

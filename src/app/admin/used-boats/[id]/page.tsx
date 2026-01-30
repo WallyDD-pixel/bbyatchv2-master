@@ -7,19 +7,20 @@ import Link from 'next/link';
 import UsedBoatEditClient from './UsedBoatEditClient';
 import UsedBoatEditForm from './UsedBoatEditForm';
 
-export default async function EditUsedBoatPage({ params, searchParams }: { params: Promise<{ id: string }> | { id: string }, searchParams?: Promise<{ lang?: string }> | { lang?: string } }){
+export default async function EditUsedBoatPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ lang?: string }> }){
   const session = await getServerSession() as any;
   if(!session?.user || (session.user as any).role !== 'admin') redirect('/');
   
-  // Next.js 16: params and searchParams are Promises
-  const resolvedParams = params instanceof Promise ? await params : params;
-  const id = parseInt(resolvedParams.id, 10);
+  // Next.js 15: params and searchParams are Promises
+  const { id: idStr } = await params;
+  const id = parseInt(idStr, 10);
   if(isNaN(id)) notFound();
   
   const boat = await (prisma as any).usedBoat.findUnique({ where:{ id } });
   if(!boat) notFound();
   
-  const resolvedSearchParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+  // Next.js 15: searchParams is a Promise
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   const locale = resolvedSearchParams.lang==='en' ? 'en' : 'fr';
   const photoList: string[] = boat.photoUrls ? (()=>{ try { return JSON.parse(boat.photoUrls); } catch{return []; } })() : [];
 

@@ -3,8 +3,9 @@ import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import SignUpFormClient from "./SignUpFormClient";
 
-export default async function SignUpPage({ searchParams }: { searchParams?: Promise<{ lang?: string; redirect?: string }> | { lang?: string; redirect?: string } }) {
-  const resolvedParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+export default async function SignUpPage({ searchParams }: { searchParams?: Promise<{ lang?: string; redirect?: string }> }) {
+  // Next.js 15: searchParams is a Promise
+  const resolvedParams = searchParams ? await searchParams : {};
   const locale: Locale = resolvedParams?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 

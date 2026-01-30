@@ -65,13 +65,14 @@ async function deleteReservations(ids: string[]){
   revalidatePath('/admin/reservations');
 }
 
-export default async function AdminReservationsPage({ searchParams }: { searchParams?: { lang?: string } }) {
+export default async function AdminReservationsPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = (await getServerSession()) as any;
   if (!session?.user) redirect("/signin");
   const role = (session.user as any)?.role ?? "user";
   if (role !== "admin") redirect("/dashboard");
 
-  const sp = searchParams || {};
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
   const locale: Locale = (sp.lang === "en") ? "en" : "fr";
   const t = messages[locale];
 

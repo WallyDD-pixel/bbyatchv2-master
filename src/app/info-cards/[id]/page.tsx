@@ -6,9 +6,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-export default async function InfoCardDetailPage({ params, searchParams }: { params: { id: string }; searchParams?: { lang?: string } }) {
-  const { id } = params;
-  const sp = searchParams || {};
+export default async function InfoCardDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ lang?: string }> }) {
+  // Next.js 15: params and searchParams are Promises
+  const { id } = await params;
+  const sp = searchParams ? await searchParams : {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
 

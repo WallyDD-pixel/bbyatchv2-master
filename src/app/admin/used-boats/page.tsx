@@ -6,11 +6,12 @@ import Link from 'next/link';
 import DeleteUsedBoatButton from './DeleteUsedBoatButton';
 import AdminInstructions from "@/components/AdminInstructions";
 
-export default async function AdminUsedBoatsPage({ searchParams }: { searchParams?: { lang?: string } }){
+export default async function AdminUsedBoatsPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }){
   const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   if((session.user as any)?.role !== 'admin') redirect('/dashboard');
-  const sp = searchParams || {};
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
   const locale: Locale = sp?.lang==='en'? 'en':'fr';
   const t = messages[locale];
   let boats: any[] = [];

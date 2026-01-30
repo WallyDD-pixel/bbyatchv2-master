@@ -4,8 +4,9 @@ import { messages, type Locale } from '@/i18n/messages';
 
 export const dynamic = 'force-dynamic';
 
-export default async function FAQPage({ searchParams }: { searchParams?: { lang?: string } }) {
-  const sp = searchParams || {};
+export default async function FAQPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
 

@@ -5,12 +5,13 @@ import { messages, type Locale } from '@/i18n/messages';
 import { notFound } from 'next/navigation';
 import Stripe from 'stripe';
 
-interface Props { searchParams?: { lang?: string; res?: string } }
+interface Props { searchParams?: Promise<{ lang?: string; res?: string }> }
 
 export const dynamic = 'force-dynamic';
 
 export default async function ExperienceSuccessPage({ searchParams }: Props){
-  const sp = searchParams || {};
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
   const resId = sp?.res;

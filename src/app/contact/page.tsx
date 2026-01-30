@@ -80,8 +80,7 @@ function ContactInfo({ locale }: { locale: Locale }) {
   );
 }
 
-function ContactPageInner({ searchParams }: { searchParams?: { lang?: string } }) {
-  const locale: Locale = (searchParams?.lang as Locale) || 'fr';
+function ContactPageInner({ locale }: { locale: Locale }) {
   const t = messages[locale];
 
   return (
@@ -111,6 +110,9 @@ function ContactPageInner({ searchParams }: { searchParams?: { lang?: string } }
   );
 }
 
-export default async function ContactPage({ searchParams }: { searchParams?: { lang?: string } }) {
-  return <ContactPageInner searchParams={searchParams} />;
+export default async function ContactPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
+  const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
+  return <ContactPageInner locale={locale} />;
 }

@@ -7,14 +7,15 @@ import { messages, type Locale } from "@/i18n/messages";
 import UserEditClient from "./UserEditClient";
 import Link from 'next/link';
 
-export default async function AdminUserDetailPage({ params, searchParams }: { params: { id: string }; searchParams?: { lang?: string } }) {
-  const { id } = params;
+export default async function AdminUserDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ lang?: string }> }) {
+  const { id } = await params;
   const session = await getServerSession() as any;
   if (!session?.user) redirect("/signin");
   const role = (session.user as any)?.role ?? "user";
   if (role !== "admin") redirect("/dashboard");
 
-  const sp = searchParams || {};
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
   const locale: Locale = sp.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 

@@ -7,13 +7,16 @@ import { messages, type Locale } from '@/i18n/messages';
 import DeleteLegalPageButton from '../DeleteLegalPageButton';
 import LegalPageForm from '../LegalPageForm';
 
-export default async function AdminLegalEdit({ params, searchParams }: { params:{ id:string }, searchParams?: { lang?: string } }){
+export default async function AdminLegalEdit({ params, searchParams }: { params: Promise<{ id:string }>; searchParams?: Promise<{ lang?: string }> }){
   const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   if((session.user as any).role !== 'admin') redirect('/dashboard');
-  const locale: Locale = searchParams?.lang==='en'? 'en':'fr';
+  // Next.js 15: params and searchParams are Promises
+  const { id: idStr } = await params;
+  const id = parseInt(idStr,10); if(Number.isNaN(id)) notFound();
+  const sp = searchParams ? await searchParams : {};
+  const locale: Locale = sp?.lang==='en'? 'en':'fr';
   const t = messages[locale];
-  const id = parseInt(params.id,10); if(Number.isNaN(id)) notFound();
   const page = await (prisma as any).legalPage.findUnique({ where:{ id } });
   if(!page) notFound();
 

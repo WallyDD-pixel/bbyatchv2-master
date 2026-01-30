@@ -5,10 +5,11 @@ import { messages, type Locale } from '@/i18n/messages';
 import { notFound } from 'next/navigation';
 import Stripe from 'stripe';
 
-interface Props { searchParams?: { lang?: string; session_id?: string; res?: string } }
+interface Props { searchParams?: Promise<{ lang?: string; session_id?: string; res?: string }> }
 
 export default async function CheckoutSuccessPage({ searchParams }: Props){
-  const sp = searchParams || {};
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
   const sessionId = sp?.session_id || sp?.res; // Support both session_id and res for backward compatibility
