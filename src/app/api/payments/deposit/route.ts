@@ -475,10 +475,16 @@ Détails complets disponibles dans le tableau de bord admin.
         const { newAgencyRequestEmail } = await import('@/lib/email-templates');
         
         if (await isNotificationEnabled('agencyRequest')) {
+          // Récupérer les informations complètes de l'utilisateur
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { firstName: true, lastName: true, name: true, email: true }
+          });
+          
           const emailData = {
             id: agencyReq.id,
-            userName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || user.email || 'Agence',
-            userEmail: user.email,
+            userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || user.email || 'Agence' : userEmail,
+            userEmail: user?.email || userEmail,
             boatName: boat.name,
             startDate: start,
             endDate: end || start,

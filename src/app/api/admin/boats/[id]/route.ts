@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { ensureAdmin } from "@/lib/security/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { uploadMultipleToSupabase } from "@/lib/storage";
+import path from "path";
+import fs from "fs";
 
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const guard = await ensureAdmin();

@@ -49,7 +49,7 @@ export default function SearchBar({
   experienceSlug?: string;
   hideCity?: boolean;
   hidePassengers?: boolean;
-  partFixed?: 'FULL'|'AM'|'PM';
+  partFixed?: 'FULL'|'AM'|'PM'|'SUNSET';
   locale?: string;
   boatSlug?: string;
 }) {
@@ -100,7 +100,9 @@ export default function SearchBar({
     endTime: '18:00',
     passengers: 2,
   });
-  const [part, setPart] = useState<"FULL" | "HALF" | "SUNSET" | null>(partFixed || null);
+  const [part, setPart] = useState<"FULL" | "HALF" | "SUNSET" | null>(
+    partFixed === 'AM' || partFixed === 'PM' ? 'HALF' : (partFixed || null)
+  );
   const [passengersField, setPassengersField] = useState('2');
   const [otherCityNotice, setOtherCityNotice] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -610,7 +612,7 @@ export default function SearchBar({
           placeholder={(part==='FULL' || part==='SUNSET' || !part)? (needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part && !partFixed ? 'Choisir le créneau' : 'Sélectionner...')) : (!part && !partFixed ? 'Choisir le créneau' : 'Sélectionner...')) : (values.startDate? values.startDate : '')}
           className={baseInput + ' ' + ((needsCity && !values.city.trim()) || (!part && !partFixed) ? 'opacity-50 cursor-not-allowed': ((part !== "FULL" && part !== "SUNSET" && part) ? "opacity-60" : "cursor-pointer"))}
           value={values.endDate}
-          disabled={(needsCity && !values.city.trim()) || (!part && !partFixed) || (part && part !== "FULL" && part !== "SUNSET")}
+          disabled={!!((needsCity && !values.city.trim()) || (!part && !partFixed) || (part && part !== "FULL" && part !== "SUNSET"))}
         />
       </div>
       
@@ -780,16 +782,18 @@ export default function SearchBar({
                         // Si on n'a pas encore vérifié cette date, la marquer comme vérifiable (sera vérifiée au survol ou au clic)
                         if (clickable && isEndDateAvailable === undefined && availableBoatsForStartDate.length > 0) {
                           // Vérifier en arrière-plan
-                          checkEndDateAvailability(c.date).then(isAvail => {
-                            if (!isAvail) {
-                              // Mettre à jour le cache et forcer un re-render
-                              setEndDateAvailability(prev => {
-                                const next = new Map(prev);
-                                next.set(c.date, false);
-                                return next;
-                              });
-                            }
-                          });
+                          if (c.date) {
+                            checkEndDateAvailability(c.date).then(isAvail => {
+                              if (!isAvail) {
+                                // Mettre à jour le cache et forcer un re-render
+                                setEndDateAvailability(prev => {
+                                  const next = new Map(prev);
+                                  next.set(c.date!, false);
+                                  return next;
+                                });
+                              }
+                            });
+                          }
                         }
                       }
                     }

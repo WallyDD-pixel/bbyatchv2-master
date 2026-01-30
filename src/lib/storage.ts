@@ -52,7 +52,7 @@ export async function uploadToSupabase(
 
     if (error) {
       console.error('❌ Error uploading to Supabase Storage:', error);
-      console.error('  - Error code:', error.statusCode);
+      console.error('  - Error code:', (error as any).statusCode);
       console.error('  - Error message:', error.message);
       console.error('  - Bucket:', STORAGE_BUCKET);
       console.error('  - File path:', filePath);

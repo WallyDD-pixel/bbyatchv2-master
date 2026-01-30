@@ -30,7 +30,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props){
   // Si la réservation n'existe pas encore, la créer depuis les metadata Stripe (fallback si webhook n'a pas fonctionné)
   if(!reservation) {
     try {
-      const stripe = new Stripe(secretKey, { apiVersion: '2025-07-30.basil' });
+      const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       
       // Vérifier que le paiement a bien été effectué

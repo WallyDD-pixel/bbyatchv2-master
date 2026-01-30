@@ -8,7 +8,7 @@ import BoatMediaCarousel from "@/components/BoatMediaCarousel";
 export default async function ExperienceDetailPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; date?: string; boat?: string }> }) {
   // Next.js 15 : params et searchParams sont maintenant des Promises
   const { slug: slugParam } = await params;
-  const sp = await (searchParams || Promise.resolve({}));
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   
   // Décoder le slug de l'URL (Next.js le décode déjà, mais on s'assure)
   let slug = slugParam;
@@ -19,9 +19,9 @@ export default async function ExperienceDetailPage({ params, searchParams }: { p
     // Si le décodage échoue, utiliser le slug tel quel
   }
   
-  const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
-  const initialDate = sp?.date || undefined;
-  const initialBoatId = sp?.boat ? Number(sp.boat) : undefined;
+  const locale: Locale = resolvedSearchParams.lang === 'en' ? 'en' : 'fr';
+  const initialDate = resolvedSearchParams.date || undefined;
+  const initialBoatId = resolvedSearchParams.boat ? Number(resolvedSearchParams.boat) : undefined;
   const t = messages[locale];
 
   // Normaliser le slug : remplacer les espaces multiples par un seul espace, trim

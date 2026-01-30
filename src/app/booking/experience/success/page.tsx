@@ -26,7 +26,7 @@ export default async function ExperienceSuccessPage({ searchParams }: Props){
     const secretKey = mode==='live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
     if(secretKey){
       try {
-        const stripe = new Stripe(secretKey, { apiVersion: '2025-07-30.basil' });
+        const stripe = new Stripe(secretKey, { apiVersion: '2025-08-27.basil' });
         const session = await stripe.checkout.sessions.retrieve(reservation.stripeSessionId);
         if(session.payment_status === 'paid'){
           reservation = await prisma.reservation.update({

@@ -135,6 +135,7 @@ export async function POST(req: Request) {
       } catch {}
     }
     // Ne conserver que les URLs pointant vers des fichiers d'images (par extension)
+    const allowedExt = new Set(['jpg', 'jpeg', 'png', 'svg', 'webp']);
     const keep = (u: string) => {
       const ext = u.split('.').pop()?.toLowerCase() || '';
       return allowedExt.has(ext);
