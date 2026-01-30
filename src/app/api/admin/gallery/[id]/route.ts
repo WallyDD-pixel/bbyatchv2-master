@@ -12,10 +12,12 @@ async function ensureAdmin() {
   return session.user;
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   
-  const id = parseInt(params.id, 10);
+  // Next.js 15: params is a Promise
+  const { id: idStr } = await params;
+  const id = parseInt(idStr, 10);
   if (isNaN(id)) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
   
   try {
@@ -46,11 +48,13 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
   }
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   // Method override pour formulaires HTML (DELETE)
   if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   
-  const id = parseInt(params.id, 10);
+  // Next.js 15: params is a Promise
+  const { id: idStr } = await params;
+  const id = parseInt(idStr, 10);
   if (isNaN(id)) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
   
   try {

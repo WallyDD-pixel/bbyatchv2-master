@@ -12,20 +12,20 @@ async function ensureAdmin(){
   return session.user;
 }
 
-export async function GET(_:Request, { params }: { params: Promise<{ id:string }> | { id:string } }){
+export async function GET(_:Request, { params }: { params: Promise<{ id:string }> }){
   if(!(await ensureAdmin())) return NextResponse.json({ error:'unauthorized' },{ status:401 });
-  // Next.js 16: params is a Promise
-  const resolvedParams = params instanceof Promise ? await params : params;
+  // Next.js 15: params is a Promise
+  const resolvedParams = await params;
   const id = parseInt(resolvedParams.id,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
   const row = await (prisma as any).infoCard.findUnique({ where:{ id } });
   if(!row) return NextResponse.json({ error:'not_found' },{ status:404 });
   return NextResponse.json({ card: row });
 }
 
-export async function PUT(req:Request, { params }: { params: Promise<{ id:string }> | { id:string } }){
+export async function PUT(req:Request, { params }: { params: Promise<{ id:string }> }){
   if(!(await ensureAdmin())) return NextResponse.json({ error:'unauthorized' },{ status:401 });
-  // Next.js 16: params is a Promise
-  const resolvedParams = params instanceof Promise ? await params : params;
+  // Next.js 15: params is a Promise
+  const resolvedParams = await params;
   const id = parseInt(resolvedParams.id,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
   try {
     const body = await req.json().catch(()=>null);
@@ -49,20 +49,20 @@ export async function PUT(req:Request, { params }: { params: Promise<{ id:string
   }
 }
 
-export async function DELETE(_:Request, { params }: { params: Promise<{ id:string }> | { id:string } }){
+export async function DELETE(_:Request, { params }: { params: Promise<{ id:string }> }){
   if(!(await ensureAdmin())) return NextResponse.json({ error:'unauthorized' },{ status:401 });
-  // Next.js 16: params is a Promise
-  const resolvedParams = params instanceof Promise ? await params : params;
+  // Next.js 15: params is a Promise
+  const resolvedParams = await params;
   const id = parseInt(resolvedParams.id,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
   try { await (prisma as any).infoCard.delete({ where:{ id } }); return NextResponse.json({ ok:true }); }
   catch(e:any){ return NextResponse.json({ error:'server_error', details:e?.message },{ status:500 }); }
 }
 
-export async function POST(req:Request, { params }: { params: Promise<{ id:string }> | { id:string } }){
+export async function POST(req:Request, { params }: { params: Promise<{ id:string }> }){
   // override via formulaire HTML
   if(!(await ensureAdmin())) return NextResponse.json({ error:'unauthorized' },{ status:401 });
-  // Next.js 16: params is a Promise
-  const resolvedParams = params instanceof Promise ? await params : params;
+  // Next.js 15: params is a Promise
+  const resolvedParams = await params;
   const id = parseInt(resolvedParams.id,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
   try {
     const data = await req.formData();

@@ -3,13 +3,14 @@ import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession() as any;
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const me = await (prisma as any).user.findUnique({ where: { email: session.user.email }, select: { role: true } }).catch(() => null);
   if (me?.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const { id } = params;
+  // Next.js 15: params is a Promise
+  const { id } = await params;
   const body = await req.json().catch(() => ({} as any));
   const password: string | undefined = body?.password;
   if (!password || password.length < 6) return NextResponse.json({ error: "weak" }, { status: 400 });

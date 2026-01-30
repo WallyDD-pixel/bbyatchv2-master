@@ -69,17 +69,21 @@ async function handleUpdate(req:Request, id:number, ctype:string){
   return { error:false, updated };
 }
 
-export async function GET(_:Request, { params }: { params:{ id:string } }){
+export async function GET(_:Request, { params }: { params: Promise<{ id:string }> }){
   if(!(await ensureAdmin())) return NextResponse.json({ error:'unauthorized' },{ status:401 });
-  const id = parseInt(params.id,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
+  // Next.js 15: params is a Promise
+  const { id: idStr } = await params;
+  const id = parseInt(idStr,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
   const row = await (prisma as any).experience.findUnique({ where:{ id } });
   if(!row) return NextResponse.json({ error:'not_found' },{ status:404 });
   return NextResponse.json({ experience: row });
 }
 
-export async function PUT(req:Request, { params }: { params:{ id:string } }){
+export async function PUT(req:Request, { params }: { params: Promise<{ id:string }> }){
   if(!(await ensureAdmin())) return NextResponse.json({ error:'unauthorized' },{ status:401 });
-  const id = parseInt(params.id,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
+  // Next.js 15: params is a Promise
+  const { id: idStr } = await params;
+  const id = parseInt(idStr,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
   try {
     const ctype = req.headers.get('content-type')||'';
     const r = await handleUpdate(req,id,ctype);
@@ -90,9 +94,11 @@ export async function PUT(req:Request, { params }: { params:{ id:string } }){
   }
 }
 
-export async function DELETE(_:Request, { params }: { params:{ id:string } }){
+export async function DELETE(_:Request, { params }: { params: Promise<{ id:string }> }){
   if(!(await ensureAdmin())) return NextResponse.json({ error:'unauthorized' },{ status:401 });
-  const id = parseInt(params.id,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
+  // Next.js 15: params is a Promise
+  const { id: idStr } = await params;
+  const id = parseInt(idStr,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
   try {
     await (prisma as any).experience.delete({ where:{ id } });
     return NextResponse.json({ ok:true });
@@ -101,10 +107,12 @@ export async function DELETE(_:Request, { params }: { params:{ id:string } }){
   }
 }
 
-export async function POST(req:Request, { params }: { params:{ id:string } }){
+export async function POST(req:Request, { params }: { params: Promise<{ id:string }> }){
   // Method override pour formulaires HTML (PUT / DELETE)
   if(!(await ensureAdmin())) return NextResponse.json({ error:'unauthorized' },{ status:401 });
-  const id = parseInt(params.id,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
+  // Next.js 15: params is a Promise
+  const { id: idStr } = await params;
+  const id = parseInt(idStr,10); if(isNaN(id)) return NextResponse.json({ error:'invalid_id' },{ status:400 });
   try {
     const ctype = req.headers.get('content-type')||'';
     if(ctype.includes('multipart/form-data')){

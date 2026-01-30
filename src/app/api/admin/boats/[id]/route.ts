@@ -3,10 +3,11 @@ import { ensureAdmin } from "@/lib/security/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { uploadMultipleToSupabase } from "@/lib/storage";
 
-export async function PUT(req: Request, ctx: { params: { id: string } }) {
+export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const guard = await ensureAdmin();
   if (guard) return guard;
-  const { id: idStr } = ctx.params;
+  // Next.js 15: params is a Promise
+  const { id: idStr } = await ctx.params;
   const id = Number(idStr);
 
   // Récupération état avant modifications pour déterminer fichiers supprimés
@@ -250,10 +251,11 @@ export async function PUT(req: Request, ctx: { params: { id: string } }) {
   }
 }
 
-export async function DELETE(_: Request, ctx: { params: { id: string } }) {
+export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> }) {
   const guard = await ensureAdmin();
   if (guard) return guard;
-  const { id: idStr } = ctx.params;
+  // Next.js 15: params is a Promise
+  const { id: idStr } = await ctx.params;
   const id = Number(idStr);
   try {
     await (prisma as any).boat.delete({ where: { id } });

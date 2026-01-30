@@ -16,10 +16,11 @@ async function ensureAdmin() {
 }
 
 // GET /api/admin/boats/[id]/experience-price?experienceId=XXX
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> | { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   
-  const resolvedParams = params instanceof Promise ? await params : params;
+  // Next.js 15: params is a Promise
+  const resolvedParams = await params;
   const boatId = Number(resolvedParams.id);
   const { searchParams } = new URL(req.url);
   const experienceId = searchParams.get('experienceId');
