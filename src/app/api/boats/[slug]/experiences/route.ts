@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// GET /api/boats/[slug]/experiences
+// Retourne les expériences associées à un bateau
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     // Next.js 15: params is a Promise
