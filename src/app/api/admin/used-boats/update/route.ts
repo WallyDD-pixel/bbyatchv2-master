@@ -20,7 +20,7 @@ export async function POST(req: Request){
     let mainImage: string | null = existing.mainImage || null;
 
     // keepPhotos = ordre restant des anciennes photos (hors main) envoyé par le formulaire
-    let keepPhotosRaw = String(data.get('keepPhotos')||'');
+    const keepPhotosRaw = String(data.get('keepPhotos')||'');
     console.log('📸 keepPhotosRaw reçu:', keepPhotosRaw);
     let kept: string[] | null = null;
     if(keepPhotosRaw && keepPhotosRaw.trim() !== ''){
