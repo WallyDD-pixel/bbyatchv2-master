@@ -61,14 +61,29 @@ export async function POST(req: Request) {
     updateData.notificationEmailContactMessage = data.get('notificationEmailContactMessage') === 'on';
     updateData.notificationEmailPaymentReceived = data.get('notificationEmailPaymentReceived') === 'on';
 
-    await prisma.settings.update({
-      where: { id: 1 },
-      data: updateData,
-    });
+    // Essayer de mettre à jour, sinon créer
+    try {
+      await prisma.settings.update({
+        where: { id: 1 },
+        data: updateData,
+      });
+    } catch (updateError: any) {
+      // Si l'enregistrement n'existe pas, le créer
+      if (updateError?.code === 'P2025' || updateError?.message?.includes('Record to update not found')) {
+        await prisma.settings.create({
+          data: { id: 1, ...updateData },
+        });
+      } else {
+        throw updateError;
+      }
+    }
 
     return NextResponse.redirect(new URL('/admin/notifications?success=1', req.url));
   } catch (e: any) {
     console.error('Error updating notification settings:', e);
-    return NextResponse.json({ error: 'server_error', details: e?.message }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'server_error', 
+      details: e?.message || 'Une erreur est survenue lors de la sauvegarde' 
+    }, { status: 500 });
   }
 }

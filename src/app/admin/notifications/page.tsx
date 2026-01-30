@@ -29,15 +29,26 @@ export default function AdminNotificationsPage() {
         method: "POST",
         body: formData,
       });
-      if (res.ok) {
+      
+      if (res.ok || res.status === 307 || res.status === 308) {
+        // Succès ou redirect
         router.push("/admin/notifications?success=1");
         router.refresh();
       } else {
-        alert("Erreur lors de la sauvegarde");
+        // Erreur - lire le message détaillé
+        let errorMessage = "Erreur lors de la sauvegarde";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.details || errorData.error || errorMessage;
+        } catch {
+          // Si pas de JSON, utiliser le message par défaut
+        }
+        alert(errorMessage);
+        console.error("Erreur de sauvegarde:", errorMessage);
       }
-    } catch (error) {
-      console.error(error);
-      alert("Erreur lors de la sauvegarde");
+    } catch (error: any) {
+      console.error("Erreur lors de la sauvegarde:", error);
+      alert(error?.message || "Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
     }
