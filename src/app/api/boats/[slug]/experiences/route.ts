@@ -3,11 +3,11 @@ import { prisma } from '@/lib/prisma';
 
 // GET /api/boats/[slug]/experiences
 // Retourne les expériences associées à un bateau
-export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(_req: Request, ctx: any) {
+  const params = ctx.params as Promise<{ slug: string }>;
   try {
     // Next.js 15: params is a Promise
-    const resolvedParams = await params;
-    const { slug } = resolvedParams;
+    const { slug } = await params;
 
     // Récupérer le bateau
     const boat = await prisma.boat.findUnique({
