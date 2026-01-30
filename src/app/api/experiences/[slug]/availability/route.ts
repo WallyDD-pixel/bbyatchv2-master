@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 // GET /api/experiences/[slug]/availability?from=YYYY-MM-DD&to=YYYY-MM-DD
-export async function GET(_req: Request, { params }: { params: { slug: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const url = new URL(_req.url);
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   try {
-    const experience = await prisma.experience.findUnique({ where: { slug: params.slug }, select: { id: true } });
+    // Next.js 15: params is a Promise
+    const { slug } = await params;
+    const experience = await prisma.experience.findUnique({ where: { slug }, select: { id: true } });
     if(!experience) return NextResponse.json({ slots: [] });
     const where: any = { experienceId: experience.id, status: 'available' };
     if(from || to){
