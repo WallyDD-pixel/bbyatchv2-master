@@ -3,11 +3,12 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
 
 interface Props {
-  searchParams?: Promise<{ res?: string; lang?: string }> | { res?: string; lang?: string };
+  searchParams?: Promise<{ res?: string; lang?: string }>;
 }
 
 export default async function CheckoutCancelPage({ searchParams }: Props) {
-  const sp = searchParams ? (await Promise.resolve(searchParams)) : {};
+  // Next.js 15: searchParams is a Promise
+  const sp = searchParams ? await searchParams : {};
   const resId = sp?.res;
 
   if (!resId) {

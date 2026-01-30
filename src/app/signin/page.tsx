@@ -3,10 +3,9 @@ import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import SignInFormClient from "./SignInFormClient";
 
-export default async function SignInPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> | { lang?: string } }) {
-  // Next.js 16: searchParams is a Promise, Next.js 15: it's an object
-  // Always await to be compatible with both versions
-  const resolvedParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+export default async function SignInPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
+  // Next.js 15: searchParams is a Promise
+  const resolvedParams = searchParams ? await searchParams : {};
   const locale: Locale = resolvedParams?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 

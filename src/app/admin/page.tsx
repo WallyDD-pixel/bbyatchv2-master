@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from 'next/link';
 
-export default async function AdminPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> | { lang?: string } }) {
+export default async function AdminPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = await getServerSession();
   
   console.log('[AdminPage] ===== START =====');
@@ -32,8 +32,8 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
   console.log('[AdminPage] ✅ Access granted, rendering page');
   console.log('[AdminPage] ===== END =====');
 
-  // Next.js 16: searchParams is a Promise
-  const resolvedSearchParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+  // Next.js 15: searchParams is a Promise
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   const locale: Locale = resolvedSearchParams?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 

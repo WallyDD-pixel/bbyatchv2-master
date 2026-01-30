@@ -21,10 +21,10 @@ type LegalRow = {
   fuelDepositEn?: string | null;
 };
 
-export default async function LegalPage({ params, searchParams }: { params: Promise<{ slug: string }> | { slug: string }, searchParams?: Promise<{ lang?: string }> | { lang?: string } }){
-  // Gérer les params qui peuvent être une Promise (Next.js 15)
-  const resolvedParams = params instanceof Promise ? await params : params;
-  const resolvedSearchParams = searchParams instanceof Promise ? await searchParams : (searchParams || {});
+export default async function LegalPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string }> }){
+  // Next.js 15: params and searchParams are Promises
+  const resolvedParams = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   
   const locale: Locale = (resolvedSearchParams?.lang === 'en') ? 'en' : 'fr';
   const t = messages[locale];

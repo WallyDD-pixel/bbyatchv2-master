@@ -7,14 +7,14 @@ import { BoatsTableClient } from "./BoatsTableClient";
 import AdminInstructions from "@/components/AdminInstructions";
 import Footer from "@/components/Footer";
 
-export default async function AdminBoatsPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> | { lang?: string } }) {
+export default async function AdminBoatsPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = (await getServerSession()) as any;
   if (!session?.user) redirect("/signin");
   const role = (session.user as any)?.role ?? "user";
   if (role !== "admin") redirect("/dashboard");
 
-  // Next.js 16: searchParams is a Promise, Next.js 15: it's an object
-  const resolvedParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+  // Next.js 15: searchParams is a Promise
+  const resolvedParams = searchParams ? await searchParams : {};
   const locale: Locale = resolvedParams?.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 
