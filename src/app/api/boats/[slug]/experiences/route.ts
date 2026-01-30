@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     // Next.js 15: params is a Promise
-    const { slug } = await params;
+    const resolvedParams = await params;
+    const { slug } = resolvedParams;
 
     // Récupérer le bateau
     const boat = await prisma.boat.findUnique({
