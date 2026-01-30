@@ -21,8 +21,8 @@ export default async function Home({
 }: {
   searchParams?: Promise<{ lang?: string }>;
 }) {
-  const sp = await searchParams || {};
-  const locale: Locale = sp.lang === "en" ? "en" : "fr";
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const locale: Locale = resolvedSearchParams.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 
   // Charger les settings dynamiques

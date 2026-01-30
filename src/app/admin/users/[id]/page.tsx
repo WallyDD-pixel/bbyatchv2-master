@@ -15,8 +15,8 @@ export default async function AdminUserDetailPage({ params, searchParams }: { pa
   if (role !== "admin") redirect("/dashboard");
 
   // Next.js 15: searchParams is a Promise
-  const sp = searchParams ? await searchParams : {};
-  const locale: Locale = sp.lang === "en" ? "en" : "fr";
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const locale: Locale = resolvedSearchParams.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 
   const user = await (prisma as any).user.findUnique({ where: { id } }).catch(() => null);

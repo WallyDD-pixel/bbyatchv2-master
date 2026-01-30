@@ -67,19 +67,25 @@ export default function ImageUploadClient({ locale, existingImageUrl }: ImageUpl
     function handleDragOver(e: DragEvent) {
       e.preventDefault();
       e.stopPropagation();
-      dz.classList.add("ring", "ring-blue-500");
+      if (dz) {
+        dz.classList.add("ring", "ring-blue-500");
+      }
     }
 
     function handleDragLeave(e: DragEvent) {
       e.preventDefault();
       e.stopPropagation();
-      dz.classList.remove("ring", "ring-blue-500");
+      if (dz) {
+        dz.classList.remove("ring", "ring-blue-500");
+      }
     }
 
     function handleDrop(e: DragEvent) {
       e.preventDefault();
       e.stopPropagation();
-      dz.classList.remove("ring", "ring-blue-500");
+      if (dz) {
+        dz.classList.remove("ring", "ring-blue-500");
+      }
       const files = e.dataTransfer?.files;
       if (files && files[0]) {
         const dt = new DataTransfer();

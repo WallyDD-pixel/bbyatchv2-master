@@ -15,8 +15,8 @@ export default async function AdminInfoCardEditPage({ params, searchParams }: { 
   if(role!=='admin') redirect('/dashboard');
   const card = await (prisma as any).infoCard.findUnique({ where:{ id } });
   if(!card) notFound();
-  const sp = (await searchParams) || {};
-  const locale = sp.lang==='en'? 'en':'fr';
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const locale = resolvedSearchParams.lang==='en'? 'en':'fr';
 
   return (
     <div className='min-h-screen flex flex-col'>

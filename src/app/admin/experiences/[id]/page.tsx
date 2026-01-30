@@ -13,11 +13,11 @@ export default async function AdminExperienceEditPage({ params, searchParams }: 
   if(role!=='admin') redirect('/dashboard');
   // Next.js 15 : params et searchParams sont maintenant des Promises
   const { id: idParam } = await params;
-  const sp = await (searchParams || Promise.resolve({}));
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   const id = parseInt(idParam,10); if(isNaN(id)) notFound();
   const exp = await (prisma as any).experience.findUnique({ where:{ id } });
   if(!exp) notFound();
-  const locale = sp.lang==='en'? 'en':'fr';
+  const locale = resolvedSearchParams.lang==='en'? 'en':'fr';
 
   return (
     <div className='min-h-screen flex flex-col'>

@@ -14,8 +14,8 @@ export default async function AdminCreateReservationPage({ searchParams }: { sea
   if (role !== "admin") redirect("/dashboard");
 
   // Next.js 15: searchParams is a Promise
-  const sp = searchParams ? await searchParams : {};
-  const locale: Locale = (sp.lang === "en") ? "en" : "fr";
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const locale: Locale = (resolvedSearchParams.lang === "en") ? "en" : "fr";
   const t = messages[locale];
 
   // Récupérer les utilisateurs avec le rôle "agency"
