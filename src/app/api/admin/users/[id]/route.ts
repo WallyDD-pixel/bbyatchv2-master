@@ -43,8 +43,3 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "failed" }, { status: 500 });
   }
 }
-
-export async function PUT_password(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  // This won't be auto-routed; use a nested route file instead.
-  return NextResponse.json({ error: "not_found" }, { status: 404 });
-}
