@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -924,7 +924,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                         return translations[key]?.[locale] || key;
                       };
                       
-                      const formatValue = (key: string, value: any): string | JSX.Element => {
+                      const formatValue = (key: string, value: any): string | React.ReactElement => {
                         if (key === 'bookingDate' && value) {
                           try {
                             const date = new Date(value);
