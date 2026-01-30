@@ -1,339 +1,403 @@
-# Guide de Déploiement - bbyatchv2 sur VPS
+# Guide de Déploiement - BB YACHTS v2
 
-## 📋 Vue d'ensemble
+## 📋 Prérequis
 
-Ce guide vous explique comment déployer votre projet bbyatchv2 sur votre VPS Ubuntu.
-
-## 🚀 Méthode Rapide (Script Automatique)
-
-### Étape 1 : Transférer le projet sur le serveur
-
-Depuis votre machine Windows (PowerShell), dans le dossier du projet :
-
-```bash
-# Transférer tout le projet (en excluant node_modules et .next pour aller plus vite)
-scp -r . ubuntu@51.83.134.141:~/bbyatchv2-master --exclude node_modules --exclude .next
-
-# OU si vous avez git sur le serveur, clonez directement :
-ssh ubuntu@51.83.134.141
-git clone <VOTRE_REPO_GIT> ~/bbyatchv2-master
-```
-
-### Étape 2 : Transférer le script de déploiement
-
-```bash
-scp deploy/deploy.sh ubuntu@51.83.134.141:~/
-```
-
-### Étape 3 : Exécuter le script de déploiement
-
-Sur le serveur :
-
-```bash
-ssh ubuntu@51.83.134.141
-chmod +x deploy.sh
-bash deploy.sh
-```
-
-Le script va automatiquement :
-- ✅ Vérifier les prérequis (Node.js, Docker, PM2, Nginx)
-- ✅ Installer les dépendances npm
-- ✅ Créer/configurer le fichier .env
-- ✅ Démarrer PostgreSQL avec Docker
-- ✅ Appliquer les migrations Prisma
-- ✅ Builder l'application Next.js
-- ✅ Configurer Nginx
-- ✅ Démarrer l'application avec PM2
+- Serveur EC2 Amazon Linux 2023 configuré
+- Accès SSH au serveur
+- Base de données configurée (PostgreSQL/Supabase)
+- Variables d'environnement prêtes
 
 ---
 
-## 🔧 Méthode Manuelle (Étape par Étape)
+## 🚀 Étape 1 : Préparer le serveur
 
-### Prérequis
-
-Assurez-vous d'avoir installé sur le serveur :
-- Node.js 20 LTS
-- Docker et Docker Compose
-- PM2
-- Nginx
-
-### Étape 1 : Transférer le projet
+### 1.1 Installer Node.js et les dépendances
 
 ```bash
-# Depuis Windows (PowerShell)
-scp -r . ubuntu@51.83.134.141:~/bbyatchv2-master
+# Installer Node.js 20.x (LTS)
+curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+sudo dnf install -y nodejs
+
+# Vérifier l'installation
+node --version
+npm --version
+
+# Installer PM2 pour gérer le processus
+sudo npm install -g pm2
+
+# Installer Git si pas déjà installé
+sudo dnf install -y git
 ```
 
-### Étape 2 : Se connecter au serveur
+### 1.2 Installer PostgreSQL Client (si nécessaire)
 
 ```bash
-ssh ubuntu@51.83.134.141
+# Si vous utilisez PostgreSQL local
+sudo dnf install -y postgresql15
+```
+
+---
+
+## 📦 Étape 2 : Transférer le projet
+
+### Option A : Depuis Git (recommandé)
+
+```bash
+# Se placer dans le répertoire home
+cd ~
+
+# Cloner le projet (remplacez par votre URL Git)
+git clone https://github.com/VOTRE_USERNAME/bbyatchv2-master.git
+# OU si vous avez déjà le projet en local, utilisez Option B
+
+cd bbyatchv2-master
+```
+
+### Option B : Depuis votre machine locale (via SCP)
+
+Depuis votre machine Windows (PowerShell) :
+
+```powershell
+# Se placer dans le dossier du projet
+cd C:\Users\lespcdewarren\Documents\dev\bbyatchv2-master
+
+# Transférer le projet (remplacez par votre IP)
+scp -i "bbyatch2.pem" -r . ec2-user@VOTRE_IP_PUBLIQUE:~/bbyatchv2-master
+```
+
+Puis sur le serveur :
+
+```bash
 cd ~/bbyatchv2-master
 ```
 
-### Étape 3 : Installer les dépendances
+---
+
+## ⚙️ Étape 3 : Configuration de l'environnement
+
+### 3.1 Créer le fichier .env
 
 ```bash
-npm ci
-```
-
-### Étape 4 : Configurer le fichier .env
-
-Créez un fichier `.env` à la racine du projet :
-
-```bash
+# Créer le fichier .env
 nano .env
 ```
 
-Contenu minimal :
+Collez vos variables d'environnement (exemple) :
 
 ```env
-# Base de données PostgreSQL
-DATABASE_URL="postgresql://bbyatch:change_me_strong@localhost:5433/bbyatch_preprod?schema=public"
+# Database
+DATABASE_URL="postgresql://user:password@host:5432/database"
 
 # NextAuth
-NEXTAUTH_URL="https://preprod.bbservicescharter.com"
-NEXTAUTH_SECRET="GÉNÉREZ_UNE_CLÉ_SECRÈTE_LONGUE_ET_ALÉATOIRE"
+NEXTAUTH_URL="https://votre-domaine.com"
+NEXTAUTH_SECRET="votre-secret-tres-long-et-aleatoire"
 
-# Stripe (si vous utilisez Stripe)
-STRIPE_TEST_SK="sk_test_..."
-STRIPE_WEBHOOK_SECRET="whsec_..."
+# Stripe
+STRIPE_SECRET_KEY="sk_live_..."
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_live_..."
 
-# Port de l'application
-PORT=3010
+# SMTP (pour les emails)
+SMTP_HOST="smtp.example.com"
+SMTP_PORT=587
+SMTP_USER="noreply@example.com"
+SMTP_PASSWORD="votre-mot-de-passe"
+
+# Autres variables nécessaires
 ```
 
-Pour générer un NEXTAUTH_SECRET :
+### 3.2 Sécuriser le fichier .env
 
 ```bash
-openssl rand -base64 32
+# Restreindre les permissions
+chmod 600 .env
 ```
 
-### Étape 5 : Démarrer PostgreSQL
+---
+
+## 🗄️ Étape 4 : Configuration de la base de données
+
+### 4.1 Installer Prisma et pousser le schéma
 
 ```bash
-docker compose -f docker-compose.preprod.yml up -d
-```
+# Installer les dépendances
+npm install
 
-Vérifier que PostgreSQL est prêt :
-
-```bash
-docker ps
-docker logs bbyatchv2-preprod-db
-```
-
-### Étape 6 : Générer le client Prisma
-
-```bash
+# Générer le client Prisma
 npx prisma generate
+
+# Pousser le schéma vers la base de données
+npm run db:push
+
+# (Optionnel) Exécuter les seeds
+npm run db:seed
 ```
 
-### Étape 7 : Appliquer les migrations
+---
+
+## 🏗️ Étape 5 : Build et démarrage
+
+### 5.1 Build de l'application
 
 ```bash
-npx prisma migrate deploy
-```
-
-### Étape 8 : Builder l'application
-
-```bash
+# Build de production
 npm run build
 ```
 
-### Étape 9 : Configurer Nginx
+### 5.2 Démarrer avec PM2
 
 ```bash
-# Copier la configuration
-sudo cp deploy/nginx-preprod.conf /etc/nginx/sites-available/bbyatchv2-preprod
-
-# Créer le lien symbolique
-sudo ln -s /etc/nginx/sites-available/bbyatchv2-preprod /etc/nginx/sites-enabled/
-
-# Tester la configuration
-sudo nginx -t
-
-# Recharger Nginx
-sudo systemctl reload nginx
+# Créer un fichier de configuration PM2
+nano ecosystem.config.js
 ```
 
-### Étape 10 : Démarrer l'application avec PM2
+Contenu :
+
+```javascript
+module.exports = {
+  apps: [{
+    name: 'bbyatchv2',
+    script: 'npm',
+    args: 'start',
+    cwd: '/home/ec2-user/bbyatchv2-master',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3003
+    },
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    merge_logs: true,
+    autorestart: true,
+    max_memory_restart: '1G',
+    instances: 1,
+    exec_mode: 'fork'
+  }]
+};
+```
 
 ```bash
+# Créer le dossier de logs
+mkdir -p logs
+
 # Démarrer avec PM2
-PORT=3010 pm2 start ecosystem.config.cjs
+pm2 start ecosystem.config.js
 
 # Sauvegarder la configuration PM2
 pm2 save
 
-# Optionnel: Configurer PM2 pour démarrer au boot
+# Configurer PM2 pour démarrer au boot
 pm2 startup
-```
+# Exécutez la commande affichée (commence par sudo)
 
-### Étape 11 : Vérifier que tout fonctionne
-
-```bash
-# Voir les logs
-pm2 logs bbyatchv2-preprod
-
-# Voir le statut
+# Vérifier le statut
 pm2 status
-
-# Tester l'application
-curl http://localhost:3010
+pm2 logs bbyatchv2
 ```
 
 ---
 
-## 🔒 Configuration SSL (Optionnel mais Recommandé)
+## 🌐 Étape 6 : Configuration Nginx (reverse proxy)
 
-Si vous avez un domaine configuré :
-
-```bash
-sudo certbot --nginx -d preprod.bbservicescharter.com --agree-tos -m votre@email.com --redirect
-```
-
----
-
-## 📝 Commandes Utiles
-
-### PM2
+### 6.1 Installer Nginx
 
 ```bash
-# Voir les logs
-pm2 logs bbyatchv2-preprod
-
-# Redémarrer l'application
-pm2 restart bbyatchv2-preprod
-
-# Arrêter l'application
-pm2 stop bbyatchv2-preprod
-
-# Voir le statut
-pm2 status
-
-# Monitoring en temps réel
-pm2 monit
+sudo dnf install -y nginx
 ```
 
-### Docker
+### 6.2 Configurer Nginx
 
 ```bash
-# Voir les containers
-docker ps
-
-# Voir les logs de la base de données
-docker logs bbyatchv2-preprod-db
-
-# Arrêter la base de données
-docker stop bbyatchv2-preprod-db
-
-# Démarrer la base de données
-docker start bbyatchv2-preprod-db
-
-# Accéder à PostgreSQL
-docker exec -it bbyatchv2-preprod-db psql -U bbyatch -d bbyatch_preprod
+# Créer la configuration
+sudo nano /etc/nginx/conf.d/bbyatchv2.conf
 ```
 
-### Nginx
+Contenu :
+
+```nginx
+server {
+    listen 80;
+    server_name votre-domaine.com www.votre-domaine.com;
+
+    # Redirection HTTPS (si vous avez un certificat SSL)
+    # return 301 https://$server_name$request_uri;
+
+    location / {
+        proxy_pass http://localhost:3003;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+### 6.3 Démarrer Nginx
 
 ```bash
 # Tester la configuration
 sudo nginx -t
 
-# Recharger Nginx
-sudo systemctl reload nginx
+# Démarrer et activer Nginx
+sudo systemctl start nginx
+sudo systemctl enable nginx
 
-# Redémarrer Nginx
-sudo systemctl restart nginx
+# Vérifier le statut
+sudo systemctl status nginx
+```
 
-# Voir les logs
-sudo tail -f /var/log/nginx/error.log
+### 6.4 Mettre à jour les règles iptables (si nécessaire)
+
+```bash
+# Les ports 80 et 443 devraient déjà être ouverts
+sudo iptables -L -n -v | grep -E "80|443"
 ```
 
 ---
 
-## 🔄 Mise à Jour de l'Application
+## 🔒 Étape 7 : Configuration SSL (Let's Encrypt)
 
-Quand vous voulez mettre à jour l'application :
+### 7.1 Installer Certbot
+
+```bash
+sudo dnf install -y certbot python3-certbot-nginx
+```
+
+### 7.2 Obtenir le certificat SSL
+
+```bash
+# Remplacer par votre domaine
+sudo certbot --nginx -d votre-domaine.com -d www.votre-domaine.com
+
+# Suivre les instructions
+# Certbot configurera automatiquement Nginx
+```
+
+### 7.3 Renouvellement automatique
+
+```bash
+# Vérifier le renouvellement automatique
+sudo systemctl status certbot-renew.timer
+
+# Tester le renouvellement
+sudo certbot renew --dry-run
+```
+
+---
+
+## 🔄 Étape 8 : Mises à jour et maintenance
+
+### 8.1 Mettre à jour le projet
 
 ```bash
 cd ~/bbyatchv2-master
 
-# Mettre à jour le code (si vous utilisez git)
+# Récupérer les dernières modifications
 git pull
 
 # Installer les nouvelles dépendances
-npm ci
+npm install
 
-# Appliquer les nouvelles migrations
-npx prisma migrate deploy
+# Régénérer Prisma si nécessaire
 npx prisma generate
 
-# Rebuilder l'application
+# Rebuild
 npm run build
 
-# Redémarrer avec PM2
-pm2 restart bbyatchv2-preprod
+# Redémarrer PM2
+pm2 restart bbyatchv2
+```
+
+### 8.2 Commandes PM2 utiles
+
+```bash
+# Voir les logs
+pm2 logs bbyatchv2
+
+# Redémarrer
+pm2 restart bbyatchv2
+
+# Arrêter
+pm2 stop bbyatchv2
+
+# Voir les statistiques
+pm2 monit
+
+# Voir tous les processus
+pm2 list
 ```
 
 ---
 
 ## 🐛 Dépannage
 
-### L'application ne démarre pas
-
-1. Vérifier les logs : `pm2 logs bbyatchv2-preprod`
-2. Vérifier que le port 3010 est libre : `sudo lsof -i :3010`
-3. Vérifier le fichier .env
-4. Vérifier que PostgreSQL tourne : `docker ps`
-
-### Erreurs de base de données
-
-1. Vérifier que PostgreSQL tourne : `docker ps`
-2. Vérifier les logs : `docker logs bbyatchv2-preprod-db`
-3. Vérifier la connexion : `docker exec -it bbyatchv2-preprod-db psql -U bbyatch -d bbyatch_preprod`
-4. Vérifier DATABASE_URL dans .env
-
-### Erreurs Nginx
-
-1. Tester la configuration : `sudo nginx -t`
-2. Voir les logs : `sudo tail -f /var/log/nginx/error.log`
-3. Vérifier que l'application tourne : `pm2 status`
-
-### Port déjà utilisé
+### Vérifier les logs
 
 ```bash
-# Trouver le processus utilisant le port
-sudo lsof -i :3010
+# Logs PM2
+pm2 logs bbyatchv2
 
-# Tuer le processus
-sudo kill -9 <PID>
+# Logs Nginx
+sudo tail -f /var/log/nginx/error.log
+sudo tail -f /var/log/nginx/access.log
+
+# Logs système
+sudo journalctl -u nginx -f
+```
+
+### Vérifier que l'application écoute
+
+```bash
+# Vérifier le port 3003
+sudo netstat -tlnp | grep 3003
+# OU
+sudo ss -tlnp | grep 3003
+```
+
+### Redémarrer les services
+
+```bash
+# Redémarrer PM2
+pm2 restart all
+
+# Redémarrer Nginx
+sudo systemctl restart nginx
+
+# Redémarrer l'application
+cd ~/bbyatchv2-master
+pm2 restart bbyatchv2
 ```
 
 ---
 
-## ✅ Checklist de Déploiement
+## ✅ Checklist de déploiement
 
-- [ ] Node.js 20 LTS installé
-- [ ] Docker installé et fonctionnel
-- [ ] PM2 installé
-- [ ] Nginx installé
+- [ ] Node.js 20.x installé
+- [ ] PM2 installé et configuré
 - [ ] Projet transféré sur le serveur
-- [ ] Fichier .env configuré avec les bonnes valeurs
-- [ ] PostgreSQL démarré (Docker)
-- [ ] Migrations Prisma appliquées
-- [ ] Application buildée
-- [ ] Nginx configuré
-- [ ] Application démarrée avec PM2
-- [ ] SSL configuré (optionnel)
-- [ ] Application accessible via le navigateur
+- [ ] Fichier .env configuré avec toutes les variables
+- [ ] Base de données connectée et schéma poussé
+- [ ] Application buildée (`npm run build`)
+- [ ] PM2 démarre l'application
+- [ ] Nginx configuré et fonctionnel
+- [ ] Ports 80 et 443 ouverts dans iptables
+- [ ] SSL configuré (Let's Encrypt)
+- [ ] Application accessible via le domaine
+- [ ] Monitoring en place (PM2 + logs)
 
 ---
 
 ## 📞 Support
 
-En cas de problème, vérifiez les logs :
-- Application : `pm2 logs bbyatchv2-preprod`
-- Nginx : `sudo tail -f /var/log/nginx/error.log`
-- PostgreSQL : `docker logs bbyatchv2-preprod-db`
+En cas de problème :
+1. Vérifier les logs PM2 : `pm2 logs bbyatchv2`
+2. Vérifier les logs Nginx : `sudo tail -f /var/log/nginx/error.log`
+3. Vérifier que l'application écoute : `sudo ss -tlnp | grep 3003`
+4. Vérifier les règles iptables : `sudo iptables -L -n -v`
 
+---
+
+**Dernière mise à jour : 30 janvier 2026**
