@@ -166,7 +166,7 @@ export function validateName(name: string, maxLength: number = 200): { valid: bo
     return { valid: false, error: 'Nom requis' };
   }
 
-  let sanitized = name.trim();
+  const sanitized = name.trim();
 
   if (sanitized.length === 0) {
     return { valid: false, error: 'Nom ne peut pas être vide' };
