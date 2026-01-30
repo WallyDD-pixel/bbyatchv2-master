@@ -46,6 +46,7 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
     if (vals.waterToys === 'yes') params.set('waterToys', '1');
     if (vals.childrenCount) params.set('children', vals.childrenCount);
     if (vals.specialNeeds) params.set('specialNeeds', encodeURIComponent(vals.specialNeeds));
+    if (vals.city) params.set('departurePort', vals.city);
     router.push(`/checkout?${params.toString()}`);
     setOpen(false);
   };
@@ -66,6 +67,7 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
       if (additionalInfo.specialNeeds) params.set('specialNeeds', encodeURIComponent(additionalInfo.specialNeeds));
       if (additionalInfo.wantsExcursion) params.set('excursion', '1');
     }
+    // Note: departurePort devrait être récupéré depuis l'URL ou les searchParams si disponible
     return `/checkout?${params.toString()}`;
   };
 

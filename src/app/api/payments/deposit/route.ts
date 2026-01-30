@@ -6,7 +6,7 @@ import { getServerSession } from '@/lib/auth';
 export async function POST(req: Request){
   try {
     const body = await req.json();
-    const { boatSlug, start, end, part, pax, locale='fr', waterToys, children, specialNeeds, excursion } = body || {};
+    const { boatSlug, start, end, part, pax, locale='fr', waterToys, children, specialNeeds, excursion, departurePort } = body || {};
     console.log('[deposit] Request received:', { boatSlug, start, end, part, pax });
     if(!boatSlug || !start || !part) {
       console.log('[deposit] Missing params:', { boatSlug: !!boatSlug, start: !!start, part: !!part });
@@ -443,7 +443,7 @@ export async function POST(req: Request){
               boatCapacity: boat.capacity,
               boatLength: boat.lengthM,
               boatSpeed: boat.speedKn,
-              departurePort: body.departurePort || 'Port à définir',
+              departurePort: departurePort || 'Port à définir',
               bookingDate: new Date().toISOString(),
               userRole: userRole,
               skipperRequired: boat.skipperRequired,
@@ -543,7 +543,7 @@ Détails complets disponibles dans le tableau de bord admin.
         boatCapacity: boat.capacity,
         boatLength: boat.lengthM,
         boatSpeed: boat.speedKn,
-        departurePort: body.departurePort || 'Port à définir',
+        departurePort: departurePort || 'Port à définir',
         bookingDate: new Date().toISOString(),
         userRole: userRole,
         skipperRequired: boat.skipperRequired,

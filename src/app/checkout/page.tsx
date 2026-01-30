@@ -11,11 +11,11 @@ interface BoatOption {
   price: number | null;
 }
 
-export default async function CheckoutPage({ searchParams }: { searchParams?: Promise<{ lang?: string; boat?: string; start?: string; end?: string; part?: string; pax?: string; opts?: string; waterToys?: string; children?: string; specialNeeds?: string; excursion?: string; }> } ) {
+export default async function CheckoutPage({ searchParams }: { searchParams?: Promise<{ lang?: string; boat?: string; start?: string; end?: string; part?: string; pax?: string; opts?: string; waterToys?: string; children?: string; specialNeeds?: string; excursion?: string; departurePort?: string; }> } ) {
   const sp = (await searchParams) || {};
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
-  const { boat: boatSlug, start, end, part, pax, opts, waterToys, children, specialNeeds, excursion } = sp;
+  const { boat: boatSlug, start, end, part, pax, opts, waterToys, children, specialNeeds, excursion, departurePort } = sp;
   const slot = (part==='AM'||part==='PM'||part==='FULL'||part==='SUNSET')? part : 'FULL';
   let boat: any = null;
   if (boatSlug) {
@@ -285,6 +285,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
                     children={children}
                     specialNeeds={specialNeeds}
                     excursion={excursion}
+                    departurePort={departurePort}
                   />
                 )}
                 {userRole==='agency' && (!total || !start || !boatSlug) && (

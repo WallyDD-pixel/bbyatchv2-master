@@ -17,9 +17,10 @@ interface Props {
   children?: string;
   specialNeeds?: string;
   excursion?: string;
+  departurePort?: string;
 }
 
-export default function ClientPayButton({ locale, label, boatSlug, start, end, part, pax, disabled, opts, waterToys, children, specialNeeds, excursion }: Props){
+export default function ClientPayButton({ locale, label, boatSlug, start, end, part, pax, disabled, opts, waterToys, children, specialNeeds, excursion, departurePort }: Props){
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string|null>(null);
   const searchParams = useSearchParams();
@@ -52,7 +53,7 @@ export default function ClientPayButton({ locale, label, boatSlug, start, end, p
       const res = await fetch('/api/payments/deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ boatSlug, start, end, part, pax, locale, opts, waterToys, children, specialNeeds, excursion })
+        body: JSON.stringify({ boatSlug, start, end, part, pax, locale, opts, waterToys, children, specialNeeds, excursion, departurePort })
       });
       if(!res.ok){
         const data = await res.json().catch(()=>({ error:'unknown' }));

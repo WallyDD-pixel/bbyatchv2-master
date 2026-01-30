@@ -15,6 +15,7 @@ interface Props {
   children?: string;
   specialNeeds?: string;
   excursion?: string;
+  departurePort?: string;
 }
 
 export default function PayButtonWithTerms(props: Props){

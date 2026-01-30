@@ -436,10 +436,10 @@ export default async function ReservationDetailPage(
                       <span>{metadataObj.skipperRequired === true || metadataObj.skipperRequired === '1' ? (locale === 'fr' ? 'Oui' : 'Yes') : (locale === 'fr' ? 'Non' : 'No')}</span>
                     </div>
                   )}
-                  {metadataObj.departurePort && (
+                  {(metadataObj.departurePort || metadataObj.departurePort === 'Port à définir') && (
                     <div>
                       <span className='font-semibold text-black/70'>{locale === 'fr' ? 'Port de départ' : 'Departure port'}: </span>
-                      <span>{metadataObj.departurePort}</span>
+                      <span>{metadataObj.departurePort === 'Port à définir' ? (locale === 'fr' ? 'À définir' : 'To be determined') : metadataObj.departurePort}</span>
                     </div>
                   )}
                   {metadataObj.bookingDate && (
