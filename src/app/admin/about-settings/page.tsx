@@ -269,7 +269,7 @@ export default function AdminAboutSettingsPage() {
         }
       } else {
         // Afficher l'erreur
-        const errorMsg = result.error || result.details || "Erreur lors de la sauvegarde";
+        const errorMsg = result.error || "Erreur lors de la sauvegarde";
         setToast({ 
           message: errorMsg, 
           type: "error" 
