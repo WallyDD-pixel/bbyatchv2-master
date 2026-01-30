@@ -9,13 +9,13 @@ import AdminInstructions from '@/components/AdminInstructions';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AgencyRequestsAdminPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> | { lang?: string } }) {
+export default async function AgencyRequestsAdminPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
   const role = (session.user as any)?.role || 'user';
   if(role !== 'admin') redirect('/dashboard');
-  // Next.js 16: searchParams is a Promise
-  const resolvedSearchParams = searchParams ? (await Promise.resolve(searchParams)) : {};
+  // Next.js 15: searchParams is a Promise
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   const locale: Locale = resolvedSearchParams?.lang==='en' ? 'en':'fr';
   const t = messages[locale];
 
