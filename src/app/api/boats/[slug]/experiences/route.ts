@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+// @ts-ignore - Next.js 15 type checking issue
+export async function GET(_req: Request, { params }: any) {
   try {
-    const { slug } = await params;
+    const resolvedParams = params instanceof Promise ? await params : params;
+    const { slug } = resolvedParams;
 
     const boat = await prisma.boat.findUnique({
       where: { slug },
