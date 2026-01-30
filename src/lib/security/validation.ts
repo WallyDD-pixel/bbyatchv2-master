@@ -1,6 +1,7 @@
 import validator from 'validator';
 import { z } from 'zod';
 import zxcvbn from 'zxcvbn';
+import sanitizeHtmlLib from 'sanitize-html';
 
 /**
  * Validation et normalisation d'email
@@ -100,8 +101,6 @@ export const passwordSchema = z
  * Validation et sanitization de texte HTML
  */
 export function sanitizeHtml(html: string, maxLength?: number): string {
-  const sanitizeHtmlLib = require('sanitize-html');
-  
   let sanitized = sanitizeHtmlLib(html, {
     allowedTags: ['b', 'i', 'em', 'strong', 'a', 'p', 'br'],
     allowedAttributes: {
