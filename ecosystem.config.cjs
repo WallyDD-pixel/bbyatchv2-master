@@ -33,8 +33,8 @@ module.exports = {
   apps: [
     {
       name: 'bbyatch',
-      script: 'npm',
-      args: 'run start',
+      script: './node_modules/.bin/next',
+      args: 'start -p 3003',
       cwd: __dirname,
       env: {
         NODE_ENV: 'production',
