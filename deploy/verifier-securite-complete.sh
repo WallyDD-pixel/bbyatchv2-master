@@ -37,8 +37,19 @@ echo "1️⃣ Vérification des scripts de sécurité..."
 echo ""
 
 # Vérifier que les scripts existent
-[ -f "deploy/eliminer-malware-complet.sh" ] && check "Script eliminer-malware-complet.sh existe" || ERROR++
-[ -f "deploy/monitor-memory-and-malware.sh" ] && check "Script monitor-memory-and-malware.sh existe" || ERROR++
+if [ -f "deploy/eliminer-malware-complet.sh" ]; then
+    check "Script eliminer-malware-complet.sh existe"
+else
+    echo -e "${RED}❌ Script eliminer-malware-complet.sh n'existe pas${NC}"
+    ((ERROR++))
+fi
+
+if [ -f "deploy/monitor-memory-and-malware.sh" ]; then
+    check "Script monitor-memory-and-malware.sh existe"
+else
+    echo -e "${RED}❌ Script monitor-memory-and-malware.sh n'existe pas${NC}"
+    ((ERROR++))
+fi
 
 # Vérifier que les scripts sont exécutables
 [ -x "deploy/eliminer-malware-complet.sh" ] && check "Script eliminer-malware-complet.sh est exécutable" || warn "Script eliminer-malware-complet.sh n'est pas exécutable (chmod +x)"
@@ -195,10 +206,20 @@ root_keys=$(sudo wc -l < /root/.ssh/authorized_keys 2>/dev/null || echo 0)
 echo "   Clés SSH utilisateur: $user_keys"
 echo "   Clés SSH root: $root_keys"
 
-if [ "$user_keys" -gt 5 ] || [ "$root_keys" -gt 5 ]; then
-    warn "Nombre élevé de clés SSH - Vérifiez manuellement"
+if [ "$user_keys" -gt 5 ]; then
+    warn "Nombre élevé de clés SSH utilisateur ($user_keys) - Vérifiez manuellement"
+elif [ "$user_keys" -eq 0 ]; then
+    warn "Aucune clé SSH utilisateur - Assurez-vous de pouvoir vous connecter"
 else
-    check "Nombre de clés SSH raisonnable"
+    check "Nombre de clés SSH utilisateur raisonnable ($user_keys)"
+fi
+
+if [ "$root_keys" -gt 5 ]; then
+    warn "Nombre élevé de clés SSH root ($root_keys) - Vérifiez manuellement"
+elif [ "$root_keys" -eq 0 ]; then
+    check "Aucune clé SSH root (sécurisé si vous n'utilisez pas root)"
+else
+    check "Nombre de clés SSH root raisonnable ($root_keys)"
 fi
 
 echo ""
@@ -230,23 +251,29 @@ echo -e "${YELLOW}⚠️  Avertissements: $WARN${NC}"
 echo -e "${RED}❌ Erreurs: $ERROR${NC}"
 echo ""
 
-if [ $ERROR -eq 0 ]; then
-    echo -e "${GREEN}✅ Système sécurisé - Aucun malware détecté${NC}"
+if [ $ERROR -eq 0 ] && [ $WARN -eq 0 ]; then
+    echo -e "${GREEN}✅ Système parfaitement sécurisé - Aucun problème détecté${NC}"
     echo ""
     echo "📋 Actions recommandées pour maintenir la sécurité:"
     echo "   1. Vérifiez régulièrement les logs: sudo tail -f /var/log/memory-malware-monitor.log"
     echo "   2. Changez régulièrement les mots de passe"
     echo "   3. Limitez l'accès SSH (firewall)"
-    echo "   4. Installez Fail2Ban si ce n'est pas fait"
-    echo "   5. Surveillez la mémoire: free -h"
-else
-    echo -e "${RED}❌ Des problèmes de sécurité ont été détectés!${NC}"
+    echo "   4. Surveillez la mémoire: free -h"
+elif [ $ERROR -eq 0 ]; then
+    echo -e "${YELLOW}⚠️  Système sécurisé mais avec quelques avertissements${NC}"
     echo ""
-    echo "🔧 Actions à prendre:"
+    echo "📋 Les avertissements sont généralement non-critiques mais à vérifier:"
+    echo "   1. Vérifiez les sections avec ⚠️  ci-dessus"
+    echo "   2. Installez le monitoring si ce n'est pas fait (section 2)"
+    echo "   3. Vérifiez les clés SSH si le nombre semble élevé"
+else
+    echo -e "${RED}❌ Des problèmes de sécurité critiques ont été détectés!${NC}"
+    echo ""
+    echo "🔧 Actions à prendre immédiatement:"
     echo "   1. Exécutez: sudo bash deploy/eliminer-malware-complet.sh"
-    echo "   2. Installez le monitoring: voir section 2 ci-dessus"
+    echo "   2. Installez le monitoring: sudo bash deploy/installer-securite-complete.sh"
     echo "   3. Vérifiez les clés SSH: cat ~/.ssh/authorized_keys"
-    echo "   4. Relancez ce script après correction"
+    echo "   4. Relancez ce script après correction: bash deploy/verifier-securite-complete.sh"
 fi
 
 echo ""
