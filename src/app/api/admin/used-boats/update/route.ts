@@ -73,15 +73,34 @@ export async function POST(req: Request){
           console.log('📸 mainImage mise à jour vers:', mainChoice);
         }
       } else if(!mainChoice) {
-        // mainImageChoice est vide explicitement -> NE PAS supprimer si c'est juste une absence de valeur
-        // Seulement supprimer si l'utilisateur a explicitement choisi de ne pas avoir d'image principale
-        // Pour l'instant, on conserve l'image principale existante si mainImageChoice est vide
-        console.log('📸 mainImageChoice est vide, conservation de l\'image principale existante:', mainImage || '(aucune)');
-        // Ne pas modifier mainImage si elle existe déjà
+        // mainImageChoice est vide explicitement
+        // Si keepPhotos est aussi vide ([]), cela signifie que toutes les images ont été supprimées
+        if(kept !== null && kept.length === 0 && basePhotos.length === 0) {
+          // Toutes les images ont été supprimées, mettre mainImage à null
+          console.log('📸 Toutes les images supprimées, mainImage mise à null');
+          mainImage = null;
+        } else {
+          // Il reste des photos, mais pas d'image principale choisie
+          // Vérifier si l'image principale actuelle est toujours dans les photos conservées
+          if(mainImage && !basePhotos.includes(mainImage) && mainImage !== mainChoice) {
+            // L'image principale n'est plus dans les photos conservées, la mettre à null
+            console.log('📸 Image principale supprimée, mise à null');
+            mainImage = null;
+          } else {
+            // Conserver l'image principale existante si elle est toujours valide
+            console.log('📸 mainImageChoice est vide, conservation de l\'image principale existante:', mainImage || '(aucune)');
+          }
+        }
       }
     } else {
       // Si mainImageChoice n'est pas envoyé du tout, conserver l'image principale existante
-      console.log('📸 mainImageChoice non envoyé, conservation de l\'image principale existante:', mainImage || '(aucune)');
+      // Mais vérifier qu'elle est toujours dans les photos conservées
+      if(mainImage && !basePhotos.includes(mainImage)) {
+        console.log('📸 Image principale non trouvée dans les photos conservées, mise à null');
+        mainImage = null;
+      } else {
+        console.log('📸 mainImageChoice non envoyé, conservation de l\'image principale existante:', mainImage || '(aucune)');
+      }
     }
 
     // Upload nouvelles images vers Supabase Storage avec validation
@@ -112,9 +131,17 @@ export async function POST(req: Request){
       }
     }
 
-    // Si pas de main -> première nouvelle devient main
-    if(!mainImage && newUrls.length){
-      mainImage = newUrls.shift() || null;
+    // Si pas de main -> première nouvelle devient main, ou première photo conservée
+    if(!mainImage) {
+      if(newUrls.length > 0) {
+        mainImage = newUrls.shift() || null;
+        console.log('📸 Nouvelle image principale depuis newUrls:', mainImage);
+      } else if(basePhotos.length > 0) {
+        // Si pas de nouvelles images, utiliser la première photo conservée
+        mainImage = basePhotos[0];
+        basePhotos = basePhotos.slice(1); // Retirer de la liste des photos secondaires
+        console.log('📸 Nouvelle image principale depuis basePhotos:', mainImage);
+      }
     }
 
     // Fusion finale (ordre: basePhotos existantes réordonnées + nouvelles)
@@ -222,16 +249,18 @@ export async function POST(req: Request){
       engines: data.get('engines')? String(data.get('engines')).trim(): null,
       engineHours: data.get('engineHours')? parseInt(String(data.get('engineHours')),10): null,
       fuelType: data.get('fuelType')? String(data.get('fuelType')).trim(): null,
-      mainImage,
+      mainImage: mainImage || null, // S'assurer que null est explicitement défini si vide
       summaryFr: data.get('summaryFr')? String(data.get('summaryFr')).trim(): null,
       summaryEn: (data.get('summaryEn')? String(data.get('summaryEn')): String(data.get('summaryFr')||'')).trim() || null,
       descriptionFr: data.get('descriptionFr')? String(data.get('descriptionFr')).trim(): null,
       descriptionEn: (data.get('descriptionEn')? String(data.get('descriptionEn')): String(data.get('descriptionFr')||'')).trim() || null,
       status: data.get('status')? String(data.get('status')): 'listed',
       sort: data.get('sort')? parseInt(String(data.get('sort')),10): 0,
-      photoUrls: mergedPhotos.length ? JSON.stringify(mergedPhotos) : null,
-      videoUrls: videoUrls.length ? JSON.stringify(videoUrls) : null,
+      photoUrls: mergedPhotos.length > 0 ? JSON.stringify(mergedPhotos) : null,
+      videoUrls: videoUrls.length > 0 ? JSON.stringify(videoUrls) : null,
     };
+    
+    console.log('📸 Données de mise à jour - mainImage:', update.mainImage || '(null)', 'photoUrls:', update.photoUrls ? JSON.parse(update.photoUrls).length + ' photos' : '(null)');
 
     try {
       await (prisma as any).usedBoat.update({ where:{ id }, data: update });
