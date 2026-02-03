@@ -71,6 +71,7 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell'>{locale==='fr'? 'Dates':'Dates'}</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell'>{locale==='fr'? 'Partie':'Part'}</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell'>{locale==='fr'? 'Passagers':'Pax'}</th>
+                <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell'>{locale==='fr'? 'Commentaire':'Comment'}</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3'>{locale==='fr'? 'Statut':'Status'}</th>
                 {/* Colonne Prix supprimée */}
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3'>{locale==='fr'? 'Actions':'Actions'}</th>
@@ -78,13 +79,29 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
             </thead>
             <tbody>
               {rows.length===0 && (
-                <tr><td colSpan={10} className='text-center py-6 sm:py-8 text-black/60 text-xs sm:text-sm'>{locale==='fr'? 'Aucune demande.':'No requests.'}</td></tr>
+                <tr><td colSpan={11} className='text-center py-6 sm:py-8 text-black/60 text-xs sm:text-sm'>{locale==='fr'? 'Aucune demande.':'No requests.'}</td></tr>
               )}
               {rows.map(r=>{
                 const start = r.startDate ? new Date(r.startDate).toISOString().slice(0,10):'';
                 const end = r.endDate ? new Date(r.endDate).toISOString().slice(0,10): start;
                 const dateDisplay = start + (end && end!==start? ' → '+end:'');
                 const userName = (r.user?.firstName||'')+ (r.user?.lastName? ' '+r.user.lastName:'') || r.user?.email || '';
+                // Parser les métadonnées pour extraire specialNeeds
+                let specialNeeds = '';
+                if (r.metadata) {
+                  try {
+                    const metadataObj = typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata;
+                    if (metadataObj.specialNeeds) {
+                      specialNeeds = typeof metadataObj.specialNeeds === 'string' 
+                        ? (metadataObj.specialNeeds.includes('%') ? decodeURIComponent(metadataObj.specialNeeds) : metadataObj.specialNeeds)
+                        : String(metadataObj.specialNeeds);
+                      // Limiter à 50 caractères pour l'affichage dans le tableau
+                      if (specialNeeds.length > 50) {
+                        specialNeeds = specialNeeds.substring(0, 50) + '...';
+                      }
+                    }
+                  } catch {}
+                }
                 return (
                   <tr key={r.id} className='border-t border-black/10'>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 font-mono text-[9px] sm:text-[11px] hidden md:table-cell'>{r.id.slice(0,8)}</td>
@@ -101,6 +118,9 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[9px] sm:text-xs'>{dateDisplay}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell text-[9px] sm:text-xs'>{r.part ? (r.part === 'AM' ? (locale==='fr'? 'Matin':'AM') : r.part === 'PM' ? (locale==='fr'? 'Après-midi':'PM') : r.part) : (locale==='fr'? 'Journée':'FULL')}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[10px] sm:text-xs'>{r.passengers??'—'}</td>
+                    <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[9px] sm:text-xs text-black/70' title={specialNeeds || undefined}>
+                      {specialNeeds || '—'}
+                    </td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3'>
                       <span className='inline-flex items-center justify-center text-[9px] sm:text-[11px] px-1.5 sm:px-2 h-4 sm:h-5 rounded-full border border-black/15 bg-black/5'>
                         {locale==='fr' 

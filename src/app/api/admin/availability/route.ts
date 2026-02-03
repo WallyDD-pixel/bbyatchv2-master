@@ -33,7 +33,7 @@ export async function GET(req: Request) {
   const end = new Date(Date.UTC(toYear, toMonth - 1, toDay, 23, 59, 59, 999));
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return NextResponse.json({ error: 'bad_range' }, { status: 400 });
   try {
-    const [boats, slots, reservations] = await Promise.all([
+    const [boats, slots, reservations, agencyRequests] = await Promise.all([
       (prisma as any).boat.findMany({ 
         select: { 
           id: true, 
@@ -76,9 +76,41 @@ export async function GET(req: Request) {
             } 
           }
         }
+      }),
+      (prisma as any).agencyRequest.findMany({
+        where: { 
+          startDate: { lte: end }, 
+          endDate: { gte: start },
+          status: { not: 'rejected' }
+        },
+        include: {
+          boat: { 
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              imageUrl: true,
+              skipperPrice: true,
+              skipperRequired: true,
+              options: { 
+                select: { id: true, label: true, price: true } 
+              }
+            }
+          },
+          user: { 
+            select: { 
+              id: true, 
+              name: true, 
+              firstName: true, 
+              lastName: true, 
+              email: true, 
+              phone: true 
+            } 
+          }
+        }
       })
     ]);
-    return NextResponse.json({ boats, slots, reservations });
+    return NextResponse.json({ boats, slots, reservations, agencyRequests });
   } catch (e) {
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }

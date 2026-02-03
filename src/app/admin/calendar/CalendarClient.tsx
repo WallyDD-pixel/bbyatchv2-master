@@ -27,6 +27,20 @@ interface Reservation {
   user?: { id: string; name: string | null; firstName: string | null; lastName: string | null; email: string; phone?: string | null } | null;
   createdAt?: string;
 }
+interface AgencyRequest {
+  id: string;
+  boatId?: number|null;
+  startDate: string;
+  endDate: string;
+  status: string;
+  part?: string | null;
+  passengers?: number | null;
+  totalPrice?: number | null;
+  metadata?: string | null;
+  boat?: Boat & { skipperPrice?: number | null; skipperRequired?: boolean | null } | null;
+  user?: { id: string; name: string | null; firstName: string | null; lastName: string | null; email: string; phone?: string | null } | null;
+  createdAt?: string;
+}
 
 function localKey(dateStr: string) { 
   const d = new Date(dateStr); 
@@ -41,11 +55,13 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   const [date, setDate] = useState(new Date());
   const [slots, setSlots] = useState<Slot[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [agencyRequests, setAgencyRequests] = useState<AgencyRequest[]>([]);
   const [boats, setBoats] = useState<Boat[]>([]);
   const [selectedBoat, setSelectedBoat] = useState<number|null>(null);
   const [showAll, setShowAll] = useState(true);
   const [saving, setSaving] = useState(false);
   const [reservationInfo, setReservationInfo] = useState<Reservation|null>(null);
+  const [agencyRequestInfo, setAgencyRequestInfo] = useState<AgencyRequest|null>(null);
   const [slotInfo, setSlotInfo] = useState<any|null>(null);
   const [expSlotInfo, setExpSlotInfo] = useState<any|null>(null);
   const [experiences, setExperiences] = useState<any[]>([]);
@@ -96,6 +112,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         console.log('[Load] Slots loaded:', slotsList.length, slotsList);
         setSlots(slotsList);
         setReservations(slotsData.reservations || []);
+        setAgencyRequests(slotsData.agencyRequests || []);
       }
       
       if (expRes.ok) {
@@ -210,6 +227,31 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           extendedProps: { type: 'reservation', resData: r }
         });
       });
+      
+      // Demandes agence
+      agencyRequests.forEach(ar => {
+        if (!ar.boatId) return;
+        const startDateStr = ar.startDate.includes('T') ? ar.startDate.split('T')[0] : ar.startDate;
+        const endDateStr = ar.endDate.includes('T') ? ar.endDate.split('T')[0] : ar.endDate;
+        const start = new Date(startDateStr + 'T00:00:00');
+        const end = new Date(endDateStr + 'T23:59:59');
+        const boatName = ar.boat?.name || boats.find(b => b.id === ar.boatId)?.name || '#';
+        const price = ar.totalPrice ? `${ar.totalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}` : '';
+        const statusLabel = ar.status === 'pending' ? (locale==='fr'?'En attente':'Pending') :
+                           ar.status === 'approved' ? (locale==='fr'?'Approuvé':'Approved') :
+                           ar.status === 'converted' ? (locale==='fr'?'Converti':'Converted') : ar.status;
+        
+        ev.push({
+          id: 'agency-' + ar.id,
+          title: `${locale==='fr'?'[AGENCE]':'[AGENCY]'} ${boatName}${price ? ' - ' + price : ''} (${statusLabel})`,
+          start: start.toISOString(),
+          end: end.toISOString(),
+          allDay: true,
+          backgroundColor: '#f59e0b',
+          borderColor: '#d97706',
+          extendedProps: { type: 'agencyRequest', agencyRequestData: ar }
+        });
+      });
     } else if (selectedBoat) {
       // Vue bateau seule
       slots.filter(s => s.boatId === selectedBoat).forEach(s => {
@@ -260,6 +302,27 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           extendedProps: { type: 'reservation', resData: r }
         });
       });
+      
+      agencyRequests.filter(ar => ar.boatId === selectedBoat).forEach(ar => {
+        const startDateStr = ar.startDate.includes('T') ? ar.startDate.split('T')[0] : ar.startDate;
+        const endDateStr = ar.endDate.includes('T') ? ar.endDate.split('T')[0] : ar.endDate;
+        const start = new Date(startDateStr + 'T00:00:00');
+        const end = new Date(endDateStr + 'T23:59:59');
+        const statusLabel = ar.status === 'pending' ? (locale==='fr'?'En attente':'Pending') :
+                           ar.status === 'approved' ? (locale==='fr'?'Approuvé':'Approved') :
+                           ar.status === 'converted' ? (locale==='fr'?'Converti':'Converted') : ar.status;
+        
+        ev.push({
+          id: 'agency-' + ar.id,
+          title: `${locale==='fr'?'[AGENCE]':'[AGENCY]'} ${statusLabel}`,
+          start: start.toISOString(),
+          end: end.toISOString(),
+          allDay: true,
+          backgroundColor: '#f59e0b',
+          borderColor: '#d97706',
+          extendedProps: { type: 'agencyRequest', agencyRequestData: ar }
+        });
+      });
     } else if (selectedExperience) {
       // Vue expérience seule
       expSlots.filter(s => s.experienceId === selectedExperience).forEach(s => {
@@ -293,7 +356,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     }
     
     return ev;
-  }, [slots, expSlots, reservations, selectedBoat, selectedExperience, showAll, boats, experiences, locale]);
+  }, [slots, expSlots, reservations, agencyRequests, selectedBoat, selectedExperience, showAll, boats, experiences, locale]);
 
   const handleEventClick = (info: any) => {
     const event = info.event;
@@ -301,11 +364,14 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     
     // Fermer les autres modals
     setReservationInfo(null);
+    setAgencyRequestInfo(null);
     setSlotInfo(null);
     setExpSlotInfo(null);
     
     if (extProps.type === 'reservation' && extProps.resData) {
       setReservationInfo(extProps.resData);
+    } else if (extProps.type === 'agencyRequest' && extProps.agencyRequestData) {
+      setAgencyRequestInfo(extProps.agencyRequestData);
     } else if (extProps.type === 'slot' && extProps.slotData) {
       setSlotInfo(extProps.slotData);
     } else if (extProps.type === 'expSlot' && extProps.expSlotData) {
@@ -1156,6 +1222,205 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         </div>
       )}
 
+      {/* Modal de détails de demande agence */}
+      {agencyRequestInfo && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 p-4" style={{ zIndex: 99999 }}>
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto relative" style={{ zIndex: 100000 }}>
+            <button 
+              className="absolute top-4 right-4 text-2xl text-black/50 hover:text-black z-10" 
+              onClick={() => setAgencyRequestInfo(null)}
+              style={{ zIndex: 100001 }}
+            >
+              ×
+            </button>
+            <h2 className="text-2xl font-bold mb-4 text-orange-600">
+              {locale==='fr'?'Détails de la demande agence':'Agency request details'}
+            </h2>
+            <div className="space-y-4 text-sm">
+              {(() => {
+                const boat = agencyRequestInfo.boat || boats.find((b: Boat) => b.id === agencyRequestInfo.boatId);
+                const boatName = boat?.name || 'N/A';
+                const startDateStr = agencyRequestInfo.startDate.includes('T') ? agencyRequestInfo.startDate.split('T')[0] : agencyRequestInfo.startDate;
+                const endDateStr = agencyRequestInfo.endDate.includes('T') ? agencyRequestInfo.endDate.split('T')[0] : agencyRequestInfo.endDate;
+                const partLabel = agencyRequestInfo.part === 'FULL' ? (locale==='fr'?'Journée entière':'Full day') : 
+                                 agencyRequestInfo.part === 'AM' ? (locale==='fr'?'Matin':'Morning') : 
+                                 agencyRequestInfo.part === 'PM' ? (locale==='fr'?'Après-midi':'Afternoon') : 
+                                 agencyRequestInfo.part || (locale==='fr'?'Non spécifié':'Not specified');
+                const statusLabel = agencyRequestInfo.status === 'pending' ? (locale==='fr'?'En attente':'Pending') :
+                                   agencyRequestInfo.status === 'approved' ? (locale==='fr'?'Approuvé':'Approved') :
+                                   agencyRequestInfo.status === 'converted' ? (locale==='fr'?'Converti':'Converted') :
+                                   agencyRequestInfo.status === 'rejected' ? (locale==='fr'?'Refusé':'Rejected') :
+                                   agencyRequestInfo.status || (locale==='fr'?'Inconnu':'Unknown');
+                
+                // Parser les métadonnées
+                let parsedMetadata: any = null;
+                try {
+                  parsedMetadata = typeof agencyRequestInfo.metadata === 'string' 
+                    ? JSON.parse(agencyRequestInfo.metadata) 
+                    : agencyRequestInfo.metadata;
+                } catch (e) {}
+                
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <strong className="text-gray-700">{locale==='fr'?'Bateau':'Boat'}:</strong>
+                        <div className="text-base font-semibold text-blue-600">{boatName}</div>
+                      </div>
+                      <div>
+                        <strong className="text-gray-700">{locale==='fr'?'Client':'Client'}:</strong>
+                        <div className="text-base font-semibold">
+                          {agencyRequestInfo.user?.name || 
+                           `${agencyRequestInfo.user?.firstName || ''} ${agencyRequestInfo.user?.lastName || ''}`.trim() || 
+                           agencyRequestInfo.user?.email || 
+                           'N/A'}
+                        </div>
+                        {agencyRequestInfo.user?.email && (
+                          <div className="text-sm text-gray-600 mt-1">{agencyRequestInfo.user.email}</div>
+                        )}
+                        {agencyRequestInfo.user?.phone && (
+                          <div className="text-sm text-gray-600 mt-1">
+                            <span className="font-medium">{locale==='fr'?'Téléphone':'Phone'}:</span> <a href={`tel:${agencyRequestInfo.user.phone}`} className="text-blue-600 hover:underline">{agencyRequestInfo.user.phone}</a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <strong className="text-gray-700">{locale==='fr'?'Date de début':'Start date'}:</strong>
+                        <div className="text-base font-semibold">{startDateStr}</div>
+                      </div>
+                      <div>
+                        <strong className="text-gray-700">{locale==='fr'?'Date de fin':'End date'}:</strong>
+                        <div className="text-base font-semibold">{endDateStr}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <strong className="text-gray-700">{locale==='fr'?'Type de créneau':'Time slot'}:</strong>
+                        <div className="text-base font-semibold">{partLabel}</div>
+                      </div>
+                      <div>
+                        <strong className="text-gray-700">{locale==='fr'?'Nombre de passagers':'Passengers'}:</strong>
+                        <div className="text-base font-semibold">{agencyRequestInfo.passengers || 'N/A'}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <strong className="text-gray-700">{locale==='fr'?'Statut':'Status'}:</strong>
+                        <div className="text-base font-semibold">
+                          <span className={`px-3 py-1 rounded-full text-sm ${
+                            agencyRequestInfo.status === 'approved' || agencyRequestInfo.status === 'converted'
+                              ? 'bg-green-100 text-green-800' 
+                              : agencyRequestInfo.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                      </div>
+                      {agencyRequestInfo.totalPrice && (
+                        <div>
+                          <strong className="text-gray-700">{locale==='fr'?'Prix total':'Total price'}:</strong>
+                          <div className="text-base font-semibold text-green-700">
+                            {agencyRequestInfo.totalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {parsedMetadata && (
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <strong className="text-gray-700 block mb-3">{locale==='fr'?'Informations complémentaires':'Additional information'}:</strong>
+                        <div className="space-y-2 text-sm">
+                          {parsedMetadata.childrenCount !== undefined && (
+                            <div className="bg-white p-2 rounded border border-blue-100">
+                              <span className="font-semibold text-gray-600">{locale==='fr'?'Nombre d\'enfants':'Number of children'}: </span>
+                              <span>{parsedMetadata.childrenCount}</span>
+                            </div>
+                          )}
+                          {parsedMetadata.waterToys !== undefined && (
+                            <div className="bg-white p-2 rounded border border-blue-100">
+                              <span className="font-semibold text-gray-600">{locale==='fr'?'Jeux d\'eau':'Water toys'}: </span>
+                              <span>{parsedMetadata.waterToys === 'yes' || parsedMetadata.waterToys === true ? (locale==='fr'?'Oui':'Yes') : (locale==='fr'?'Non':'No')}</span>
+                            </div>
+                          )}
+                          {(parsedMetadata.wantsExcursion || parsedMetadata.excursion !== undefined) && (
+                            <div className="bg-white p-2 rounded border border-blue-100">
+                              <span className="font-semibold text-gray-600">{locale==='fr'?'Excursion':'Excursion'}: </span>
+                              <span>{(parsedMetadata.wantsExcursion || parsedMetadata.excursion === '1' || parsedMetadata.excursion === true) ? (locale==='fr'?'Oui':'Yes') : (locale==='fr'?'Non':'No')}</span>
+                            </div>
+                          )}
+                          {parsedMetadata.specialNeeds && (
+                            <div className="bg-white p-2 rounded border border-blue-100">
+                              <span className="font-semibold text-gray-600 block mb-1">{locale==='fr'?'Besoins spéciaux':'Special needs'}: </span>
+                              <p className="text-gray-700 whitespace-pre-line">
+                                {typeof parsedMetadata.specialNeeds === 'string' 
+                                  ? (parsedMetadata.specialNeeds.includes('%') ? decodeURIComponent(parsedMetadata.specialNeeds) : parsedMetadata.specialNeeds)
+                                  : String(parsedMetadata.specialNeeds)}
+                              </p>
+                            </div>
+                          )}
+                          {parsedMetadata.optionIds && Array.isArray(parsedMetadata.optionIds) && parsedMetadata.optionIds.length > 0 && (
+                            <div className="bg-white p-2 rounded border border-blue-100">
+                              <span className="font-semibold text-gray-600 block mb-1">{locale==='fr'?'Options sélectionnées':'Selected options'}: </span>
+                              <ul className="list-disc list-inside space-y-0.5 text-gray-700">
+                                {parsedMetadata.optionIds.map((optId: number) => {
+                                  const option = boat?.options?.find((o: any) => o.id === optId);
+                                  return (
+                                    <li key={optId}>
+                                      {option ? (
+                                        <>
+                                          {option.label} {option.price != null ? `(${option.price.toLocaleString(locale==='fr'?'fr-FR':'en-US')} €)` : (locale==='fr'?'(Inclus)':'(Included)')}
+                                        </>
+                                      ) : (
+                                        `Option ID: ${optId}`
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          )}
+                          {parsedMetadata.departurePort && (
+                            <div className="bg-white p-2 rounded border border-blue-100">
+                              <span className="font-semibold text-gray-600">{locale==='fr'?'Port de départ':'Departure port'}: </span>
+                              <span>{parsedMetadata.departurePort === 'Port à définir' ? (locale==='fr'?'À définir':'To be determined') : parsedMetadata.departurePort}</span>
+                            </div>
+                          )}
+                          {(parsedMetadata.needsSkipper || parsedMetadata.skipperRequired) && (
+                            <div className="bg-white p-2 rounded border border-blue-100">
+                              <span className="font-semibold text-gray-600">{locale==='fr'?'Skipper requis':'Skipper required'}: </span>
+                              <span>{locale==='fr'?'Oui':'Yes'}</span>
+                              {parsedMetadata.effectiveSkipperPrice && (
+                                <span className="ml-2 text-gray-500">({parsedMetadata.effectiveSkipperPrice}€ HT/jour)</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="pt-4 flex gap-2">
+                      <a
+                        href={`/admin/agency-requests/${agencyRequestInfo.id}${locale==='en'?'?lang=en':''}`}
+                        className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+                      >
+                        {locale==='fr'?'Voir les détails complets':'View full details'} →
+                      </a>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de détails de disponibilité (slot) */}
       {slotInfo && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/40 p-4" style={{ zIndex: 99999 }}>
@@ -1401,7 +1666,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
       )}
 
       {/* Tooltip au survol */}
-      {hoveredEvent && tooltipPosition && !reservationInfo && !slotInfo && !expSlotInfo && (() => {
+      {hoveredEvent && tooltipPosition && !reservationInfo && !agencyRequestInfo && !slotInfo && !expSlotInfo && (() => {
         const extProps = hoveredEvent.extendedProps;
         const isReservation = extProps.type === 'reservation';
         const isExpSlot = extProps.type === 'expSlot';

@@ -273,10 +273,10 @@ export default async function UserReservationDetailPage(
                   {metadata.specialNeeds && (
                     <div className="py-2">
                       <div className="text-black/70 mb-1">{locale === 'fr' ? 'Besoins spéciaux' : 'Special needs'}</div>
-                      <p className="text-sm text-black/80 whitespace-pre-line">{decodeURIComponent(metadata.specialNeeds)}</p>
+                      <p className="text-sm text-black/80 whitespace-pre-line">{typeof metadata.specialNeeds === 'string' ? (metadata.specialNeeds.includes('%') ? decodeURIComponent(metadata.specialNeeds) : metadata.specialNeeds) : String(metadata.specialNeeds)}</p>
                     </div>
                   )}
-                  {(metadata.departurePort || metadata.departurePort === 'Port à définir') && (
+                  {metadata.departurePort && (
                     <div className="flex justify-between py-2 border-t border-black/10">
                       <span className="text-black/70">{locale === 'fr' ? 'Port de départ' : 'Departure port'}</span>
                       <span className="font-medium">{metadata.departurePort === 'Port à définir' ? (locale === 'fr' ? 'À définir' : 'To be determined') : metadata.departurePort}</span>
