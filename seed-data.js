@@ -195,7 +195,9 @@ async function seedData() {
     console.error('❌ Erreur lors de la création des données:', error);
   } finally {
     await prisma.$disconnect();
+    
   }
 }
+
 
 seedData();

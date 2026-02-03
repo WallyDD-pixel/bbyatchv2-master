@@ -49,6 +49,13 @@ Collez votre configuration (DATABASE_URL, NEXTAUTH_URL, etc.)
 # Installer les dépendances
 npm install --legacy-peer-deps
 
+# ⚠️ CRITIQUE : Vérifier immédiatement qu'il n'y a pas de malware
+chmod +x verifier-apres-npm-install.sh
+bash verifier-apres-npm-install.sh
+
+# Si le script détecte des problèmes, NE PAS continuer !
+# Identifier le package compromis et le supprimer avant de continuer
+
 # Générer le client Prisma
 npx prisma generate
 

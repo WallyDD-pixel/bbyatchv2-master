@@ -55,6 +55,8 @@ npx prisma generate
 ## 5. Build & Start (ex: PM2)
 ```bash
 npm ci
+# ⚠️ CRITIQUE : Vérifier immédiatement après npm install
+bash verifier-apres-npm-install.sh
 npm run build
 pm2 start npm --name "bbyatchv2" -- run start
 pm2 save
@@ -111,6 +113,14 @@ pm2 restart bbyatchv2
 - Mettre à jour system : `sudo apt update && sudo apt upgrade -y`
 - UFW : `sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable`
 - Restreindre permissions `.env`
+- Installer la protection : `bash install-protection.sh`
+
+## 11.1. Vérification après npm install (CRITIQUE)
+⚠️ **IMPORTANT** : Après `npm install`, exécutez immédiatement :
+```bash
+bash verifier-apres-npm-install.sh
+```
+Ce script vérifie les packages npm compromis et les processus malveillants.
 
 ## 12. Migration SQLite -> Postgres (si besoin)
 1. Export SQLite : `sqlite3 prisma/dev.db .dump > dump.sql`
