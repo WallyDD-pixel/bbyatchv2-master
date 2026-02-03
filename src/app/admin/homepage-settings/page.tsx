@@ -5,6 +5,8 @@ import Link from "next/link";
 import Toast from "@/components/Toast";
 import { submitForm } from "@/lib/form-utils";
 import AdminInstructions from "@/components/AdminInstructions";
+import { compressImageClient } from "@/lib/image-compression-client";
+import ImageCropper from "@/components/ImageCropper";
 
 export default function AdminHomepageSettingsPage() {
   const router = useRouter();
@@ -86,18 +88,39 @@ export default function AdminHomepageSettingsPage() {
       }
     });
     
-    const result = await submitForm(
-      "/api/admin/homepage-settings",
-      formData,
-      {
+    try {
+      const response = await fetch("/api/admin/homepage-settings", {
         method: "POST",
-        successMessage: "Paramètres sauvegardés avec succès",
-        errorMessage: "Erreur lors de la sauvegarde",
+        body: formData,
+      });
+
+      if (response.ok) {
+        setToast({ message: "Paramètres sauvegardés avec succès", type: "success" });
+        router.push("/admin/homepage-settings?success=1");
+        router.refresh();
+      } else {
+        // Essayer de récupérer le message d'erreur détaillé
+        let errorMessage = "Erreur lors de la sauvegarde";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // Si pas de JSON, utiliser le message par défaut
+        }
+        setToast({ 
+          message: errorMessage, 
+          type: "error" 
+        });
       }
-    );
-    
-    if (result.success) {
-      setToast({ message: "Paramètres sauvegardés avec succès", type: "success" });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Erreur lors de la sauvegarde";
+      setToast({ 
+        message: `Erreur: ${errorMessage}. Vérifiez que les images ne sont pas trop volumineuses (max 5MB).`, 
+        type: "error" 
+      });
+    } finally {
+      setSaving(false);
+    }
       // Recharger les settings pour mettre à jour les images
       const res = await fetch("/api/admin/homepage-settings");
       const s = await res.json();
@@ -155,30 +178,75 @@ export default function AdminHomepageSettingsPage() {
         <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-xl shadow-md p-6 border border-blue-200">
           <h2 className="text-lg font-bold mb-2 text-blue-700">Image de la section "Pourquoi choisir BB Service"</h2>
           <p className="text-sm text-gray-600 mb-4">
-            Ajoutez ou modifiez l'image affichée à droite de la carte. Vous pouvez déposer un fichier ou renseigner une URL.
+            Ajoutez ou modifiez l'image affichée à droite de la carte. Vous pouvez uploader un fichier ou entrer une URL (Unsplash, Pinterest, etc.) - l'image sera automatiquement téléchargée et stockée sur nos serveurs.
           </p>
           <div className="flex gap-6 items-start">
-            <div className="flex-1">
-              <label className="block font-semibold text-sm text-gray-700 mb-2">Upload d'image</label>
+            <div className="flex-1 space-y-4">
+              <div>
+                <label className="block font-semibold text-sm text-gray-700 mb-2">Upload d'image (fichier)</label>
               <input
                 type="file"
                 name="whyChooseImageFile"
                 accept="image/*"
                 className="w-full mt-2 border-2 border-dashed border-blue-300 rounded-lg px-4 py-3 bg-white cursor-pointer hover:border-blue-400 transition-colors"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      setWhyChooseImagePreview(ev.target?.result as string);
-                    };
-                    reader.readAsDataURL(file);
+                    // Accepter jusqu'à 20MB
+                    const maxAcceptedMB = 20;
+                    const maxAcceptedBytes = maxAcceptedMB * 1024 * 1024;
+                    
+                    // Vérifier la limite maximale
+                    if (file.size > maxAcceptedBytes) {
+                      setToast({
+                        message: `Image trop volumineuse (${(file.size / 1024 / 1024).toFixed(2)}MB). Limite: ${maxAcceptedMB}MB. Veuillez réduire la taille du fichier.`,
+                        type: "error",
+                      });
+                      e.target.value = '';
+                      return;
+                    }
+                    
+                    // Proposer le recadrage
+                    const url = URL.createObjectURL(file);
+                    setCroppingImage(url);
+                    setCroppingFile(file);
                   } else {
                     setWhyChooseImagePreview(settings?.whyChooseImageUrl || null);
                   }
                 }}
               />
-              <p className="text-xs text-gray-500 mt-2">Déposez une image ici ou cliquez pour sélectionner un fichier.</p>
+              <p className="text-xs text-gray-500 mt-2">
+                Déposez une image ici ou cliquez pour sélectionner un fichier.
+                <br />
+                <span className="text-orange-600 font-semibold">Taille maximale : 5MB (compression automatique si nécessaire)</span>
+              </p>
+              </div>
+              
+              <div>
+                <label className="block font-semibold text-sm text-gray-700 mb-2">
+                  Ou entrer une URL d'image (Unsplash, Pinterest, etc.)
+                </label>
+                <input
+                  type="url"
+                  name="whyChooseImageUrl"
+                  placeholder="https://images.unsplash.com/photo-..."
+                  defaultValue={settings?.whyChooseImageUrl || ''}
+                  className="w-full mt-2 border-2 border-dashed border-blue-300 rounded-lg px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  onChange={(e) => {
+                    const url = e.target.value.trim();
+                    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                      setWhyChooseImagePreview(url);
+                    } else if (!url) {
+                      setWhyChooseImagePreview(settings?.whyChooseImageUrl || null);
+                    }
+                  }}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  L'image sera automatiquement téléchargée, compressée et stockée sur nos serveurs.
+                  <br />
+                  <span className="text-green-600 font-semibold">✅ Vous en serez propriétaire</span>
+                </p>
+              </div>
             </div>
             {(whyChooseImagePreview || settings?.whyChooseImageUrl) && (
               <div className="flex-shrink-0 w-32 h-32 flex items-center justify-center border-2 border-gray-300 rounded-xl bg-gray-50 overflow-hidden">

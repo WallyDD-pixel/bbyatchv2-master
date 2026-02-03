@@ -33,8 +33,19 @@ function parseMediaUrl(url: string): MediaItem {
   }
 
   // Fichier vidéo direct (.mp4, .webm, etc.)
+  // Vérifier l'extension dans l'URL (même avec paramètres de requête)
   const videoExtensions = /\.(mp4|webm|ogg|mov)(\?.*)?$/i;
   if (videoExtensions.test(url)) {
+    return { type: 'video', url };
+  }
+  
+  // Vérifier aussi si l'URL contient des chemins de vidéos Supabase
+  if (url.includes('/videos/') || url.includes('/boats/videos/')) {
+    return { type: 'video', url };
+  }
+  
+  // Vérifier le type MIME si présent dans l'URL
+  if (url.includes('video/mp4') || url.includes('video/webm') || url.includes('video/ogg')) {
     return { type: 'video', url };
   }
 
@@ -48,11 +59,21 @@ interface Props {
 }
 
 export default function BoatMediaCarousel({ images, videos = [] }: Props) {
+  // Logs de débogage
+  console.log('🎬 BoatMediaCarousel - Images reçues:', images.length);
+  console.log('🎬 BoatMediaCarousel - Vidéos reçues:', videos.length, videos);
+  
   // Parser tous les médias
   const allMedia: MediaItem[] = [
     ...images.map(url => ({ type: 'image' as const, url })),
-    ...videos.map(url => parseMediaUrl(url))
+    ...videos.map(url => {
+      const parsed = parseMediaUrl(url);
+      console.log('🎬 Parsing vidéo:', { url, parsed });
+      return parsed;
+    })
   ].filter(m => m.url);
+  
+  console.log('🎬 Médias finaux:', allMedia.length, allMedia.map(m => ({ type: m.type, url: m.url.substring(0, 50) + '...' })));
 
   const [index, setIndex] = useState(0);
   const autoRef = useRef<NodeJS.Timeout | null>(null);
@@ -99,6 +120,8 @@ export default function BoatMediaCarousel({ images, videos = [] }: Props) {
                 fill
                 className="object-cover"
                 priority={i === 0}
+                loading={i === 0 ? "eager" : "lazy"}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
                 unoptimized={media.url.startsWith('/uploads/')}
                 onError={(e) => {
                   // Fallback si l'image ne charge pas
@@ -118,10 +141,46 @@ export default function BoatMediaCarousel({ images, videos = [] }: Props) {
             ) : (
               // Vidéo fichier direct
               <video
+                key={media.url} // Force re-render si l'URL change
                 src={media.url}
                 className="w-full h-full object-cover"
                 controls
                 playsInline
+                preload="auto"
+                crossOrigin="anonymous"
+                onError={(e) => {
+                  const target = e.target as HTMLVideoElement;
+                  const error = target.error;
+                  console.error('❌ Erreur de chargement vidéo:', {
+                    url: media.url,
+                    errorCode: error?.code,
+                    errorMessage: error?.message,
+                    networkState: target.networkState,
+                    readyState: target.readyState
+                  });
+                  // Afficher un message d'erreur au lieu de cacher
+                  target.style.backgroundColor = '#000';
+                }}
+                onLoadStart={() => {
+                  console.log('✅ Début du chargement vidéo:', media.url);
+                }}
+                onLoadedMetadata={() => {
+                  console.log('✅ Métadonnées vidéo chargées:', {
+                    url: media.url,
+                    duration: (e.target as HTMLVideoElement).duration,
+                    videoWidth: (e.target as HTMLVideoElement).videoWidth,
+                    videoHeight: (e.target as HTMLVideoElement).videoHeight
+                  });
+                }}
+                onCanPlay={() => {
+                  console.log('✅ Vidéo prête à être lue:', media.url);
+                }}
+                onStalled={() => {
+                  console.warn('⚠️ Chargement vidéo bloqué:', media.url);
+                }}
+                onSuspend={() => {
+                  console.warn('⚠️ Chargement vidéo suspendu:', media.url);
+                }}
               />
             )}
           </div>

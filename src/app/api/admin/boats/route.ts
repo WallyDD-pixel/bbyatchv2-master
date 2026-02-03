@@ -101,21 +101,18 @@ export async function POST(req: Request) {
           } else {
             console.warn(`⚠️ Video file rejected: ${file.name} - ${validation.error}`);
           }
+        } else {
+          console.warn(`⚠️ Video file type not allowed: ${mime} (file: ${file.name})`);
         }
       }
       
       if (validVideoFiles.length > 0) {
+        console.log(`📹 Upload de ${validVideoFiles.length} vidéo(s)...`);
         const urls = await uploadMultipleToSupabase(validVideoFiles, 'boats/videos');
         savedVideoUrls.push(...urls);
-      }
-    } {
-      const validVideos = videoFiles.filter(f => {
-        const mime = (f as any).type;
-        return allowedVideos.includes(mime);
-      });
-      if (validVideos.length > 0) {
-        const urls = await uploadMultipleToSupabase(validVideos, 'boats/videos');
-        savedVideoUrls.push(...urls);
+        console.log(`✅ ${urls.length} vidéo(s) uploadée(s) avec succès:`, urls);
+      } else {
+        console.warn(`⚠️ Aucune vidéo valide à uploader (${videoFiles.length} fichier(s) rejeté(s))`);
       }
     }
   } catch (e) {
@@ -144,11 +141,52 @@ export async function POST(req: Request) {
     return [];
   };
 
-  // Combine photoUrls existantes + nouvelles (sans doublons)
-  const existingPhotos = toList(photoUrls);
-  const allPhotos = Array.from(new Set([...savedImageUrls, ...existingPhotos]));
+  // Télécharger les images depuis les URLs externes dans photoUrls
+  let downloadedPhotoUrls: string[] = [];
+  const photoUrlsInput = toList(photoUrls);
+  
+  // Télécharger les images depuis les URLs externes
+  for (const url of photoUrlsInput) {
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      // Vérifier si c'est déjà une URL Supabase (ne pas re-télécharger)
+      if (url.includes('supabase.co/storage')) {
+        downloadedPhotoUrls.push(url);
+      } else {
+        // C'est une URL externe (Unsplash, Pinterest, etc.), la télécharger
+        try {
+          const { downloadAndStoreImage } = await import('@/lib/download-image');
+          const downloadResult = await downloadAndStoreImage(url, 'boats');
+          
+          if (downloadResult.success && downloadResult.url) {
+            downloadedPhotoUrls.push(downloadResult.url);
+            console.log(`✅ Image externe téléchargée et stockée: ${downloadResult.url}`);
+          } else {
+            console.warn(`⚠️ Impossible de télécharger l'image depuis ${url}: ${downloadResult.error}`);
+            // Ne pas garder l'URL originale si le téléchargement échoue (évite les problèmes de droits)
+          }
+        } catch (e: any) {
+          console.error(`Erreur lors du téléchargement de l'image ${url}:`, e?.message || e);
+          // Ne pas garder l'URL originale si le téléchargement échoue
+        }
+      }
+    } else if (url) {
+      // C'est déjà une URL Supabase ou locale, la garder
+      downloadedPhotoUrls.push(url);
+    }
+  }
+
+  // Combine photoUrls téléchargées + images uploadées (sans doublons)
+  const allPhotos = Array.from(new Set([...savedImageUrls, ...downloadedPhotoUrls]));
   const existingVideos = toList(videoUrls);
   const videoArray = Array.from(new Set([...savedVideoUrls, ...existingVideos]));
+  
+  // Log pour debug
+  console.log('📹 Vidéos à sauvegarder:', {
+    uploaded: savedVideoUrls.length,
+    existing: existingVideos.length,
+    total: videoArray.length,
+    urls: videoArray
+  });
 
   // Prépare données JSON stringifiées
   const photoArray = allPhotos;
@@ -222,7 +260,26 @@ export async function POST(req: Request) {
       },
       include: { options: true }
     });
+    // Vérifier si c'est une requête fetch (X-Requested-With ou Accept header)
+    const isFetchRequest = req.headers.get('x-requested-with') === 'XMLHttpRequest' || 
+                          req.headers.get('accept')?.includes('application/json') ||
+                          req.headers.get('content-type')?.includes('multipart/form-data');
+    
     const isForm = ct.includes("multipart/form-data") || ct.includes("application/x-www-form-urlencoded");
+    
+    // Si c'est une requête fetch, retourner du JSON (même si c'est multipart/form-data)
+    if (isFetchRequest) {
+      return NextResponse.json({
+        ok: true,
+        id: created.id,
+        slug: created.slug,
+        imageUrl: finalImageUrl,
+        photoUrls: photoArray,
+        videoUrls: videoArray,
+      });
+    }
+    
+    // Sinon, redirection classique pour les formulaires HTML
     if (isForm) {
       // Redirection après création :
       // - Si APP_BASE_URL est défini (ex: https://preprod.bbservicescharter.com),
@@ -232,6 +289,7 @@ export async function POST(req: Request) {
       const redirectUrl = createRedirectUrl(`/admin/boats?created=${created.slug}`, req);
       return NextResponse.redirect(redirectUrl, 303);
     }
+    
     return NextResponse.json({
       ok: true,
       id: created.id,

@@ -14,20 +14,38 @@ const MAGIC_BYTES: Record<string, number[][]> = {
   'video/ogg': [[0x4F, 0x67, 0x67, 0x53]], // OggS
 };
 
-// Tailles maximales (en bytes)
-const MAX_SIZES: Record<string, number> = {
-  'image/jpeg': 10 * 1024 * 1024, // 10MB
-  'image/png': 10 * 1024 * 1024, // 10MB
-  'image/gif': 10 * 1024 * 1024, // 10MB
-  'image/webp': 10 * 1024 * 1024, // 10MB
-  'video/mp4': 100 * 1024 * 1024, // 100MB
-  'video/webm': 100 * 1024 * 1024, // 100MB
-  'video/ogg': 100 * 1024 * 1024, // 100MB
+// Tailles maximales acceptées AVANT compression (en bytes)
+// Les fichiers seront automatiquement compressés s'ils dépassent ces limites
+const MAX_ACCEPTED_SIZES: Record<string, number> = {
+  'image/jpeg': 20 * 1024 * 1024, // 20MB (sera compressé automatiquement à 2MB max)
+  'image/png': 20 * 1024 * 1024, // 20MB (sera compressé automatiquement à 2MB max)
+  'image/gif': 10 * 1024 * 1024, // 10MB (GIF animés peuvent être plus lourds)
+  'image/webp': 20 * 1024 * 1024, // 20MB (sera compressé automatiquement à 2MB max)
+  'video/mp4': 200 * 1024 * 1024, // 200MB (augmenté pour permettre des vidéos de meilleure qualité)
+  'video/webm': 200 * 1024 * 1024, // 200MB
+  'video/ogg': 200 * 1024 * 1024, // 200MB
 };
+
+// Tailles maximales APRÈS compression (cibles)
+const MAX_TARGET_SIZES: Record<string, number> = {
+  'image/jpeg': 2 * 1024 * 1024, // 2MB après compression
+  'image/png': 2 * 1024 * 1024, // 2MB après compression
+  'image/gif': 5 * 1024 * 1024, // 5MB (GIF animés, compression limitée)
+  'image/webp': 2 * 1024 * 1024, // 2MB après compression
+  'video/mp4': 100 * 1024 * 1024, // 100MB après compression (si nécessaire)
+  'video/webm': 100 * 1024 * 1024, // 100MB après compression
+  'video/ogg': 100 * 1024 * 1024, // 100MB après compression
+};
+
+// Pour compatibilité avec l'ancien code
+const MAX_SIZES = MAX_ACCEPTED_SIZES;
 
 // Types MIME autorisés
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 export const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
+
+// Exporter les limites pour utilisation dans les composants
+export { MAX_ACCEPTED_SIZES, MAX_TARGET_SIZES };
 
 export interface FileValidationResult {
   valid: boolean;
@@ -109,14 +127,16 @@ export async function validateImageFile(file: File): Promise<FileValidationResul
     return { valid: false, error: `Type MIME non autorisé: ${declaredType}` };
   }
 
-  // Vérifier la taille maximale
-  const maxSize = MAX_SIZES[declaredType] || MAX_SIZES['image/jpeg'];
-  if (file.size > maxSize) {
+  // Vérifier la taille maximale acceptée (avant compression)
+  const maxAcceptedSize = MAX_ACCEPTED_SIZES[declaredType] || MAX_ACCEPTED_SIZES['image/jpeg'];
+  if (file.size > maxAcceptedSize) {
     return {
       valid: false,
-      error: `Fichier trop volumineux: ${(file.size / 1024 / 1024).toFixed(2)}MB (max: ${(maxSize / 1024 / 1024).toFixed(2)}MB)`,
+      error: `Fichier trop volumineux: ${(file.size / 1024 / 1024).toFixed(2)}MB (max accepté: ${(maxAcceptedSize / 1024 / 1024).toFixed(2)}MB). Veuillez réduire la taille du fichier avant l'upload.`,
     };
   }
+  
+  // Note: La compression automatique sera gérée côté client avant l'upload
 
   // Lire les magic bytes
   try {
@@ -164,14 +184,16 @@ export async function validateVideoFile(file: File): Promise<FileValidationResul
     return { valid: false, error: `Type MIME non autorisé: ${declaredType}` };
   }
 
-  // Vérifier la taille maximale
-  const maxSize = MAX_SIZES[declaredType] || MAX_SIZES['video/mp4'];
-  if (file.size > maxSize) {
+  // Vérifier la taille maximale acceptée (avant compression)
+  const maxAcceptedSize = MAX_ACCEPTED_SIZES[declaredType] || MAX_ACCEPTED_SIZES['video/mp4'];
+  if (file.size > maxAcceptedSize) {
     return {
       valid: false,
-      error: `Fichier trop volumineux: ${(file.size / 1024 / 1024).toFixed(2)}MB (max: ${(maxSize / 1024 / 1024).toFixed(2)}MB)`,
+      error: `Fichier trop volumineux: ${(file.size / 1024 / 1024).toFixed(2)}MB (max accepté: ${(maxAcceptedSize / 1024 / 1024).toFixed(2)}MB). Veuillez réduire la taille du fichier avant l'upload.`,
     };
   }
+  
+  // Note: La compression vidéo sera gérée côté serveur si nécessaire
 
   // Lire les magic bytes (plus pour les vidéos car elles peuvent avoir des headers plus longs)
   try {

@@ -20,6 +20,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   let newFiles: File[] = [];
   let singleFile: File | null = null;
   let videoFiles: File[] = [];
+  let replaceImageUrl: string | null = null;
   if (ct.includes('application/json')) {
     body = await req.json().catch(()=>({}));
   } else if (ct.includes('multipart/form-data')) {
@@ -29,9 +30,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       if (key === 'videoFiles' && value instanceof File) videoFiles.push(value);
     });
     singleFile = (fd.get('imageFile') as File) || null;
+    replaceImageUrl = (fd.get('replaceImageUrl') as string) || null;
     body = Object.fromEntries(fd.entries());
   } else if (ct.includes('application/x-www-form-urlencoded')) {
-    body = await req.formData().then(fd=>Object.fromEntries(fd.entries()));
+    const fd = await req.formData();
+    replaceImageUrl = (fd.get('replaceImageUrl') as string) || null;
+    body = Object.fromEntries(fd.entries());
   } else {
     body = await req.json().catch(()=>({}));
   }
@@ -146,14 +150,52 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   if (uploaded.length) finalImageUrl = uploaded[0];
 
   // Fusion photoUrls existants + nouveaux uploads
+  // IMPORTANT: photoUrls du body contient la liste complète des photos existantes
+  // On ajoute seulement les nouvelles uploadées, en évitant les doublons
   const listPhotos = toList(photoUrls);
   const existingPhotos = Array.isArray(listPhotos) ? listPhotos : [];
+  
+  // Débogage
+  console.log('📸 Photos existantes reçues:', existingPhotos.length);
+  console.log('📸 Photos uploadées:', uploaded.length);
+  
   let mergedPhotos = existingPhotos;
+  
   if (uploaded.length) {
-    mergedPhotos = Array.from(new Set([...(uploaded.length ? uploaded : []), ...existingPhotos]));
-  } else if (uploaded.length) {
-    mergedPhotos = uploaded;
+    if (replaceImageUrl) {
+      // Remplacer l'image spécifiée par la nouvelle
+      const index = existingPhotos.indexOf(replaceImageUrl);
+      if (index >= 0) {
+        // Remplacer à la même position
+        mergedPhotos = [...existingPhotos];
+        mergedPhotos[index] = uploaded[0];
+        // Ajouter les autres images uploadées à la fin si nécessaire (sans doublons)
+        if (uploaded.length > 1) {
+          const additional = uploaded.slice(1).filter(url => !mergedPhotos.includes(url));
+          mergedPhotos.push(...additional);
+        }
+      } else {
+        // Si l'URL n'est pas trouvée, ajouter à la fin (sans doublons)
+        const newPhotos = uploaded.filter(url => !existingPhotos.includes(url));
+        mergedPhotos = [...existingPhotos, ...newPhotos];
+      }
+    } else {
+      // Ajouter les nouvelles images à la fin (sans doublons)
+      // Filtrer les URLs déjà présentes dans existingPhotos
+      const newPhotos = uploaded.filter(url => !existingPhotos.includes(url));
+      if (newPhotos.length !== uploaded.length) {
+        console.warn('⚠️ Certaines images uploadées étaient déjà présentes, doublons évités');
+      }
+      mergedPhotos = [...existingPhotos, ...newPhotos];
+    }
   }
+  
+  // Débogage final
+  console.log('📸 Photos finales après fusion:', mergedPhotos.length);
+  console.log('📸 Doublons détectés:', mergedPhotos.length !== Array.from(new Set(mergedPhotos)).length);
+  
+  // S'assurer qu'il n'y a vraiment aucun doublon
+  mergedPhotos = Array.from(new Set(mergedPhotos));
 
   // Gestion de la relation City (comme dans POST, mais en mode update)
   let cityId: number | undefined;
@@ -193,7 +235,26 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         pricePm: derivedPricePm != null && derivedPricePm !== '' ? Number(derivedPricePm) : undefined,
         imageUrl: finalImageUrl,
         available: available != null ? (typeof available === 'string' ? (available === 'true' || available === 'on') : Boolean(available)) : undefined,
-        videoUrls: (() => { const arr = toList(videoUrls); const merged = Array.from(new Set([...(arr||[]), ...uploadedVideos])); return merged.length ? JSON.stringify(merged) : (arr ? null : undefined); })(),
+        videoUrls: (() => { 
+          const arr = toList(videoUrls) || [];
+          // Débogage
+          console.log('📹 Vidéos existantes reçues:', arr.length);
+          console.log('📹 Vidéos uploadées:', uploadedVideos.length);
+          
+          // Filtrer les vidéos déjà présentes pour éviter les doublons
+          const newVideos = uploadedVideos.filter(url => !arr.includes(url));
+          if (newVideos.length !== uploadedVideos.length) {
+            console.warn('⚠️ Certaines vidéos uploadées étaient déjà présentes, doublons évités');
+          }
+          const merged = [...arr, ...newVideos];
+          
+          // S'assurer qu'il n'y a vraiment aucun doublon
+          const uniqueMerged = Array.from(new Set(merged));
+          console.log('📹 Vidéos finales après fusion:', uniqueMerged.length);
+          console.log('📹 Doublons détectés:', merged.length !== uniqueMerged.length);
+          
+          return uniqueMerged.length ? JSON.stringify(uniqueMerged) : (arr.length ? null : undefined);
+        })(),
         photoUrls: mergedPhotos.length ? JSON.stringify(mergedPhotos) : null,
         avantagesFr: avantagesFr != null ? String(avantagesFr).trim() || null : undefined,
         avantagesEn: avantagesEn != null ? String(avantagesEn).trim() || null : undefined,
@@ -247,9 +308,47 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         }
       } catch {}
     })();
-    return NextResponse.json({ ok: true, imageUrl: finalImageUrl, photoUrls: mergedPhotos, videoUrls: (toList(videoUrls)||[]).concat(uploadedVideos) });
+    // Éviter les doublons dans la réponse pour videoUrls
+    const finalVideoUrls = (() => {
+      const arr = toList(videoUrls) || [];
+      const newVideos = uploadedVideos.filter(url => !arr.includes(url));
+      const merged = [...arr, ...newVideos];
+      // S'assurer qu'il n'y a vraiment aucun doublon
+      return Array.from(new Set(merged));
+    })();
+    
+    // S'assurer qu'il n'y a vraiment aucun doublon dans mergedPhotos aussi
+    const finalPhotoUrls = Array.from(new Set(mergedPhotos));
+    
+    // Toujours retourner du JSON, même pour les requêtes multipart/form-data
+    // Vérifier si c'est une requête fetch (avec header Accept: application/json)
+    const acceptHeader = req.headers.get('accept') || '';
+    const isFetchRequest = acceptHeader.includes('application/json') || ct.includes('application/json');
+    
+    // Pour les requêtes fetch, toujours retourner du JSON
+    if (isFetchRequest || !ct.includes('multipart/form-data')) {
+      return NextResponse.json({ 
+        ok: true, 
+        imageUrl: finalImageUrl, 
+        photoUrls: finalPhotoUrls, 
+        videoUrls: finalVideoUrls 
+      });
+    }
+    
+    // Pour les formulaires HTML classiques (sans header Accept), on peut faire une redirection
+    // Mais en production, on devrait toujours retourner du JSON pour éviter les problèmes
+    return NextResponse.json({ 
+      ok: true, 
+      imageUrl: finalImageUrl, 
+      photoUrls: finalPhotoUrls, 
+      videoUrls: finalVideoUrls 
+    });
   } catch (e) {
-    return NextResponse.json({ error: "failed" }, { status: 500 });
+    console.error('❌ Erreur lors de la mise à jour du bateau:', e);
+    return NextResponse.json({ 
+      error: "failed", 
+      message: e instanceof Error ? e.message : "Erreur lors de la mise à jour" 
+    }, { status: 500 });
   }
 }
 

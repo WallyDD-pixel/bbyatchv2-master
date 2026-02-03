@@ -27,7 +27,15 @@ export default function BoatSlider({ images }: { images: string[] }) {
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-black/5">
         {valid.map((src, i)=>(
           <div key={i} className={`absolute inset-0 transition-opacity duration-700 ${i===index? 'opacity-100':'opacity-0 pointer-events-none'}`}>
-            <Image src={src} alt={`media-${i+1}`} fill className="object-cover" priority={i===0} />
+            <Image 
+              src={src} 
+              alt={`media-${i+1}`} 
+              fill 
+              className="object-cover" 
+              priority={i===0}
+              loading={i===0 ? "eager" : "lazy"}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+            />
           </div>
         ))}
         {valid.length>1 && (

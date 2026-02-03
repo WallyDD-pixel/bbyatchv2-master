@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
+import ImageCropper from '@/components/ImageCropper';
 
 interface ImageItem {
   url: string;
@@ -54,6 +55,7 @@ export default function ImageGalleryManager({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isDragOverZone, setIsDragOverZone] = useState(false);
+  const [croppingImage, setCroppingImage] = useState<{ url: string; index: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const keepPhotosInputRef = useRef<HTMLInputElement>(null);
   const mainImageInputRef = useRef<HTMLInputElement>(null);
@@ -105,34 +107,72 @@ export default function ImageGalleryManager({
 
     console.log('📁 Fichiers sélectionnés:', files.length);
 
-    Array.from(files).forEach(file => {
-      if (!file.type.startsWith('image/')) {
-        console.log('❌ Fichier ignoré (pas une image):', file.name, file.type);
-        return;
-      }
-      
-      console.log('✅ Traitement du fichier image:', file.name, file.size, 'bytes');
-      
+    // Pour le premier fichier, proposer le recadrage
+    const firstFile = Array.from(files).find(f => f.type.startsWith('image/'));
+    if (firstFile) {
       const reader = new FileReader();
       reader.onload = (event) => {
         const url = event.target?.result as string;
         if (url) {
-          console.log('📷 Image convertie en Data URL, longueur:', url.length);
-          setImages(prev => {
-            const newImages = [...prev, { url, isMain: false, isTemp: true, file }];
-            console.log('📊 Nouvelles images dans l\'état:', newImages.length);
-            return newImages;
+          // Proposer le recadrage pour le premier fichier
+          setCroppingImage({ url, index: images.length });
+          // Traiter les autres fichiers normalement
+          Array.from(files).slice(1).forEach(file => {
+            if (!file.type.startsWith('image/')) return;
+            const reader2 = new FileReader();
+            reader2.onload = (ev) => {
+              const url2 = ev.target?.result as string;
+              if (url2) {
+                setImages(prev => [...prev, { url: url2, isMain: false, isTemp: true, file }]);
+              }
+            };
+            reader2.readAsDataURL(file);
           });
         }
       };
-      reader.onerror = (error) => {
-        console.error('❌ Erreur lors de la lecture du fichier:', error);
-      };
-      reader.readAsDataURL(file);
-    });
+      reader.readAsDataURL(firstFile);
+    }
 
     // Reset input
     e.target.value = '';
+  };
+
+  const handleCropNewImage = (croppedFile: File) => {
+    if (!croppingImage) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const url = event.target?.result as string;
+      if (url) {
+        setImages(prev => {
+          const newImages = [...prev, { url, isMain: false, isTemp: true, file: croppedFile }];
+          return newImages;
+        });
+      }
+    };
+    reader.readAsDataURL(croppedFile);
+    setCroppingImage(null);
+  };
+
+  const handleCropExistingImage = async (croppedFile: File) => {
+    if (!croppingImage) return;
+    
+    const index = croppingImage.index;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const url = event.target?.result as string;
+      if (url) {
+        setImages(prev => {
+          const newImages = [...prev];
+          if (newImages[index]) {
+            newImages[index] = { ...newImages[index], url, file: croppedFile };
+          }
+          return newImages;
+        });
+      }
+    };
+    reader.readAsDataURL(croppedFile);
+    setCroppingImage(null);
   };
 
   // Gestion du drag & drop de fichiers depuis l'extérieur
@@ -309,8 +349,20 @@ export default function ImageGalleryManager({
   };
 
   return (
-    <div className="grid gap-3">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <>
+      {croppingImage && (
+        <ImageCropper
+          imageUrl={croppingImage.url}
+          aspectRatio={1}
+          locale={locale}
+          onCrop={croppingImage.index >= images.length ? handleCropNewImage : handleCropExistingImage}
+          onCancel={() => {
+            setCroppingImage(null);
+          }}
+        />
+      )}
+      <div className="grid gap-3">
+        <div className="flex items-center justify-between flex-wrap gap-3">
         <p className="text-sm font-medium">
           {locale === 'fr' ? 'Galerie images' : 'Image gallery'}
         </p>
@@ -415,18 +467,42 @@ export default function ImageGalleryManager({
                 </div>
               )}
               
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  console.log('🗑️ Clic sur suppression, index:', index, 'image URL:', image.url.substring(image.url.length - 30));
-                  removeImage(index);
-                }}
-                className="hidden group-hover:flex absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white items-center justify-center text-xs z-20 hover:bg-red-700 transition-colors shadow-sm"
-              >
-                ✕
-              </button>
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCroppingImage({ url: image.url, index });
+                  }}
+                  className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                >
+                  {locale === 'fr' ? 'Recadrer' : 'Crop'}
+                </button>
+                {!image.isMain && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAsMainImage(index);
+                    }}
+                    className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                  >
+                    {locale === 'fr' ? 'Principale' : 'Main'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    console.log('🗑️ Clic sur suppression, index:', index, 'image URL:', image.url.substring(image.url.length - 30));
+                    removeImage(index);
+                  }}
+                  className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                >
+                  {locale === 'fr' ? 'Supprimer' : 'Remove'}
+                </button>
+              </div>
               
               {!image.isMain && (
                 <button
@@ -511,5 +587,6 @@ export default function ImageGalleryManager({
         defaultValue=""
       />
     </div>
+    </>
   );
 }

@@ -76,7 +76,16 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
         {boats.map(b => (
           <a href={`/boats/${b.slug}`} key={b.id} className="block rounded-2xl bg-white shadow-md hover:shadow-lg transition-shadow border border-black/10 overflow-hidden group">
             <div className="relative h-44 sm:h-52">
-              {b.imageUrl && <Image src={b.imageUrl} alt={b.name} fill className="object-cover group-hover:scale-105 transition-transform" />}
+              {b.imageUrl && (
+                <Image 
+                  src={b.imageUrl} 
+                  alt={b.name} 
+                  fill 
+                  className="object-cover group-hover:scale-105 transition-transform" 
+                  loading="lazy"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                />
+              )}
               <div className="absolute right-3 top-3 flex flex-col items-end gap-1">
                 {(() => {
                   // Calculer le prix à partir de (demi-journée)

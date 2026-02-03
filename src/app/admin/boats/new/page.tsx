@@ -5,6 +5,8 @@ import Footer from "@/components/Footer";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from 'next/link';
 import BoatNewClient from './BoatNewClient';
+import BoatMediaUpload from './BoatMediaUpload';
+import BoatCreateForm from './BoatCreateForm';
 
 export default async function AdminBoatsNewPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = await getServerSession() as any;
@@ -25,7 +27,7 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
           <h1 className="text-2xl font-bold">{locale === "fr" ? "Nouveau bateau" : "New boat"}</h1>
           <Link href="/admin/boats" className="text-sm rounded-full border border-black/15 px-3 h-9 inline-flex items-center hover:bg-black/5">← {locale === "fr" ? "Retour" : "Back"}</Link>
         </div>
-        <form id="boat-create" className="mt-6 rounded-2xl border border-black/10 bg-white p-6 shadow-sm space-y-6" action="/api/admin/boats" method="post" encType="multipart/form-data">
+        <BoatCreateForm locale={locale}>
           {/* Informations de base */}
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Informations de base" : "Basic Information"}</h2>
@@ -186,27 +188,7 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
             </div>
           </div>
           {/* Médias */}
-          <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Médias" : "Media"}</h2>
-            <div className="grid gap-4">
-              <label className="grid gap-1 text-sm">
-                <span>{locale === "fr" ? "Images (une ou plusieurs)" : "Images (one or many)"}</span>
-                <input name="imageFiles" id="imageFiles" type="file" multiple accept="image/*" className="h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:hover:bg-blue-700 file:text-white file:cursor-pointer" />
-                <p className="text-xs text-black/60">{locale === "fr" ? "La première deviendra l'image principale." : "The first becomes the main image."}</p>
-              </label>
-              <div id="images-preview" className="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
-              <label className="grid gap-1 text-sm">
-                <span>{locale === "fr" ? "Vidéos" : "Videos"}</span>
-                <input name="videoFiles" type="file" multiple accept="video/*" className="h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:hover:bg-blue-700 file:text-white file:cursor-pointer" />
-                <p className="text-xs text-black/60">{locale === "fr" ? "Formats acceptés: MP4, WebM, OGG (max 100MB par fichier)" : "Accepted formats: MP4, WebM, OGG (max 100MB per file)"}</p>
-              </label>
-              <label className="grid gap-1 text-sm">
-                <span>{locale === "fr" ? "Photos externes (URLs, virgules ou JSON)" : "External photos (URLs, comma or JSON)"}</span>
-                <textarea name="photoUrls" id="photoUrls" className="min-h-[90px] rounded-lg border border-black/15 p-3 text-sm" placeholder="https://...jpg, https://...png" />
-              </label>
-              <div id="photos-preview" className="grid grid-cols-2 gap-2"></div>
-            </div>
-          </div>
+          <BoatMediaUpload locale={locale} />
 
           {/* Disponibilité */}
           <div className="space-y-4">
@@ -222,14 +204,10 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
             <p className="text-xs text-black/50">{locale==='fr'? 'Ajoutez des options payantes (ex: Skipper, Carburant, Paddle).':'Add paid options (e.g. Skipper, Fuel, Paddle).'} </p>
             <BoatNewClient locale={locale} />
           </div>
-          <div className="flex justify-end gap-2">
-            <Link href="/admin/boats" className="rounded-full h-10 px-4 border border-black/15 bg-white hover:bg-black/5">{locale === "fr" ? "Annuler" : "Cancel"}</Link>
-            <button className="rounded-full h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white transition-colors">{locale === "fr" ? "Créer" : "Create"}</button>
-          </div>
-        </form>
+        </BoatCreateForm>
       </main>
       <Footer locale={locale} t={t} />
-      <script dangerouslySetInnerHTML={{ __html: `(() => { const filesInput = document.getElementById('imageFiles'); const imagesWrap = document.getElementById('images-preview'); const photosInput = document.getElementById('photoUrls'); const photosWrap = document.getElementById('photos-preview'); const nameInput = document.getElementById('boat-name'); const slugInput = document.getElementById('boat-slug'); const parseList = (s) => { if(!s) return []; s=s.trim(); if(!s) return []; if(s.startsWith('[') && s.endsWith(']')) { try { const arr = JSON.parse(s); return Array.isArray(arr) ? arr : []; } catch { return []; } } return s.split(',').map(x=>x.trim()).filter(Boolean); }; const slugify = (str) => str.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-'); if(nameInput && slugInput){ nameInput.addEventListener('input', ()=>{ slugInput.value = slugify(nameInput.value); }); } if(filesInput){ filesInput.addEventListener('change', ()=>{ imagesWrap.innerHTML=''; const files = filesInput.files; if(!files) return; Array.from(files).forEach((f,i)=>{ if(!f.type.startsWith('image/')) return; const reader=new FileReader(); reader.onload = (ev)=>{ const d=document.createElement('div'); d.className='relative rounded-md overflow-hidden border border-black/10'; const im=document.createElement('img'); im.src=ev.target?.result||''; im.alt='img'+i; im.className='w-full h-32 object-cover'; d.appendChild(im); imagesWrap.appendChild(d); }; reader.readAsDataURL(f); }); }); } if(photosInput){ const updatePhotos=()=>{ const urls = parseList(photosInput.value); photosWrap.innerHTML=''; urls.forEach(u=>{ const d=document.createElement('div'); d.className='rounded-md overflow-hidden border border-black/10'; const im=document.createElement('img'); im.src=u; im.alt='photo'; im.className='w-full h-28 object-cover'; d.appendChild(im); photosWrap.appendChild(d); }); }; photosInput.addEventListener('input', updatePhotos); } })();` }} />
+      <script dangerouslySetInnerHTML={{ __html: `(() => { const nameInput = document.getElementById('boat-name'); const slugInput = document.getElementById('boat-slug'); const slugify = (str) => str.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-'); if(nameInput && slugInput){ nameInput.addEventListener('input', ()=>{ slugInput.value = slugify(nameInput.value); }); } })();` }} />
     </div>
   );
 }

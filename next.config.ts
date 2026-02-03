@@ -15,7 +15,14 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false, // Garder la vérification TypeScript active
   },
 
-  // Configuration des images (pour Next.js Image component)
+  // Optimisations de performance
+  compress: true, // Activer la compression gzip
+  poweredByHeader: false, // Retirer le header X-Powered-By pour la sécurité
+  
+  // Optimisation du bundle
+  swcMinify: true, // Utiliser SWC pour la minification (plus rapide que Terser)
+  
+  // Optimisation des images
   images: {
     remotePatterns: [
       {
@@ -29,7 +36,15 @@ const nextConfig: NextConfig = {
         pathname: '/storage/v1/object/public/**',
       },
     ],
+    // Formats modernes pour meilleure compression
+    formats: ['image/avif', 'image/webp'],
+    // Tailles d'images optimisées
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Qualité par défaut
+    minimumCacheTTL: 60,
   },
+
 
   // Headers de sécurité
   async headers() {
@@ -72,6 +87,7 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: https: blob:",
+              "media-src 'self' https: blob: data:",
               "font-src 'self' https://fonts.gstatic.com data:",
               "connect-src 'self' https://*.supabase.co https://api.stripe.com http://localhost:* ws://localhost:* wss://localhost:*",
               "frame-src https://js.stripe.com https://hooks.stripe.com",

@@ -23,10 +23,10 @@ export default function AboutUsSection({ settings, locale }: { settings: any, lo
             {aboutUsText}
           </p>
           <div className="mt-6 flex flex-wrap gap-3 text-[11px] sm:text-xs">
-            <span className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 font-medium">⚓ {locale==='fr'? 'Expertise locale':'Local expertise'}</span>
-            <span className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 font-medium">🛥️ {locale==='fr'? 'Flotte sélectionnée':'Curated fleet'}</span>
-            <span className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 font-medium">🤝 {locale==='fr'? 'Service personnalisé':'Tailored service'}</span>
-            <span className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 font-medium">🌅 {locale==='fr'? 'Expériences mémorables':'Memorable moments'}</span>
+            <span className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 font-medium">{locale==='fr'? 'Expertise locale':'Local expertise'}</span>
+            <span className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 font-medium">{locale==='fr'? 'Flotte sélectionnée':'Curated fleet'}</span>
+            <span className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 font-medium">{locale==='fr'? 'Service personnalisé':'Tailored service'}</span>
+            <span className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 font-medium">{locale==='fr'? 'Expériences mémorables':'Memorable moments'}</span>
           </div>
         </div>
         <div className="absolute -right-10 -bottom-10 hidden md:block opacity-30 pointer-events-none">

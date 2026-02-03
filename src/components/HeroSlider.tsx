@@ -58,6 +58,8 @@ export default function HeroSlider({ title, subtitle, imageUrl, images }: HeroSl
 						fill
 						className="object-cover"
 						priority={i === 0}
+						loading={i === 0 ? "eager" : "lazy"}
+						sizes="100vw"
 					/>
 					<div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.25),rgba(0,0,0,0.35))]" />
 				</div>

@@ -47,7 +47,7 @@ module.exports = {
         NODE_OPTIONS: '--max-old-space-size=1536', // Limité à 1.5GB pour laisser de la mémoire au système
       },
       // Limites de mémoire et CPU pour isoler l'application
-      max_memory_restart: '1536M', // Redémarrer si > 1.5GB (laisse ~400MB pour le système)
+      // Note: max_memory_restart peut causer des problèmes, on utilise NODE_OPTIONS à la place
       instances: 1,
       exec_mode: 'fork',
       // Limites de ressources

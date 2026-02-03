@@ -52,7 +52,6 @@ export default async function AboutPage({ searchParams }: { searchParams?: Promi
                 />
               ) : (
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-200/30 to-blue-100/10 flex items-center justify-center">
-                  <span className="text-6xl opacity-40">⛵</span>
                 </div>
               )}
             </div>
@@ -80,28 +79,24 @@ export default async function AboutPage({ searchParams }: { searchParams?: Promi
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
-                icon: '🛡️',
                 title: locale === 'fr' ? 'Sécurité' : 'Safety',
                 desc: (settings as any)?.[locale === 'fr' ? 'aboutValuesSafetyFr' : 'aboutValuesSafetyEn'] || (locale === 'fr' 
                   ? 'La sécurité de nos clients et de nos équipages est notre priorité absolue. Tous nos bateaux sont régulièrement inspectés et conformes aux normes les plus strictes.'
                   : 'The safety of our clients and crews is our absolute priority. All our boats are regularly inspected and comply with the strictest standards.')
               },
               {
-                icon: '✨',
                 title: locale === 'fr' ? 'Confort' : 'Comfort',
                 desc: (settings as any)?.[locale === 'fr' ? 'aboutValuesComfortFr' : 'aboutValuesComfortEn'] || (locale === 'fr' 
                   ? 'Nous sélectionnons uniquement des yachts offrant un confort optimal, avec des équipements modernes et des espaces aménagés pour votre bien-être.'
                   : 'We only select yachts offering optimal comfort, with modern equipment and spaces designed for your well-being.')
               },
               {
-                icon: '🌊',
                 title: locale === 'fr' ? 'Authenticité' : 'Authenticity',
                 desc: (settings as any)?.[locale === 'fr' ? 'aboutValuesAuthFr' : 'aboutValuesAuthEn'] || (locale === 'fr' 
                   ? 'Nous privilégions des expériences authentiques qui vous connectent véritablement à la Méditerranée, sa culture et ses paysages exceptionnels.'
                   : 'We favor authentic experiences that truly connect you to the Mediterranean, its culture and exceptional landscapes.')
               },
               {
-                icon: '😊',
                 title: locale === 'fr' ? 'Plaisir' : 'Pleasure',
                 desc: (settings as any)?.[locale === 'fr' ? 'aboutValuesPleasureFr' : 'aboutValuesPleasureEn'] || (locale === 'fr' 
                   ? 'Chaque sortie en mer doit être un moment de plaisir et de détente. Notre équipe s\'engage à créer des souvenirs inoubliables.'
@@ -109,7 +104,6 @@ export default async function AboutPage({ searchParams }: { searchParams?: Promi
               }
             ].map((value, i) => (
               <div key={i} className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
-                <div className="text-4xl mb-4">{value.icon}</div>
                 <h3 className="text-lg font-bold text-black/90 mb-2">{value.title}</h3>
                 <p className="text-sm text-black/70 leading-relaxed">{value.desc}</p>
               </div>
@@ -129,7 +123,6 @@ export default async function AboutPage({ searchParams }: { searchParams?: Promi
                 />
               ) : (
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-200/30 to-blue-100/10 flex items-center justify-center">
-                  <span className="text-6xl opacity-40">👥</span>
                 </div>
               )}
             </div>
@@ -164,9 +157,6 @@ export default async function AboutPage({ searchParams }: { searchParams?: Promi
               if (imageUrls.length === 0) {
                 return [1, 2, 3, 4, 5, 6].map((i) => (
                   <div key={i} className="relative h-48 rounded-xl overflow-hidden border border-black/10 bg-gradient-to-br from-[color:var(--primary)]/10 to-white shadow-sm">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-4xl opacity-30">📸</span>
-                    </div>
                   </div>
                 ));
               }

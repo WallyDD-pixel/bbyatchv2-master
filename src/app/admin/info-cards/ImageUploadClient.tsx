@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import ImageCropper from "@/components/ImageCropper";
 
 interface ImageUploadClientProps {
   locale: "fr" | "en";
@@ -7,6 +8,7 @@ interface ImageUploadClientProps {
 }
 
 export default function ImageUploadClient({ locale, existingImageUrl }: ImageUploadClientProps) {
+  const [croppingImage, setCroppingImage] = useState<string | null>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewImgRef = useRef<HTMLImageElement>(null);
@@ -142,10 +144,41 @@ export default function ImageUploadClient({ locale, existingImageUrl }: ImageUpl
     }
   };
 
+  const handleCrop = (croppedFile: File) => {
+    setCroppingImage(null);
+    // Mettre à jour le fichier dans l'input
+    if (fileInputRef.current) {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(croppedFile);
+      fileInputRef.current.files = dataTransfer.files;
+      // Déclencher l'événement change pour mettre à jour la prévisualisation
+      const event = new Event('change', { bubbles: true });
+      fileInputRef.current.dispatchEvent(event);
+    }
+  };
+
   return (
-    <div className="grid gap-2 text-sm">
-      <span>{locale === "fr" ? "Image" : "Image"}</span>
-      <input ref={hiddenImageUrlRef} type="hidden" name="imageUrl" value={existingImageUrl || ""} />
+    <>
+      {croppingImage && (
+        <ImageCropper
+          imageUrl={croppingImage}
+          aspectRatio={1}
+          locale={locale}
+          onCrop={handleCrop}
+          onCancel={() => {
+            setCroppingImage(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+            setPreviewUrl(existingImageUrl || null);
+            setHasImage(!!existingImageUrl);
+            setIsNewImage(false);
+          }}
+        />
+      )}
+      <div className="grid gap-2 text-sm">
+        <span>{locale === "fr" ? "Image" : "Image"}</span>
+        <input ref={hiddenImageUrlRef} type="hidden" name="imageUrl" value={existingImageUrl || ""} />
       <div
         ref={dropZoneRef}
         className={`relative h-48 rounded-lg border border-dashed border-black/25 flex flex-col items-center justify-center text-xs text-black/60 cursor-pointer bg-black/[0.02] hover:bg-black/[0.04] transition ${
@@ -203,12 +236,26 @@ export default function ImageUploadClient({ locale, existingImageUrl }: ImageUpl
               alt=""
               className="absolute inset-0 w-full h-full object-cover rounded-lg"
             />
-            <div
-              ref={removeBtnRef}
-              className="absolute top-2 right-2 bg-white/80 backdrop-blur px-2 py-0.5 rounded text-[10px] font-medium shadow border border-black/10 cursor-pointer hover:bg-white z-10"
-              onClick={handleRemove}
-            >
-              ×
+            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (previewUrl) {
+                    setCroppingImage(previewUrl);
+                  }
+                }}
+                className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+              >
+                {locale === "fr" ? "Recadrer" : "Crop"}
+              </button>
+              <div
+                ref={removeBtnRef}
+                className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 cursor-pointer"
+                onClick={handleRemove}
+              >
+                {locale === "fr" ? "Supprimer" : "Remove"}
+              </div>
             </div>
           </>
         )}

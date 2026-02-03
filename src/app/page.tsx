@@ -1,20 +1,35 @@
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import HeroSlider from "@/components/HeroSlider";
 import SearchBarClient from "@/components/SearchBarClient";
 import { messages, type Locale } from "@/i18n/messages";
-import ExperiencesSection from "@/components/ExperiencesSection";
 import HeaderBar from "@/components/HeaderBar";
-import BoatsSection from "@/components/BoatsSection";
-import GallerySection from "@/components/GallerySection";
 import Footer from "@/components/Footer";
-import AboutUsSection from "@/components/AboutUsSection";
-import WhyChooseSection from "@/components/WhyChooseSection";
-import InfoCardsSection from "@/components/InfoCardsSection";
-import ExperienceBoatsSection from "@/components/ExperienceBoatsSection";
 import { prisma } from '@/lib/prisma';
-import { getLabelsWithSettings } from '@/lib/settings';
 
-export const dynamic = 'force-dynamic'; // Force dynamic rendering to avoid cache issues
+// Lazy loading des sections pour améliorer le temps de chargement initial
+const ExperiencesSection = dynamic(() => import("@/components/ExperiencesSection"), {
+  loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
+});
+const BoatsSection = dynamic(() => import("@/components/BoatsSection"), {
+  loading: () => <div className="h-96 animate-pulse bg-gray-100 rounded-2xl" />,
+});
+const GallerySection = dynamic(() => import("@/components/GallerySection"), {
+  loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
+});
+const AboutUsSection = dynamic(() => import("@/components/AboutUsSection"), {
+  loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
+});
+const InfoCardsSection = dynamic(() => import("@/components/InfoCardsSection"), {
+  loading: () => <div className="h-48 animate-pulse bg-gray-100 rounded-2xl" />,
+});
+const ExperienceBoatsSection = dynamic(() => import("@/components/ExperienceBoatsSection"), {
+  loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
+});
+
+// ISR: Revalider la page toutes les 60 secondes (1 minute)
+// Cela permet un bon équilibre entre performance et fraîcheur des données
+export const revalidate = 60;
 
 export default async function Home({
   searchParams,
@@ -25,8 +40,11 @@ export default async function Home({
   const locale: Locale = resolvedSearchParams.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 
-  // Charger les settings dynamiques
-  const settings = await prisma.settings.findFirst();
+  // Charger les settings dynamiques en parallèle avec les autres données
+  // Utiliser Promise.all pour paralléliser les requêtes
+  const [settings] = await Promise.all([
+    prisma.settings.findFirst(),
+  ]);
 
   return (
     <div className="min-h-screen flex flex-col">

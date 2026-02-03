@@ -44,21 +44,84 @@ export async function POST(req: Request) {
 
   // Gestion upload image "Pourquoi choisir" vers Supabase Storage avec validation
   let whyChooseImageUrl: string | undefined;
-  if (whyChooseImageFile && whyChooseImageFile instanceof File && whyChooseImageFile.size > 0) {
+  
+  // Vérifier si une URL d'image externe a été fournie
+  const whyChooseImageUrlInput = (data.get('whyChooseImageUrl') || '').toString().trim();
+  if (whyChooseImageUrlInput && (whyChooseImageUrlInput.startsWith('http://') || whyChooseImageUrlInput.startsWith('https://'))) {
+    try {
+      const { downloadAndStoreImage } = await import('@/lib/download-image');
+      const downloadResult = await downloadAndStoreImage(whyChooseImageUrlInput, 'homepage');
+      
+      if (downloadResult.success && downloadResult.url) {
+        whyChooseImageUrl = downloadResult.url;
+        console.log(`✅ Image externe téléchargée et stockée: ${whyChooseImageUrl}`);
+      } else {
+        console.error(`❌ Erreur lors du téléchargement de l'image externe: ${downloadResult.error}`);
+        return NextResponse.json(
+          { 
+            error: 'Erreur lors de la sauvegarde',
+            message: `Impossible de télécharger l'image depuis l'URL: ${downloadResult.error || 'Erreur inconnue'}`,
+          },
+          { status: 400 }
+        );
+      }
+    } catch (e: any) {
+      console.error('Error downloading external image:', e?.message || e);
+      return NextResponse.json(
+        { 
+          error: 'Erreur lors de la sauvegarde',
+          message: `Erreur lors du téléchargement de l'image: ${e?.message || 'Erreur inconnue'}`,
+        },
+        { status: 500 }
+      );
+    }
+  } else if (whyChooseImageFile && whyChooseImageFile instanceof File && whyChooseImageFile.size > 0) {
     try {
       const { validateImageFile } = await import('@/lib/security/file-validation');
       const validation = await validateImageFile(whyChooseImageFile);
       if (validation.valid) {
-        const result = await uploadToSupabase(whyChooseImageFile, 'homepage');
+        // Essayer de compresser côté serveur si nécessaire
+        let fileToUpload = whyChooseImageFile;
+        if (whyChooseImageFile.size > 2 * 1024 * 1024) { // Si > 2MB, compresser
+          try {
+            const { compressImageServer } = await import('@/lib/image-compression-server');
+            fileToUpload = await compressImageServer(whyChooseImageFile, {
+              maxSizeMB: 2,
+              maxWidth: 1920,
+              maxHeight: 1920,
+              quality: 0.85,
+            });
+            console.log(`📦 Image compressée: ${(whyChooseImageFile.size / 1024 / 1024).toFixed(2)}MB → ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`);
+          } catch (compressionError) {
+            console.warn('⚠️ Compression côté serveur échouée, utilisation du fichier original');
+          }
+        }
+        
+        const result = await uploadToSupabase(fileToUpload, 'homepage');
         if (result) {
           whyChooseImageUrl = result.url;
         }
       } else {
         console.warn(`⚠️ WhyChoose image rejected: ${whyChooseImageFile.name} - ${validation.error}`);
+        // Retourner une erreur explicite pour l'utilisateur
+        return NextResponse.json(
+          { 
+            error: 'Erreur lors de la sauvegarde',
+            message: `Image rejetée: ${validation.error}. Veuillez utiliser une image de moins de 5MB.`,
+          },
+          { status: 400 }
+        );
       }
     } catch (e: any) {
       console.error('Error uploading whyChoose image to Supabase Storage:', e?.message || e);
-      // on ignore l'erreur d'upload, pas bloquant
+      // Retourner une erreur explicite
+      return NextResponse.json(
+        { 
+          error: 'Erreur lors de la sauvegarde',
+          message: `Erreur lors de l'upload de l'image: ${e?.message || 'Erreur inconnue'}. Vérifiez que l'image n'est pas trop volumineuse (max 5MB).`,
+        },
+        { status: 500 }
+      );
     }
   }
 
@@ -120,10 +183,16 @@ export async function POST(req: Request) {
   dataUpdate.aboutUsSubtitle = aboutUsSubtitle || null;
   dataUpdate.aboutUsText = aboutUsText || null;
 
-  // Ajouter l'URL de l'image "Pourquoi choisir" si uploadée
-  if (whyChooseImageUrl) {
+  // Ajouter l'URL de l'image "Pourquoi choisir" si uploadée ou téléchargée
+  // Si une URL vide est fournie explicitement, on supprime l'image
+  if (whyChooseImageUrlInput === '' && !whyChooseImageFile) {
+    // L'utilisateur veut supprimer l'image (champ URL vide et pas de fichier)
+    dataUpdate.whyChooseImageUrl = null;
+  } else if (whyChooseImageUrl) {
+    // Nouvelle image téléchargée ou uploadée
     dataUpdate.whyChooseImageUrl = whyChooseImageUrl;
   }
+  // Sinon, on garde l'image existante (pas de modification)
 
   if (uploadedUrls.length > 0) {
     const current: any = await prisma.settings.findFirst();

@@ -246,9 +246,13 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
               try {
                 if (boat.videoUrls) {
                   const parsed = typeof boat.videoUrls === 'string' ? JSON.parse(boat.videoUrls) : boat.videoUrls;
-                  return Array.isArray(parsed) ? parsed : [];
+                  const videos = Array.isArray(parsed) ? parsed : [];
+                  console.log('📹 Vidéos récupérées pour le bateau:', { raw: boat.videoUrls, parsed, videos });
+                  return videos;
                 }
-              } catch {}
+              } catch (e) {
+                console.error('❌ Erreur lors du parsing des vidéos:', e);
+              }
               return [];
             })()}
           />

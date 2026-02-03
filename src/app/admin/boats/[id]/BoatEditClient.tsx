@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState, useCallback, useRef } from "react";
+import ImageCropper from "@/components/ImageCropper";
 
 export default function BoatEditClient({ boat, locale }: { boat: any; locale: "fr" | "en" }) {
   // S'assurer que skipperRequired est true par défaut si non défini
@@ -25,6 +26,8 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [videosList, setVideosList] = useState<string[]>(() => Array.isArray(boat.videoUrls) ? boat.videoUrls : []);
+  const [croppingImage, setCroppingImage] = useState<string | null>(null);
+  const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
   const [options, setOptions] = useState<any[]>(() => (boat.options || []).map((o:any)=> ({ ...o, _key: 'db-'+o.id })));
   const [experiences, setExperiences] = useState<any[]>(() => boat.allExperiences || []);
   const [boatExperiences, setBoatExperiences] = useState<any[]>(() => (boat.boatExperiences||[]).map((be:any)=> ({ experienceId: be.experienceId, price: be.price ?? '', _key:'be-'+be.experienceId })));
@@ -177,7 +180,8 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     setUploading(true);
     try {
       const fd = new FormData();
-      // Conserver ordre courant (sera fusionné côté serveur en préfixant uploads ou Set). Pour garder ordre + nouvelles à la fin, on envoie la liste.
+      // IMPORTANT: Envoyer seulement les photos existantes (sans les nouvelles qui vont être uploadées)
+      // Le serveur ajoutera automatiquement les nouvelles uploadées
       fd.append('photoUrls', JSON.stringify(photos));
       // Ajout champs simples indispensables
       fd.append('slug', form.slug || '');
@@ -213,6 +217,79 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     }
   };
 
+  // Recadrer une image existante
+  const handleCropImage = async (croppedFile: File, originalUrl: string, index: number) => {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('photoUrls', JSON.stringify(photos));
+      fd.append('slug', form.slug || '');
+      fd.append('name', form.name || '');
+      if (form.city) fd.append('city', form.city);
+      if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
+      if (form.priceAm != null) fd.append('priceAm', String(form.priceAm));
+      if (form.pricePm != null) fd.append('pricePm', String(form.pricePm));
+      if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
+      if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
+      if (form.priceAgencyAm != null) fd.append('priceAgencyAm', String(form.priceAgencyAm));
+      if (form.priceAgencyPm != null) fd.append('priceAgencyPm', String(form.priceAgencyPm));
+      if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
+      if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
+      if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
+      if (videos.length) fd.append('videoUrls', JSON.stringify(videos));
+      
+      // Uploader l'image recadrée
+      fd.append('imageFiles', croppedFile);
+      
+      // Indiquer quelle image remplacer
+      fd.append('replaceImageUrl', originalUrl);
+      
+      const res = await fetch(`/api/admin/boats/${boat.id}`, { 
+        method: 'PUT', 
+        body: fd,
+        headers: { 'Accept': 'application/json' },
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'upload_failed' }));
+        throw new Error(errorData.error || errorData.message || 'upload_failed');
+      }
+      
+      // Vérifier que la réponse est bien du JSON
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        console.error('❌ Réponse non-JSON reçue:', contentType);
+        throw new Error('Réponse invalide du serveur');
+      }
+      
+      const data = await res.json();
+      
+      if (Array.isArray(data.photoUrls)) {
+        // Le serveur devrait avoir remplacé l'image, utiliser la nouvelle liste
+        setPhotos(data.photoUrls);
+        
+        // Si c'était l'image principale, trouver la nouvelle URL correspondante
+        if (form.imageUrl === originalUrl) {
+          // La nouvelle URL devrait être à la même position
+          const newUrl = data.photoUrls[index] || data.photoUrls[data.photoUrls.length - 1];
+          if (newUrl) {
+            setForm((f: typeof form) => ({ ...f, imageUrl: newUrl }));
+          }
+        }
+      }
+      
+      setCroppingImage(null);
+      setCroppingIndex(null);
+      alert(locale === 'fr' ? 'Image recadrée avec succès' : 'Image cropped successfully');
+    } catch (err: any) {
+      const errorMsg = err?.message || t.failed;
+      alert(errorMsg);
+      console.error('Erreur recadrage image:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // Sauvegarde ordre / meta (sans nouvel upload)
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,13 +300,30 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       const payload = { ...form, videoUrls: videosList, photoUrls: photos, options: cleanedOptions, experiences: cleanedExperiences };
       const res = await fetch(`/api/admin/boats/${boat.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("bad");
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'save_failed' }));
+        throw new Error(errorData.error || errorData.message || 'save_failed');
+      }
+      
+      // Vérifier que la réponse est bien du JSON
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        console.error('❌ Réponse non-JSON reçue:', contentType);
+        throw new Error('Réponse invalide du serveur');
+      }
+      
       alert(t.updated);
-    } catch (e) {
-      alert(t.failed);
+    } catch (e: any) {
+      const errorMsg = e?.message || t.failed;
+      alert(errorMsg);
+      console.error('Erreur sauvegarde:', e);
     } finally {
       setSaving(false);
     }
@@ -239,12 +333,22 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     if (!confirm("Are you sure?")) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/boats/${boat.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("bad");
+      const res = await fetch(`/api/admin/boats/${boat.id}`, { 
+        method: "DELETE",
+        headers: { 'Accept': 'application/json' },
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'delete_failed' }));
+        throw new Error(errorData.error || errorData.message || 'delete_failed');
+      }
+      
       alert(t.deleted);
-      window.location.href = "/admin/boats";
-    } catch (e) {
-      alert(t.failed);
+      router.push("/admin/boats");
+    } catch (e: any) {
+      const errorMsg = e?.message || t.failed;
+      alert(errorMsg);
+      console.error('Erreur suppression:', e);
     } finally {
       setSaving(false);
     }
@@ -320,23 +424,97 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
       if (videos.length) fd.append('videoUrls', JSON.stringify(videos));
       fd.append('imageFile', file);
-      const res = await fetch(`/api/admin/boats/${boat.id}`, { method: 'PUT', body: fd });
-      if (!res.ok) throw new Error('upload_failed');
+      const res = await fetch(`/api/admin/boats/${boat.id}`, { 
+        method: 'PUT', 
+        body: fd,
+        headers: { 'Accept': 'application/json' },
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'upload_failed' }));
+        throw new Error(errorData.error || errorData.message || 'upload_failed');
+      }
+      
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        console.error('❌ Réponse non-JSON reçue:', contentType);
+        throw new Error('Réponse invalide du serveur');
+      }
+      
       const data = await res.json();
       if (Array.isArray(data.photoUrls)) setPhotos(data.photoUrls);
       if (data.imageUrl) setForm((f: typeof form) => ({ ...f, imageUrl: data.imageUrl }));
-    } catch (err) {
-      alert(t.failed);
+    } catch (err: any) {
+      const errorMsg = err?.message || t.failed;
+      alert(errorMsg);
+      console.error('Erreur upload images:', err);
     } finally {
       setUploading(false);
       e.target.value='';
     }
   };
 
-  const addVideosUrlsFromText = () => {
+  const addVideosUrlsFromText = async () => {
     const arr = parseVideos(videoInput);
-    if (arr.length) setVideosList(v => Array.from(new Set([...v, ...arr])));
+    if (!arr.length) return;
+    
+    // Ajouter temporairement à l'état local pour l'affichage
+    const newList = Array.from(new Set([...videosList, ...arr]));
+    setVideosList(newList);
     setVideoInput('');
+    
+    // Sauvegarder immédiatement via l'API pour éviter les doublons
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('photoUrls', JSON.stringify(photos));
+      fd.append('slug', form.slug || '');
+      fd.append('name', form.name || '');
+      if (form.city) fd.append('city', form.city);
+      if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
+      if (form.priceAm != null) fd.append('priceAm', String(form.priceAm));
+      if (form.pricePm != null) fd.append('pricePm', String(form.pricePm));
+      if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
+      if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
+      if (form.priceAgencyAm != null) fd.append('priceAgencyAm', String(form.priceAgencyAm));
+      if (form.priceAgencyPm != null) fd.append('priceAgencyPm', String(form.priceAgencyPm));
+      if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
+      if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
+      if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
+      // Envoyer la nouvelle liste complète (le serveur évitera les doublons)
+      fd.append('videoUrls', JSON.stringify(newList));
+      
+      const res = await fetch(`/api/admin/boats/${boat.id}`, { 
+        method: 'PUT', 
+        body: fd,
+        headers: { 'Accept': 'application/json' },
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'save_failed' }));
+        throw new Error(errorData.error || errorData.message || 'save_failed');
+      }
+      
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        console.error('❌ Réponse non-JSON reçue:', contentType);
+        throw new Error('Réponse invalide du serveur');
+      }
+      
+      const data = await res.json();
+      if (Array.isArray(data.videoUrls)) {
+        // Utiliser la liste retournée par le serveur (sans doublons garantis)
+        setVideosList(data.videoUrls);
+      }
+    } catch (e: any) {
+      // En cas d'erreur, restaurer l'état précédent
+      setVideosList(videosList);
+      const errorMsg = e?.message || (locale === 'fr' ? 'Erreur lors de l\'ajout des vidéos' : 'Error adding videos');
+      alert(errorMsg);
+      console.error('Erreur ajout vidéos:', e);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const onUploadVideos = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -362,11 +540,33 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
       if (videosList.length) fd.append('videoUrls', JSON.stringify(videosList));
       Array.from(files).forEach(f => fd.append('videoFiles', f));
-      const res = await fetch(`/api/admin/boats/${boat.id}`, { method: 'PUT', body: fd });
-      if (!res.ok) throw new Error('upload_failed');
+      const res = await fetch(`/api/admin/boats/${boat.id}`, { 
+        method: 'PUT', 
+        body: fd,
+        headers: { 'Accept': 'application/json' },
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'upload_failed' }));
+        throw new Error(errorData.error || errorData.message || 'upload_failed');
+      }
+      
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        console.error('❌ Réponse non-JSON reçue:', contentType);
+        throw new Error('Réponse invalide du serveur');
+      }
+      
       const data = await res.json();
       if (Array.isArray(data.videoUrls)) setVideosList(data.videoUrls);
-    } catch (e) { alert(t.failed); } finally { setUploading(false); e.target.value=''; }
+    } catch (e: any) {
+      const errorMsg = e?.message || t.failed;
+      alert(errorMsg);
+      console.error('Erreur upload vidéos:', e);
+    } finally { 
+      setUploading(false); 
+      e.target.value=''; 
+    }
   };
 
   const removeVideo = (url: string) => {
@@ -385,7 +585,20 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-8">
+    <>
+      {croppingImage && croppingIndex !== null && (
+        <ImageCropper
+          imageUrl={croppingImage}
+          aspectRatio={1} // Ratio libre, peut être ajusté
+          locale={locale}
+          onCrop={(croppedFile) => handleCropImage(croppedFile, croppingImage, croppingIndex)}
+          onCancel={() => {
+            setCroppingImage(null);
+            setCroppingIndex(null);
+          }}
+        />
+      )}
+      <form onSubmit={onSubmit} className="space-y-8">
       {/* Lignes name / slug */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <label className="grid gap-1 text-sm">
@@ -616,8 +829,9 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
                       {t.main}
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 flex-wrap">
                     <button type="button" onClick={() => setMain(url)} className={`text-xs px-2 py-1 rounded ${form.imageUrl===url ? 'bg-green-500 text-white' : 'bg-white/80 text-black'}`}>{form.imageUrl===url ? t.main : t.setMain}</button>
+                    <button type="button" onClick={() => { setCroppingImage(url); setCroppingIndex(i); }} className="text-xs px-2 py-1 bg-blue-600 text-white rounded">{locale === 'fr' ? 'Recadrer' : 'Crop'}</button>
                     <button type="button" onClick={() => removePhoto(i)} className="text-xs px-2 py-1 bg-red-600 text-white rounded">{t.remove}</button>
                   </div>
                   <div className='absolute bottom-1 left-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded'>
@@ -815,5 +1029,6 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
         </button>
       </div>
     </form>
+    </>
   );
 }
