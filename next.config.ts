@@ -19,8 +19,7 @@ const nextConfig: NextConfig = {
   compress: true, // Activer la compression gzip
   poweredByHeader: false, // Retirer le header X-Powered-By pour la sécurité
   
-  // Optimisation du bundle
-  swcMinify: true, // Utiliser SWC pour la minification (plus rapide que Terser)
+  // Note: swcMinify n'est plus nécessaire dans Next.js 15 (SWC est toujours activé)
   
   // Optimisation des images
   images: {
