@@ -21,6 +21,8 @@ export default function AdminHomepageSettingsPage() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [orderDirty, setOrderDirty] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [croppingImage, setCroppingImage] = useState<string | null>(null);
+  const [croppingFile, setCroppingFile] = useState<File | null>(null);
 
   // Afficher un message de succès si présent dans l'URL
   useEffect(() => {
@@ -96,6 +98,24 @@ export default function AdminHomepageSettingsPage() {
 
       if (response.ok) {
         setToast({ message: "Paramètres sauvegardés avec succès", type: "success" });
+        
+        // Recharger les settings pour mettre à jour les images
+        const res = await fetch("/api/admin/homepage-settings");
+        const s = await res.json();
+        setSettings(s);
+        // Réinitialiser les prévisualisations
+        setMainSliderImagesPreview([]);
+        setFileInputKeys([0]);
+        // Recharger les images sauvegardées
+        if (s?.mainSliderImageUrls) {
+          try {
+            const arr = JSON.parse(s.mainSliderImageUrls);
+            if (Array.isArray(arr)) setSavedImages(arr);
+          } catch {}
+        }
+        // Scroll vers le haut
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
         router.push("/admin/homepage-settings?success=1");
         router.refresh();
       } else {
@@ -121,31 +141,38 @@ export default function AdminHomepageSettingsPage() {
     } finally {
       setSaving(false);
     }
-      // Recharger les settings pour mettre à jour les images
-      const res = await fetch("/api/admin/homepage-settings");
-      const s = await res.json();
-      setSettings(s);
-      // Réinitialiser les prévisualisations
-      setMainSliderImagesPreview([]);
-      setFileInputKeys([0]);
-      // Recharger les images sauvegardées
-      if (s?.mainSliderImageUrls) {
-        try {
-          const arr = JSON.parse(s.mainSliderImageUrls);
-          if (Array.isArray(arr)) setSavedImages(arr);
-        } catch {}
-      }
-      // Scroll vers le haut
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      setToast({ message: result.error || "Erreur lors de la sauvegarde", type: "error" });
+  };
+
+  const handleCrop = (croppedFile: File) => {
+    setCroppingImage(null);
+    setCroppingFile(null);
+    // Mettre à jour le fichier dans l'input
+    const input = document.querySelector<HTMLInputElement>('input[name="whyChooseImageFile"]');
+    if (input) {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(croppedFile);
+      input.files = dataTransfer.files;
+      // Mettre à jour la prévisualisation
+      const url = URL.createObjectURL(croppedFile);
+      setWhyChooseImagePreview(url);
     }
-    
-    setSaving(false);
   };
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
+      {croppingImage && (
+        <ImageCropper
+          imageUrl={croppingImage}
+          aspectRatio={16/9}
+          locale="fr"
+          onCrop={handleCrop}
+          onCancel={() => {
+            setCroppingImage(null);
+            setCroppingFile(null);
+            setWhyChooseImagePreview(settings?.whyChooseImageUrl || null);
+          }}
+        />
+      )}
       {toast && (
         <Toast
           message={toast.message}

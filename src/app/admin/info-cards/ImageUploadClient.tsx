@@ -261,5 +261,6 @@ export default function ImageUploadClient({ locale, existingImageUrl }: ImageUpl
         )}
       </div>
     </div>
+    </>
   );
 }
