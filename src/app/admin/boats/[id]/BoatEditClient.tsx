@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import ImageCropper from "@/components/ImageCropper";
 
 export default function BoatEditClient({ boat, locale }: { boat: any; locale: "fr" | "en" }) {
+  const router = useRouter();
   // S'assurer que skipperRequired est true par défaut si non défini
   const [form, setForm] = useState({ 
     ...boat, 
