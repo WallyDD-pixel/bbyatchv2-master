@@ -164,12 +164,13 @@ export default function BoatMediaCarousel({ images, videos = [] }: Props) {
                 onLoadStart={() => {
                   console.log('✅ Début du chargement vidéo:', media.url);
                 }}
-                onLoadedMetadata={() => {
+                onLoadedMetadata={(e) => {
+                  const target = e.target as HTMLVideoElement;
                   console.log('✅ Métadonnées vidéo chargées:', {
                     url: media.url,
-                    duration: (e.target as HTMLVideoElement).duration,
-                    videoWidth: (e.target as HTMLVideoElement).videoWidth,
-                    videoHeight: (e.target as HTMLVideoElement).videoHeight
+                    duration: target.duration,
+                    videoWidth: target.videoWidth,
+                    videoHeight: target.videoHeight
                   });
                 }}
                 onCanPlay={() => {
