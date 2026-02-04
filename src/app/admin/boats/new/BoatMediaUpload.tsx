@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { compressImageClient } from "@/lib/image-compression-client";
+import ImageCropper from "@/components/ImageCropper";
 
 interface BoatMediaUploadProps {
   locale: "fr" | "en";
@@ -11,6 +12,8 @@ export default function BoatMediaUpload({ locale }: BoatMediaUploadProps) {
   const [photoUrls, setPhotoUrls] = useState<string>("");
   const [photoUrlPreviews, setPhotoUrlPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [croppingImage, setCroppingImage] = useState<{ url: string; index: number } | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const imageFilesRef = useRef<HTMLInputElement>(null);
   const photoUrlsRef = useRef<HTMLTextAreaElement>(null);
 
@@ -114,6 +117,51 @@ export default function BoatMediaUpload({ locale }: BoatMediaUploadProps) {
       setCroppingImage(null);
       setPendingFiles([]);
     }
+  };
+
+  const handleCropExistingPreview = async (croppedFile: File, index: number) => {
+    if (!croppingImage) return;
+
+    // Compresser si nécessaire
+    let finalFile = croppedFile;
+    const targetSizeMB = 2;
+    if (croppedFile.size > targetSizeMB * 1024 * 1024) {
+      try {
+        finalFile = await compressImageClient(croppedFile, {
+          maxSizeMB: targetSizeMB,
+          maxWidth: 1920,
+          maxHeight: 1920,
+          quality: 0.85,
+        });
+      } catch (error) {
+        console.error('Erreur compression:', error);
+      }
+    }
+
+    // Mettre à jour la prévisualisation à l'index spécifié
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const url = ev.target?.result as string;
+      if (url) {
+        setImagePreviews(prev => {
+          const newPreviews = [...prev];
+          newPreviews[index] = url;
+          return newPreviews;
+        });
+        
+        // Mettre à jour l'input avec le fichier recadré
+        if (imageFilesRef.current?.files) {
+          const dataTransfer = new DataTransfer();
+          const files = Array.from(imageFilesRef.current.files);
+          files[index] = finalFile;
+          files.forEach(f => dataTransfer.items.add(f));
+          imageFilesRef.current.files = dataTransfer.files;
+        }
+      }
+    };
+    reader.readAsDataURL(finalFile);
+
+    setCroppingImage(null);
   };
 
   const handlePhotoUrlsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
