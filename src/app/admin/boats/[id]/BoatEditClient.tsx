@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import ImageCropper from "@/components/ImageCropper";
 
 export default function BoatEditClient({ boat, locale }: { boat: any; locale: "fr" | "en" }) {
