@@ -66,7 +66,9 @@ export async function compressImageServer(
     }
 
     // Créer un nouveau File avec le buffer compressé
-    const blob = new Blob([finalBuffer], { type: 'image/jpeg' });
+    // Convertir Buffer en Uint8Array pour compatibilité avec Blob
+    const uint8Array = new Uint8Array(finalBuffer);
+    const blob = new Blob([uint8Array], { type: 'image/jpeg' });
     return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
       type: 'image/jpeg',
     });
