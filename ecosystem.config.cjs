@@ -44,7 +44,7 @@ module.exports = {
         NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
         STRIPE_TEST_SK: process.env.STRIPE_TEST_SK,
         STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-        NODE_OPTIONS: '--max-old-space-size=768', // Limité à 768MB pour forcer le GC à nettoyer plus souvent et éviter les fuites
+        // Pas de limite de mémoire - laisser Next.js utiliser ce dont il a besoin
       },
       // Limites de mémoire et CPU pour isoler l'application
       // Note: max_memory_restart peut causer des problèmes, on utilise NODE_OPTIONS à la place

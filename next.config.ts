@@ -96,7 +96,7 @@ const nextConfig: NextConfig = {
               "frame-ancestors 'none'",
               process.env.NODE_ENV === 'production' ? "upgrade-insecure-requests" : "",
             ].filter(Boolean).join('; ')
-          }
+          },
         ],
       },
     ];
