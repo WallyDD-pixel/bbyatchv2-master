@@ -124,6 +124,13 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       
       if (validImageFiles.length > 0) {
         const urls = await uploadMultipleToSupabase(validImageFiles, 'boats');
+        if (urls.length === 0) {
+          return NextResponse.json({
+            error: 'image_upload_failed',
+            message: 'Échec de l\'upload vers le stockage. Vérifiez NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY et le bucket Supabase.',
+            details: 'Aucune URL retournée par Supabase Storage.',
+          }, { status: 500 });
+        }
         uploaded.push(...urls);
       }
     } else if (singleFile) {
@@ -133,7 +140,13 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         const validation = await validateImageFile(singleFile);
         if (validation.valid) {
           const result = await uploadMultipleToSupabase([singleFile], 'boats');
-          if (result.length > 0) uploaded.push(...result);
+          if (result.length === 0) {
+            return NextResponse.json({
+              error: 'image_upload_failed',
+              message: 'Échec de l\'upload vers le stockage. Vérifiez la configuration Supabase (URL, clé, bucket).',
+            }, { status: 500 });
+          }
+          uploaded.push(...result);
         } else {
           return NextResponse.json({
             error: 'image_upload_failed',
@@ -406,9 +419,11 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     });
   } catch (e) {
     console.error('❌ Erreur lors de la mise à jour du bateau:', e);
+    const msg = e instanceof Error ? e.message : 'Erreur lors de la mise à jour';
     return NextResponse.json({ 
-      error: "failed", 
-      message: e instanceof Error ? e.message : "Erreur lors de la mise à jour" 
+      error: 'image_upload_failed', 
+      message: msg,
+      details: process.env.NODE_ENV === 'development' ? (e instanceof Error ? e.stack : String(e)) : undefined,
     }, { status: 500 });
   }
 }

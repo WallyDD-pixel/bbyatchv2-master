@@ -206,8 +206,10 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
 
       const res = await fetch(`/api/admin/boats/${boat.id}`, { method: 'PUT', body: fd });
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: 'upload_failed' }));
-        const errorMsg = errorData.details || errorData.message || errorData.error || 'upload_failed';
+        const text = await res.text();
+        let errorData: { error?: string; message?: string; details?: string } = {};
+        try { errorData = JSON.parse(text); } catch { errorData = { error: 'upload_failed', message: locale === 'fr' ? `Erreur serveur (${res.status}). Réessayez ou vérifiez les logs.` : `Server error (${res.status}). Please retry or check logs.` }; }
+        const errorMsg = errorData.details || errorData.message || errorData.error || (locale === 'fr' ? 'Échec du téléversement des images.' : 'Image upload failed.');
         throw new Error(errorMsg);
       }
       const data = await res.json();
@@ -257,15 +259,16 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       });
       
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: 'upload_failed' }));
-        throw new Error(errorData.error || errorData.message || 'upload_failed');
+        const text = await res.text();
+        let errorData: { error?: string; message?: string; details?: string } = {};
+        try { errorData = JSON.parse(text); } catch { errorData = { message: locale === 'fr' ? `Erreur serveur (${res.status}). Réessayez.` : `Server error (${res.status}). Please retry.` }; }
+        throw new Error(errorData.details || errorData.message || errorData.error || 'upload_failed');
       }
       
-      // Vérifier que la réponse est bien du JSON
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
         console.error('❌ Réponse non-JSON reçue:', contentType);
-        throw new Error('Réponse invalide du serveur');
+        throw new Error(locale === 'fr' ? 'Réponse invalide du serveur.' : 'Invalid server response.');
       }
       
       const data = await res.json();
@@ -437,14 +440,16 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       });
       
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: 'upload_failed' }));
-        throw new Error(errorData.error || errorData.message || 'upload_failed');
+        const text = await res.text();
+        let errorData: { error?: string; message?: string; details?: string } = {};
+        try { errorData = JSON.parse(text); } catch { errorData = { message: locale === 'fr' ? `Erreur serveur (${res.status}). Réessayez.` : `Server error (${res.status}). Please retry.` }; }
+        throw new Error(errorData.details || errorData.message || errorData.error || 'upload_failed');
       }
       
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
         console.error('❌ Réponse non-JSON reçue:', contentType);
-        throw new Error('Réponse invalide du serveur');
+        throw new Error(locale === 'fr' ? 'Réponse invalide du serveur.' : 'Invalid server response.');
       }
       
       const data = await res.json();
