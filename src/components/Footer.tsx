@@ -184,14 +184,6 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
               </li>
               <li>
                 <Link 
-                  href={`/used-sale${locale === 'en' ? '?lang=en' : ''}`} 
-                  className="text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
-                >
-                  {t.nav_used_sale}
-                </Link>
-              </li>
-              <li>
-                <Link 
                   href={`/contact${locale === 'en' ? '?lang=en' : ''}`} 
                   className="text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
                 >

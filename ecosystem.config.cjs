@@ -44,10 +44,11 @@ module.exports = {
         NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
         STRIPE_TEST_SK: process.env.STRIPE_TEST_SK,
         STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-        // Pas de limite de mémoire - laisser Next.js utiliser ce dont il a besoin
+        NODE_OPTIONS: '--max-old-space-size=2048', // Limiter Node.js à 2GB pour éviter OOM
       },
-      // Limites de mémoire et CPU pour isoler l'application
-      // Note: max_memory_restart peut causer des problèmes, on utilise NODE_OPTIONS à la place
+      // Limites de mémoire pour éviter Out of Memory (OOM)
+      max_memory_restart: '2G', // Redémarrer si > 2GB
+      node_args: '--max-old-space-size=2048', // Limiter le heap Node.js à 2GB
       instances: 1,
       exec_mode: 'fork',
       // Limites de ressources

@@ -94,16 +94,22 @@ export default function BoatCreateForm({ locale, children }: BoatCreateFormProps
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'unknown_error' }));
-        let errorMessage = errorData.error || errorData.message || 'Erreur lors de la création';
+        let errorMessage = errorData.message || errorData.details || errorData.error || 'Erreur lors de la création';
         
         // Messages d'erreur traduits
-        if (errorMessage === 'missing_fields') {
+        if (errorData.error === 'missing_fields') {
           errorMessage = locale === "fr" ? "Champs manquants" : "Missing fields";
-        } else if (errorMessage === 'slug_unique') {
+        } else if (errorData.error === 'slug_unique') {
           errorMessage = locale === "fr" ? "Ce slug existe déjà" : "This slug already exists";
-        } else if (errorMessage === 'image_upload_failed') {
-          errorMessage = locale === "fr" ? "Erreur lors de l'upload des images" : "Error uploading images";
-        } else if (errorMessage === 'server_error') {
+        } else if (errorData.error === 'image_upload_failed') {
+          if (!errorData.message && !errorData.details) {
+            errorMessage = locale === "fr" ? "Erreur lors de l'upload des images" : "Error uploading images";
+          }
+        } else if (errorData.error === 'video_upload_failed') {
+          if (!errorData.message && !errorData.details) {
+            errorMessage = locale === "fr" ? "Erreur lors de l'upload des vidéos (formats: MP4, WebM, OGG, MOV, max 200 Mo)" : "Error uploading videos (formats: MP4, WebM, OGG, MOV, max 200MB)";
+          }
+        } else if (errorData.error === 'server_error') {
           errorMessage = locale === "fr" ? "Erreur serveur" : "Server error";
         }
         

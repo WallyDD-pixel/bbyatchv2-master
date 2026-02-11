@@ -370,6 +370,155 @@ sudo systemctl status nginx
 
 ---
 
+## 📊 MONITORING AVEC CLOUDSHELL
+
+### Accéder à la console PM2 depuis AWS CloudShell
+
+**⚠️ IMPORTANT :** PM2 n'est PAS installé sur CloudShell. Il est installé sur votre instance EC2. Vous devez d'abord vous connecter à l'instance EC2 via SSH.
+
+#### 1. Trouver l'IP de votre instance EC2
+
+Depuis CloudShell, exécutez ces commandes pour trouver votre instance :
+
+```bash
+# Lister toutes vos instances EC2 avec leur IP
+aws ec2 describe-instances \
+  --region eu-north-1 \
+  --query 'Reservations[*].Instances[*].[InstanceId,State.Name,PublicIpAddress,Tags[?Key==`Name`].Value|[0]]' \
+  --output table
+
+# Ou si vous connaissez le nom de votre instance (ex: preprod)
+aws ec2 describe-instances \
+  --region eu-north-1 \
+  --filters "Name=tag:Name,Values=*preprod*" \
+  --query 'Reservations[*].Instances[*].[InstanceId,State.Name,PublicIpAddress]' \
+  --output table
+```
+
+Notez l'**IP publique** (PublicIpAddress) de votre instance.
+
+#### 2. Télécharger/Uploader la clé SSH dans CloudShell
+
+**Option A : Si la clé est dans S3**
+```bash
+aws s3 cp s3://votre-bucket/bbyatchv6.pem ~/bbyatchv6.pem
+chmod 400 ~/bbyatchv6.pem
+```
+
+**Option B : Uploader la clé depuis votre machine**
+- Dans CloudShell, cliquez sur l'icône **Actions** (menu hamburger) → **Upload file**
+- Sélectionnez votre fichier `bbyatchv6.pem`
+- Ensuite : `chmod 400 ~/bbyatchv6.pem`
+
+**Option C : Si vous n'avez pas la clé, utilisez AWS Systems Manager Session Manager**
+```bash
+# Trouver l'Instance ID
+INSTANCE_ID=$(aws ec2 describe-instances \
+  --region eu-north-1 \
+  --filters "Name=tag:Name,Values=*preprod*" \
+  --query 'Reservations[0].Instances[0].InstanceId' \
+  --output text)
+
+# Se connecter via Session Manager (sans clé SSH)
+aws ssm start-session --target $INSTANCE_ID --region eu-north-1
+```
+
+#### 3. Se connecter à l'instance EC2
+
+```bash
+# Remplacer 13.53.121.224 par l'IP de VOTRE instance (trouvée à l'étape 1)
+ssh -i ~/bbyatchv6.pem ec2-user@13.53.121.224
+
+# Si vous utilisez ubuntu au lieu de ec2-user :
+# ssh -i ~/bbyatchv6.pem ubuntu@13.53.121.224
+```
+
+#### 4. Une fois connecté à l'instance, naviguer vers le projet
+
+```bash
+# Aller dans le dossier du projet
+cd ~/bbyatchv2-master
+
+# OU si le projet est dans /home/ubuntu
+cd /home/ubuntu/bbyatchv2-master
+```
+
+#### 5. Utiliser PM2 pour monitorer
+
+```bash
+# Voir l'état des processus PM2
+pm2 list
+
+# Monitorer en temps réel (CPU, mémoire, logs) - Interface graphique
+pm2 monit
+
+# Voir les logs en temps réel
+pm2 logs bbyatch
+
+# Voir les logs des 50 dernières lignes
+pm2 logs bbyatch --lines 50
+
+# Voir les statistiques détaillées
+pm2 show bbyatch
+
+# Voir les métriques (JSON)
+pm2 jlist
+```
+
+#### 6. Commandes PM2 utiles pour le monitoring
+
+```bash
+# Statut rapide
+pm2 status
+
+# Informations détaillées sur un processus
+pm2 describe bbyatch
+
+# Voir l'utilisation des ressources (interface graphique)
+pm2 monit
+
+# Logs avec filtrage
+pm2 logs bbyatch --err   # Seulement les erreurs
+pm2 logs bbyatch --out   # Seulement la sortie standard
+
+# Redémarrer et voir les logs
+pm2 restart bbyatch && pm2 logs bbyatch --lines 20
+
+# Voir l'historique des redémarrages
+pm2 info bbyatch
+```
+
+#### 7. Quitter le monitoring
+
+- Pour quitter `pm2 monit` : appuyez sur `Ctrl+C`
+- Pour quitter la session SSH : tapez `exit`
+- Pour revenir à CloudShell : tapez `exit` une fois de plus
+
+#### 8. Script rapide pour trouver et se connecter
+
+Copiez-collez ce script dans CloudShell pour automatiser :
+
+```bash
+# Trouver l'instance et se connecter automatiquement
+REGION="eu-north-1"
+INSTANCE_IP=$(aws ec2 describe-instances \
+  --region $REGION \
+  --filters "Name=tag:Name,Values=*preprod*" "Name=instance-state-name,Values=running" \
+  --query 'Reservations[0].Instances[0].PublicIpAddress' \
+  --output text)
+
+if [ -z "$INSTANCE_IP" ] || [ "$INSTANCE_IP" == "None" ]; then
+  echo "❌ Aucune instance trouvée ou instance arrêtée"
+  echo "Vérifiez que votre instance est démarrée dans la console AWS"
+else
+  echo "✅ Instance trouvée : $INSTANCE_IP"
+  echo "Connexion en cours..."
+  ssh -i ~/bbyatchv6.pem ec2-user@$INSTANCE_IP
+fi
+```
+
+---
+
 ## ✅ CHECKLIST FINALE
 
 - [ ] Node.js 20 installé
@@ -390,6 +539,245 @@ sudo systemctl status nginx
 ---
 
 ## 🆘 EN CAS DE PROBLÈME
+
+### 🚨 URGENCE : MALWARE XMRIG DÉTECTÉ (Out of Memory)
+
+**Symptômes :** Votre serveur manque de mémoire et un processus `xmrig` (mineur de cryptomonnaie) consomme toute la RAM.
+
+**Actions IMMÉDIATES à exécuter dans CloudShell puis sur l'instance :**
+
+#### Étape 1 : Se connecter à l'instance
+
+```bash
+# Depuis CloudShell, trouver l'IP
+INSTANCE_IP=$(aws ec2 describe-instances \
+  --region eu-north-1 \
+  --filters "Name=tag:Name,Values=*preprod*" "Name=instance-state-name,Values=running" \
+  --query 'Reservations[0].Instances[0].PublicIpAddress' \
+  --output text)
+
+# Se connecter
+ssh -i ~/bbyatchv7.pem ec2-user@$INSTANCE_IP
+```
+
+#### Étape 2 : Arrêter immédiatement le malware
+
+```bash
+# Tuer le processus xmrig
+sudo pkill -9 xmrig
+
+# Arrêter le service malveillant
+sudo systemctl stop moneroocean_miner.service 2>/dev/null || true
+sudo systemctl disable moneroocean_miner.service 2>/dev/null || true
+
+# Vérifier qu'il est arrêté
+ps aux | grep -E "(xmrig|moneroocean)" | grep -v grep
+```
+
+#### Étape 3 : Nettoyer complètement le malware
+
+```bash
+# Aller dans le projet
+cd ~/bbyatchv2-master
+
+# Exécuter le script de nettoyage
+bash cleanup-malware-complete.sh
+
+# OU nettoyer manuellement :
+# Supprimer le service
+sudo rm -f /etc/systemd/system/moneroocean_miner.service
+sudo rm -f /usr/lib/systemd/system/moneroocean_miner.service
+sudo systemctl daemon-reload
+
+# Supprimer les fichiers
+sudo rm -rf /tmp/xmrig* /tmp/moneroocean* /var/tmp/xmrig* /var/tmp/moneroocean*
+sudo rm -rf ~/xmrig* ~/moneroocean* ~/miner*
+
+# Vérifier les crontabs
+crontab -l | grep -E "(xmrig|moneroocean|miner)" && echo "⚠️ CRONTAB SUSPECT TROUVÉ !"
+sudo crontab -l | grep -E "(xmrig|moneroocean|miner)" && echo "⚠️ CRONTAB ROOT SUSPECT TROUVÉ !"
+```
+
+#### Étape 4 : Limiter la mémoire de Next.js pour éviter OOM
+
+Modifier `ecosystem.config.cjs` pour limiter la mémoire :
+
+```bash
+cd ~/bbyatchv2-master
+nano ecosystem.config.cjs
+```
+
+Ajouter dans la configuration PM2 :
+```javascript
+max_memory_restart: '2G',  // Limiter à 2GB
+node_args: '--max-old-space-size=2048',  // Limiter Node.js à 2GB
+```
+
+#### Étape 5 : Redémarrer l'application proprement
+
+```bash
+# Arrêter PM2
+pm2 stop all
+pm2 delete all
+
+# Redémarrer
+pm2 start ecosystem.config.cjs
+pm2 save
+
+# Vérifier
+pm2 list
+pm2 monit
+```
+
+#### Étape 6 : Vérifier la mémoire disponible
+
+```bash
+# Voir l'utilisation de la mémoire
+free -h
+
+# Surveiller en temps réel
+watch -n 2 free -h
+```
+
+#### Étape 7 : Sécuriser le serveur (après nettoyage)
+
+```bash
+# Changer tous les mots de passe
+passwd
+
+# Vérifier les clés SSH autorisées
+cat ~/.ssh/authorized_keys
+
+# Vérifier les connexions récentes
+sudo lastlog
+
+# Installer fail2ban pour protéger SSH
+sudo yum install fail2ban -y
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
+
+# Limiter l'accès SSH (remplacer YOUR_IP par votre IP)
+sudo ufw allow from YOUR_IP to any port 22
+sudo ufw enable
+```
+
+#### Étape 8 : Surveiller régulièrement
+
+```bash
+# Vérifier les processus suspects
+ps aux | grep -E "(xmrig|moneroocean|miner)" | grep -v grep
+
+# Vérifier la mémoire
+free -h
+
+# Vérifier les services systemd suspects
+systemctl list-units --type=service | grep -E "(xmrig|miner|moneroocean)"
+```
+
+**Si le problème persiste :**
+- Augmenter la taille de l'instance (t3.medium → t3.large ou t3.xlarge)
+- Ou optimiser l'application Next.js pour consommer moins de mémoire
+
+### ❌ Problème de connexion SSH depuis Windows
+
+Si vous obtenez des erreurs comme `Connection timed out` ou `Permission denied` :
+
+#### Solution 1 : Utiliser CloudShell (RECOMMANDÉ)
+
+Au lieu de vous connecter depuis Windows, utilisez AWS CloudShell :
+
+1. **Ouvrir CloudShell** dans la console AWS
+2. **Trouver l'IP de votre instance** :
+```bash
+aws ec2 describe-instances \
+  --region eu-north-1 \
+  --query 'Reservations[*].Instances[*].[InstanceId,State.Name,PublicIpAddress,Tags[?Key==`Name`].Value|[0]]' \
+  --output table
+```
+
+3. **Uploader votre clé SSH** dans CloudShell :
+   - Cliquez sur **Actions** (menu ☰) → **Upload file**
+   - Sélectionnez `bbyatchv7.pem`
+   - Puis : `chmod 400 ~/bbyatchv7.pem`
+
+4. **Se connecter** :
+```bash
+# Utiliser l'IP publique (pas le hostname)
+ssh -i ~/bbyatchv7.pem ec2-user@16.16.233.211
+```
+
+#### Solution 2 : Vérifier le Security Group depuis CloudShell
+
+```bash
+# Trouver l'Instance ID
+INSTANCE_ID=$(aws ec2 describe-instances \
+  --region eu-north-1 \
+  --filters "Name=ip-address,Values=16.16.233.211" \
+  --query 'Reservations[0].Instances[0].InstanceId' \
+  --output text)
+
+# Récupérer le Security Group
+SG_ID=$(aws ec2 describe-instances \
+  --instance-ids $INSTANCE_ID \
+  --region eu-north-1 \
+  --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
+  --output text)
+
+# Vérifier les règles SSH
+aws ec2 describe-security-groups \
+  --group-ids $SG_ID \
+  --region eu-north-1 \
+  --query 'SecurityGroups[0].IpPermissions[?FromPort==`22`]' \
+  --output table
+
+# Si pas de règle SSH, l'ajouter
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID \
+  --protocol tcp \
+  --port 22 \
+  --cidr 0.0.0.0/0 \
+  --region eu-north-1
+```
+
+#### Solution 3 : Utiliser AWS Systems Manager (sans clé SSH)
+
+Si SSH ne fonctionne toujours pas, utilisez Session Manager :
+
+```bash
+# Depuis CloudShell
+INSTANCE_ID=$(aws ec2 describe-instances \
+  --region eu-north-1 \
+  --filters "Name=ip-address,Values=16.16.233.211" \
+  --query 'Reservations[0].Instances[0].InstanceId' \
+  --output text)
+
+# Se connecter via Session Manager
+aws ssm start-session --target $INSTANCE_ID --region eu-north-1
+```
+
+**Note :** Pour utiliser Session Manager, l'instance doit avoir le SSM Agent installé (généralement pré-installé sur les AMI Amazon Linux).
+
+#### Solution 4 : Vérifier depuis Windows PowerShell
+
+Si vous voulez quand même utiliser Windows :
+
+1. **Vérifier les permissions de la clé** :
+```powershell
+# Dans PowerShell (en tant qu'administrateur)
+icacls "C:\Users\lespcdewarren\Documents\dev\bbyatchv2-master\bbyatchv7.pem" /inheritance:r
+icacls "C:\Users\lespcdewarren\Documents\dev\bbyatchv2-master\bbyatchv7.pem" /grant:r "%USERNAME%:R"
+```
+
+2. **Utiliser l'IP au lieu du hostname** :
+```powershell
+# Utiliser l'IP directement
+ssh -i "bbyatchv7.pem" ec2-user@16.16.233.211
+```
+
+3. **Vérifier que le port 22 est accessible** :
+```powershell
+Test-NetConnection -ComputerName 16.16.233.211 -Port 22
+```
 
 ### L'application ne démarre pas
 

@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { uploadMultipleToSupabase } from "@/lib/storage";
 import { createRedirectUrl } from "@/lib/redirect";
 
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   const session = (await getServerSession()) as any;
   if (!session?.user || (session.user as any)?.role !== "admin") {
@@ -49,13 +51,14 @@ export async function POST(req: Request) {
   const savedImageUrls: string[] = [];
   const savedVideoUrls: string[] = [];
   const allowedImages = ['image/jpeg','image/png','image/webp','image/gif'];
-  const allowedVideos = ['video/mp4','video/webm','video/ogg'];
+  const allowedVideos = ['video/mp4','video/webm','video/ogg','video/quicktime'];
   
   try {
     // Upload images avec validation
     if (multiImageFiles.length) {
       const { validateImageFile } = await import('@/lib/security/file-validation');
       const validImageFiles: File[] = [];
+      const imageErrors: string[] = [];
       
       for (const file of multiImageFiles) {
         const mime = (file as any).type;
@@ -64,9 +67,18 @@ export async function POST(req: Request) {
           if (validation.valid) {
             validImageFiles.push(file);
           } else {
-            console.warn(`⚠️ Image file rejected: ${file.name} - ${validation.error}`);
+            imageErrors.push(`${file.name}: ${validation.error}`);
           }
+        } else {
+          imageErrors.push(`${file.name}: Type non autorisé (${mime})`);
         }
+      }
+      
+      if (multiImageFiles.length > 0 && validImageFiles.length === 0) {
+        return NextResponse.json({
+          error: 'image_upload_failed',
+          message: imageErrors[0] || 'Aucune image valide. Formats: JPEG, PNG, WebP, GIF. Max 20 Mo.',
+        }, { status: 400 });
       }
       
       if (validImageFiles.length > 0) {
@@ -82,8 +94,10 @@ export async function POST(req: Request) {
           const result = await uploadMultipleToSupabase([singleImageFile], 'boats');
           if (result.length > 0) savedImageUrls.push(...result);
         } else {
-          console.warn(`⚠️ Image file rejected: ${singleImageFile.name} - ${validation.error}`);
+          return NextResponse.json({ error: 'image_upload_failed', message: validation.error }, { status: 400 });
         }
+      } else {
+        return NextResponse.json({ error: 'image_upload_failed', message: `Type non autorisé: ${mime}` }, { status: 400 });
       }
     }
     
@@ -91,6 +105,7 @@ export async function POST(req: Request) {
     if (videoFiles.length) {
       const { validateVideoFile } = await import('@/lib/security/file-validation');
       const validVideoFiles: File[] = [];
+      const videoErrors: string[] = [];
       
       for (const file of videoFiles) {
         const mime = (file as any).type;
@@ -99,11 +114,18 @@ export async function POST(req: Request) {
           if (validation.valid) {
             validVideoFiles.push(file);
           } else {
-            console.warn(`⚠️ Video file rejected: ${file.name} - ${validation.error}`);
+            videoErrors.push(`${file.name}: ${validation.error}`);
           }
         } else {
-          console.warn(`⚠️ Video file type not allowed: ${mime} (file: ${file.name})`);
+          videoErrors.push(`${file.name}: Type non autorisé (${mime}). Utilisez MP4, WebM, OGG ou MOV.`);
         }
+      }
+      
+      if (videoFiles.length > 0 && validVideoFiles.length === 0) {
+        return NextResponse.json({
+          error: 'video_upload_failed',
+          message: videoErrors[0] || 'Aucune vidéo valide. Formats: MP4, WebM, OGG, MOV. Max 200 Mo.',
+        }, { status: 400 });
       }
       
       if (validVideoFiles.length > 0) {
@@ -111,13 +133,14 @@ export async function POST(req: Request) {
         const urls = await uploadMultipleToSupabase(validVideoFiles, 'boats/videos');
         savedVideoUrls.push(...urls);
         console.log(`✅ ${urls.length} vidéo(s) uploadée(s) avec succès:`, urls);
-      } else {
-        console.warn(`⚠️ Aucune vidéo valide à uploader (${videoFiles.length} fichier(s) rejeté(s))`);
       }
     }
   } catch (e) {
     console.error('Error uploading to Supabase Storage:', e);
-    return NextResponse.json({ error: 'image_upload_failed' }, { status: 500 });
+    return NextResponse.json({
+      error: 'image_upload_failed',
+      message: e instanceof Error ? e.message : 'Erreur lors de l\'upload',
+    }, { status: 500 });
   }
   let finalImageUrl: string | null = null;
   if (savedImageUrls.length) finalImageUrl = savedImageUrls[0]; else finalImageUrl = imageUrl ?? null;

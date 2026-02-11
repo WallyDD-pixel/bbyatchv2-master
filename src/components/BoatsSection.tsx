@@ -15,9 +15,11 @@ type Boat = {
   pricePerDay: number;
   priceAm?: number | null;
   pricePm?: number | null;
+  priceSunset?: number | null;
   priceAgencyPerDay?: number | null;
   priceAgencyAm?: number | null;
   priceAgencyPm?: number | null;
+  priceAgencySunset?: number | null;
   skipperRequired?: boolean | null;
   imageUrl?: string | null;
 };
@@ -62,8 +64,8 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
     orderBy: { id: "asc" }, 
     select: { 
       id:true, slug:true, name:true, city:true, capacity:true, enginePower:true, lengthM:true, 
-      pricePerDay:true, priceAm:true, pricePm:true, 
-      priceAgencyPerDay:true, priceAgencyAm:true, priceAgencyPm:true,
+      pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true,
+      priceAgencyPerDay:true, priceAgencyAm:true, priceAgencyPm:true, priceAgencySunset:true,
       skipperRequired:true,
       imageUrl:true 
     } 
@@ -88,17 +90,65 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
               )}
               <div className="absolute right-3 top-3 flex flex-col items-end gap-1">
                 {(() => {
-                  // Calculer le prix à partir de (demi-journée)
+                  // Calculer le prix à partir de (le prix le plus bas disponible)
                   let priceFrom: number;
                   if (isAgency) {
                     // Prix agence : utiliser prix agence défini ou calculer (-20%)
-                    const agencyAm = b.priceAgencyAm ?? (b.priceAm ? calculateAgencyPrice(b.priceAm) : null);
-                    const agencyPm = b.priceAgencyPm ?? (b.pricePm ? calculateAgencyPrice(b.pricePm) : null);
-                    const agencyHalfDay = agencyAm || agencyPm || calculateAgencyPrice(Math.round(b.pricePerDay / 2));
-                    priceFrom = agencyHalfDay;
+                    const availableAgencyPrices: number[] = [];
+                    
+                    // Prix agence AM
+                    if (b.priceAgencyAm !== null && b.priceAgencyAm !== undefined && !isNaN(b.priceAgencyAm) && b.priceAgencyAm > 0) {
+                      availableAgencyPrices.push(b.priceAgencyAm);
+                    } else if (b.priceAm !== null && b.priceAm !== undefined && !isNaN(b.priceAm) && b.priceAm > 0) {
+                      availableAgencyPrices.push(calculateAgencyPrice(b.priceAm));
+                    }
+                    
+                    // Prix agence PM
+                    if (b.priceAgencyPm !== null && b.priceAgencyPm !== undefined && !isNaN(b.priceAgencyPm) && b.priceAgencyPm > 0) {
+                      availableAgencyPrices.push(b.priceAgencyPm);
+                    } else if (b.pricePm !== null && b.pricePm !== undefined && !isNaN(b.pricePm) && b.pricePm > 0) {
+                      availableAgencyPrices.push(calculateAgencyPrice(b.pricePm));
+                    }
+                    
+                    // Prix agence Sunset
+                    if (b.priceAgencySunset !== null && b.priceAgencySunset !== undefined && !isNaN(b.priceAgencySunset) && b.priceAgencySunset > 0) {
+                      availableAgencyPrices.push(b.priceAgencySunset);
+                    } else if (b.priceSunset !== null && b.priceSunset !== undefined && !isNaN(b.priceSunset) && b.priceSunset > 0) {
+                      availableAgencyPrices.push(calculateAgencyPrice(b.priceSunset));
+                    }
+                    
+                    // Si aucun prix partiel n'est défini, utiliser la moitié du prix agence par jour comme fallback
+                    if (availableAgencyPrices.length === 0) {
+                      const agencyHalfDay = calculateAgencyPrice(Math.round(b.pricePerDay / 2));
+                      priceFrom = agencyHalfDay > 0 ? agencyHalfDay : calculateAgencyPrice(b.pricePerDay);
+                    } else {
+                      // Prendre le prix le plus bas parmi les prix définis
+                      priceFrom = Math.min(...availableAgencyPrices);
+                    }
                   } else {
-                    // Prix public
-                    priceFrom = b.priceAm || b.pricePm || Math.round(b.pricePerDay / 2);
+                    // Prix public : prendre le prix le plus bas parmi les prix explicitement définis (AM, PM, Sunset)
+                    // Construire la liste de tous les prix partiels disponibles
+                    const availablePrices: number[] = [];
+                    
+                    // Ajouter uniquement les prix partiels explicitement définis
+                    if (b.priceAm !== null && b.priceAm !== undefined && !isNaN(b.priceAm) && b.priceAm > 0) {
+                      availablePrices.push(b.priceAm);
+                    }
+                    if (b.pricePm !== null && b.pricePm !== undefined && !isNaN(b.pricePm) && b.pricePm > 0) {
+                      availablePrices.push(b.pricePm);
+                    }
+                    if (b.priceSunset !== null && b.priceSunset !== undefined && !isNaN(b.priceSunset) && b.priceSunset > 0) {
+                      availablePrices.push(b.priceSunset);
+                    }
+                    
+                    // Si aucun prix partiel n'est défini, utiliser la moitié du prix par jour comme fallback
+                    if (availablePrices.length === 0) {
+                      const halfDay = Math.round(b.pricePerDay / 2);
+                      priceFrom = halfDay > 0 ? halfDay : b.pricePerDay;
+                    } else {
+                      // Prendre le prix le plus bas parmi les prix définis
+                      priceFrom = Math.min(...availablePrices);
+                    }
                   }
                   return (
                     <div className="px-4 py-1 rounded-full font-semibold bg-white/90 backdrop-blur border border-black/10 shadow text-[var(--primary)] text-sm">

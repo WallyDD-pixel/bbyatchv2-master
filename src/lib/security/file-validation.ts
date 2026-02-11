@@ -10,6 +10,7 @@ const MAGIC_BYTES: Record<string, number[][]> = {
   'image/gif': [[0x47, 0x49, 0x46, 0x38, 0x37, 0x61], [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]], // GIF87a ou GIF89a
   'image/webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF (les 4 premiers bytes, webp a RIFF...WEBP)
   'video/mp4': [[0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70], [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70], [0x00, 0x00, 0x00, 0x1C, 0x66, 0x74, 0x79, 0x70]], // ftyp atom
+  'video/quicktime': [[0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70], [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70], [0x00, 0x00, 0x00, 0x1C, 0x66, 0x74, 0x79, 0x70]], // MOV = ftyp comme MP4
   'video/webm': [[0x1A, 0x45, 0xDF, 0xA3]], // EBML header
   'video/ogg': [[0x4F, 0x67, 0x67, 0x53]], // OggS
 };
@@ -22,6 +23,7 @@ const MAX_ACCEPTED_SIZES: Record<string, number> = {
   'image/gif': 10 * 1024 * 1024, // 10MB (GIF animés peuvent être plus lourds)
   'image/webp': 20 * 1024 * 1024, // 20MB (sera compressé automatiquement à 2MB max)
   'video/mp4': 200 * 1024 * 1024, // 200MB (augmenté pour permettre des vidéos de meilleure qualité)
+  'video/quicktime': 200 * 1024 * 1024, // 200MB (.mov)
   'video/webm': 200 * 1024 * 1024, // 200MB
   'video/ogg': 200 * 1024 * 1024, // 200MB
 };
@@ -33,6 +35,7 @@ const MAX_TARGET_SIZES: Record<string, number> = {
   'image/gif': 5 * 1024 * 1024, // 5MB (GIF animés, compression limitée)
   'image/webp': 2 * 1024 * 1024, // 2MB après compression
   'video/mp4': 100 * 1024 * 1024, // 100MB après compression (si nécessaire)
+  'video/quicktime': 100 * 1024 * 1024,
   'video/webm': 100 * 1024 * 1024, // 100MB après compression
   'video/ogg': 100 * 1024 * 1024, // 100MB après compression
 };
@@ -42,7 +45,7 @@ const MAX_SIZES = MAX_ACCEPTED_SIZES;
 
 // Types MIME autorisés
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-export const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
+export const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
 
 // Exporter les limites pour utilisation dans les composants
 export { MAX_ACCEPTED_SIZES, MAX_TARGET_SIZES };
@@ -201,9 +204,12 @@ export async function validateVideoFile(file: File): Promise<FileValidationResul
     
     // Détecter le type réel
     const detectedType = detectMimeType(magicBytes);
-    
+    // MP4 et QuickTime (.mov) partagent les mêmes magic bytes (ftyp)
+    const equivalentVideo = (a: string, b: string) =>
+      (a === 'video/mp4' && b === 'video/quicktime') || (a === 'video/quicktime' && b === 'video/mp4');
+
     // Vérifier que le type détecté correspond au type déclaré
-    if (detectedType && detectedType !== declaredType) {
+    if (detectedType && detectedType !== declaredType && !equivalentVideo(detectedType, declaredType)) {
       return {
         valid: false,
         error: `Type MIME déclaré (${declaredType}) ne correspond pas au type réel (${detectedType})`,
@@ -211,8 +217,9 @@ export async function validateVideoFile(file: File): Promise<FileValidationResul
       };
     }
 
-    // Vérifier les magic bytes
-    if (!checkMagicBytes(magicBytes, declaredType)) {
+    // Vérifier les magic bytes (MOV utilise les mêmes que MP4)
+    const typeToCheck = declaredType === 'video/quicktime' ? 'video/mp4' : declaredType;
+    if (!checkMagicBytes(magicBytes, typeToCheck)) {
       return {
         valid: false,
         error: `Magic bytes ne correspondent pas au type déclaré (${declaredType})`,
@@ -253,6 +260,7 @@ export function generateSecureFileName(originalName: string, mimeType: string): 
     'image/gif': 'gif',
     'image/webp': 'webp',
     'video/mp4': 'mp4',
+    'video/quicktime': 'mov',
     'video/webm': 'webm',
     'video/ogg': 'ogg',
   };

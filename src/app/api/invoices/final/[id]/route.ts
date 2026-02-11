@@ -71,25 +71,30 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       where: { id }, 
       include:{ 
         boat: { include: { options: true } }, 
-        user:true 
+        user: { select: { id: true, email: true, role: true } }
       } 
     });
     if(!reservation) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if(reservation.user?.email !== sessionEmail && !isAdmin) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     if(reservation.status !== 'completed') return NextResponse.json({ error: 'not_completed' }, { status: 409 });
 
+    // Vérifier si c'est une réservation agence
+    const isAgencyReservation = reservation.user?.role === 'agency';
+
     const invoiceNumber = `FA-${new Date().getFullYear()}-${reservation.id.slice(-6)}`;
     const baseTotal = reservation.totalPrice || 0;
     const reservationData = reservation as any;
     const finalFuelAmount = reservationData.finalFuelAmount || 0; // Montant final du carburant
     
-    // IMPORTANT: Le skipper et le carburant sont payés sur place
-    // L'acompte de 20% ne s'applique QUE sur le prix du bateau + options (sans skipper ni carburant)
-    // Le total final = bateau + options + skipper + carburant
-    const total = baseTotal + finalFuelAmount; // Total avec carburant
-    const deposit = reservation.depositAmount || 0; // Acompte sur bateau + options uniquement
-    // Le solde payé = (bateau + options - acompte) + skipper + carburant (tous payés)
-    const totalPaid = total; // puisque completed
+    // IMPORTANT: Pour les agences, le skipper est inclus dans la facture. Pour les clients directs, le skipper et le carburant sont payés sur place.
+    // Pour les agences : le skipper est inclus dans baseTotal, donc total = baseTotal + carburant
+    // Pour les clients directs : le skipper est payé sur place, donc total = baseTotal + skipper + carburant
+    const total = isAgencyReservation 
+      ? baseTotal + finalFuelAmount  // Skipper déjà inclus dans baseTotal
+      : baseTotal + skipperTotal + finalFuelAmount; // Ajouter skipper pour clients directs
+    const deposit = reservation.depositAmount || 0;
+    // Le solde payé = total (puisque completed)
+    const totalPaid = total;
     
     // Parser metadata
     const meta = (()=>{ try { return reservation.metadata? JSON.parse(reservation.metadata): null; } catch { return null; } })();
@@ -108,13 +113,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const defaultSkipperPrice = settings?.defaultSkipperPrice || 350;
     const boatData = reservation.boat as any;
     const effectiveSkipperPrice = boatData?.skipperPrice ?? defaultSkipperPrice;
-    const skipperDays = (part==='FULL' || part==='SUNSET') ? Math.max(nbJours, 1) : 1;
-    const skipperTotal = boatData?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0;
     
-    // IMPORTANT: Le skipper et le carburant sont payés sur place
-    // L'acompte de 20% ne s'applique QUE sur le prix du bateau + options (sans skipper ni carburant)
-    // Calculer le prix de base pour l'acompte (prix bateau + options, SANS skipper)
-    const basePriceForDeposit = baseTotal - skipperTotal; // Prix bateau + options (sans skipper)
+    // Calcul du skipper :
+    // Pour les agences : selon meta.needsSkipper (si false, pas de skipper dans la facture)
+    // Pour les clients directs : FULL/SUNSET = nbJours, AM/PM = 1 jour
+    const agencyWantsSkipper = isAgencyReservation && (meta?.needsSkipper === true || meta?.needsSkipper === '1');
+    const skipperDays = isAgencyReservation 
+      ? (agencyWantsSkipper ? 1 : 0)  // Agences : 1 jour si besoin skipper, sinon 0
+      : ((part==='FULL' || part==='SUNSET') ? Math.max(nbJours, 1) : 1);
+    const skipperTotal = (isAgencyReservation && !agencyWantsSkipper) ? 0 : (boatData?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0);
+    
+    // Calculer le prix de base pour l'acompte
+    // Pour les agences : le skipper est inclus dans baseTotal, donc basePrice = baseTotal
+    // Pour les clients directs : le skipper est payé sur place, donc basePrice = baseTotal - skipperTotal
+    const basePriceForDeposit = isAgencyReservation ? baseTotal : (baseTotal - skipperTotal);
     const basePrice = basePriceForDeposit; // Pour l'affichage dans la facture
     
     // Récupérer les options sélectionnées
@@ -315,15 +327,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     page.drawText('-'+formatMoney(deposit), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
     y -= 16;
     
-    // Ligne solde payé (bateau + options - acompte)
+    // Ligne solde payé
+    // Pour les agences : solde = total - acompte (skipper inclus)
+    // Pour les clients directs : solde = bateau + options - acompte (skipper payé sur place)
     const remainingBoatOptions = Math.max(basePriceForDeposit - deposit, 0);
-    page.drawText('Solde payé (bateau + options)', { x: tableX1, y: y-2, size:10, font, color:textMuted });
+    const soldeLabel = isAgencyReservation 
+      ? 'Solde payé (bateau + options + skipper)'
+      : 'Solde payé (bateau + options)';
+    page.drawText(soldeLabel, { x: tableX1, y: y-2, size:10, font, color:textMuted });
     page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
     page.drawText(formatMoney(remainingBoatOptions), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
     y -= 16;
     
-    // Ligne skipper payé sur place
-    if(skipperTotal > 0){
+    // Ligne skipper (inclus pour agences, payé sur place pour clients directs)
+    if(skipperTotal > 0 && !isAgencyReservation){
       page.drawText('Skipper (payé sur place)', { x: tableX1, y: y-2, size:10, font, color:textMuted });
       page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
       page.drawText(formatMoney(skipperTotal), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
@@ -357,7 +374,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     };
     recapLine('Total bateau + options', formatMoney(basePriceForDeposit));
     if(skipperTotal > 0){
-      recapLine('Skipper (payé sur place)', formatMoney(skipperTotal));
+      recapLine(isAgencyReservation ? 'Skipper (inclus)' : 'Skipper (payé sur place)', formatMoney(skipperTotal));
     }
     if(finalFuelAmount > 0){
       recapLine('Carburant (payé sur place)', formatMoney(finalFuelAmount));

@@ -13,7 +13,7 @@ export default function ImageCropper({
   imageUrl,
   onCrop,
   onCancel,
-  aspectRatio = 1,
+  aspectRatio = 16 / 9, // Rectangle paysage par défaut (mieux pour bannières, cartes, galeries)
   locale = "fr",
 }: ImageCropperProps) {
   const [scale, setScale] = useState(1);
@@ -41,21 +41,23 @@ export default function ImageCropper({
       const handleLoad = () => {
         setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
         
-        // Centrer l'image initialement
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
         const cropWidth = Math.min(containerWidth * 0.8, containerHeight * 0.8 * aspectRatio);
         const cropHeight = cropWidth / aspectRatio;
+        const cropX = (containerWidth - cropWidth) / 2;
+        const cropY = (containerHeight - cropHeight) / 2;
         
-        // Calculer le scale pour que l'image remplisse au moins la zone de recadrage
         const scaleX = cropWidth / img.naturalWidth;
         const scaleY = cropHeight / img.naturalHeight;
-        const initialScale = Math.max(scaleX, scaleY) * 1.2; // 20% plus grand pour permettre le repositionnement
+        const initialScale = Math.max(scaleX, scaleY) * 1.1;
         
         setScale(initialScale);
+        const displayW = img.naturalWidth * initialScale;
+        const displayH = img.naturalHeight * initialScale;
         setPosition({
-          x: (containerWidth - cropWidth) / 2,
-          y: (containerHeight - cropHeight) / 2,
+          x: cropX - (displayW - cropWidth) / 2,
+          y: cropY - (displayH - cropHeight) / 2,
         });
       };
       
@@ -85,22 +87,20 @@ export default function ImageCropper({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
     
-    const container = containerRef.current;
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    const cropWidth = containerWidth * 0.8;
-    const cropHeight = cropWidth / aspectRatio;
-    
     const newX = e.clientX - dragStart.x;
     const newY = e.clientY - dragStart.y;
-    
-    // Limiter le déplacement pour garder l'image dans le cadre
-    const maxX = containerWidth - cropWidth;
-    const maxY = containerHeight - cropHeight;
+    const crop = getCropArea();
+    const displayWidth = imageSize.width * scale;
+    const displayHeight = imageSize.height * scale;
+    // Limiter le déplacement pour que la zone de recadrage reste couverte par l'image
+    const minX = crop.x + crop.width - displayWidth;
+    const maxX = crop.x;
+    const minY = crop.y + crop.height - displayHeight;
+    const maxY = crop.y;
     
     setPosition({
-      x: Math.max(0, Math.min(maxX, newX)),
-      y: Math.max(0, Math.min(maxY, newY)),
+      x: Math.max(minX, Math.min(maxX, newX)),
+      y: Math.max(minY, Math.min(maxY, newY)),
     });
   };
 
@@ -110,6 +110,7 @@ export default function ImageCropper({
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     setScale((prev) => Math.max(0.1, Math.min(5, prev * delta)));
   };
@@ -120,14 +121,17 @@ export default function ImageCropper({
     const container = containerRef.current;
     const containerWidth = container.clientWidth;
     const containerHeight = container.clientHeight;
-    const cropWidth = containerWidth * 0.8;
+    const cropWidth = Math.min(containerWidth * 0.8, containerHeight * 0.8 * aspectRatio);
     const cropHeight = cropWidth / aspectRatio;
+    // Zone de recadrage fixe au centre ; seule l'image se déplace (position)
+    const cropX = (containerWidth - cropWidth) / 2;
+    const cropY = (containerHeight - cropHeight) / 2;
     
     return {
       width: cropWidth,
       height: cropHeight,
-      x: position.x,
-      y: position.y,
+      x: cropX,
+      y: cropY,
     };
   };
 
@@ -138,21 +142,17 @@ export default function ImageCropper({
     const canvas = canvasRef.current;
     const cropArea = getCropArea();
     
-    // Calculer les dimensions réelles de l'image dans le conteneur
-    const displayWidth = img.naturalWidth * scale;
-    const displayHeight = img.naturalHeight * scale;
-    
-    // Calculer la zone de recadrage relative à l'image originale
-    const cropX = (cropArea.x - position.x) / scale;
-    const cropY = (cropArea.y - position.y) / scale;
+    // Zone de recadrage fixe à l'écran ; position = décalage de l'image → source dans l'image
+    const sourceX = (cropArea.x - position.x) / scale;
+    const sourceY = (cropArea.y - position.y) / scale;
     const cropWidth = cropArea.width / scale;
     const cropHeight = cropArea.height / scale;
     
     // S'assurer que les coordonnées sont valides
-    const sourceX = Math.max(0, Math.min(img.naturalWidth, cropX));
-    const sourceY = Math.max(0, Math.min(img.naturalHeight, cropY));
-    const sourceWidth = Math.max(1, Math.min(img.naturalWidth - sourceX, cropWidth));
-    const sourceHeight = Math.max(1, Math.min(img.naturalHeight - sourceY, cropHeight));
+    const sourceXClamp = Math.max(0, Math.min(img.naturalWidth - 1, sourceX));
+    const sourceYClamp = Math.max(0, Math.min(img.naturalHeight - 1, sourceY));
+    const sourceWidth = Math.max(1, Math.min(img.naturalWidth - sourceXClamp, cropWidth));
+    const sourceHeight = Math.max(1, Math.min(img.naturalHeight - sourceYClamp, cropHeight));
     
     // Définir la taille du canvas
     canvas.width = cropArea.width;
@@ -164,8 +164,8 @@ export default function ImageCropper({
       try {
         ctx.drawImage(
           img,
-          sourceX,
-          sourceY,
+          sourceXClamp,
+          sourceYClamp,
           sourceWidth,
           sourceHeight,
           0,

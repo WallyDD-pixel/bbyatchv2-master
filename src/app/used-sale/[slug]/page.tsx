@@ -9,8 +9,25 @@ import BoatMediaCarousel from '@/components/BoatMediaCarousel';
 
 export async function generateStaticParams(){
   try {
-    const boats = await (prisma as any).usedBoat.findMany({ where:{ status: 'listed' }, select:{ slug:true }});
-    return boats.map((b:any)=>({ slug: b.slug }));
+    const boats = await (prisma as any).usedBoat.findMany({ 
+      where:{ status: 'listed' }, 
+      select:{ slug:true, titleFr:true }
+    });
+    // Vérifier que les slugs sont valides et uniques
+    const validSlugs = boats
+      .filter((b: any) => b.slug && b.slug.trim())
+      .map((b: any) => ({ slug: b.slug.trim() }));
+    
+    // Log pour déboguer
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[used-sale] generateStaticParams:', validSlugs.length, 'boats');
+      const ranieriBoat = boats.find((b: any) => b.slug?.toLowerCase().includes('ranieri'));
+      if (ranieriBoat) {
+        console.log('[used-sale] Ranieri boat found:', { slug: ranieriBoat.slug, title: ranieriBoat.titleFr });
+      }
+    }
+    
+    return validSlugs;
   } catch (e) {
     // En absence de DB (ex: build preview sans env), on ne génère rien => fallback 404 dynamiques
     return [];
@@ -18,19 +35,61 @@ export async function generateStaticParams(){
 }
 
 export default async function UsedBoatDetail({ params, searchParams }: { params: Promise<{ slug:string }>, searchParams?: Promise<{ lang?: string, sent?: string }> }){
-  const { slug } = await params;
+  const { slug: slugParam } = await params;
   const sp = (await searchParams) || {};
   const locale: Locale = sp?.lang==='en' ? 'en':'fr';
   const sent = sp?.sent === '1' || sp?.sent === 'true';
   const t = messages[locale];
+  
+  // Normaliser le slug : trim, décoder URL, et nettoyer
+  let slug = slugParam;
+  try {
+    // Décoder au cas où il y aurait un double encodage
+    slug = decodeURIComponent(slug);
+  } catch {
+    // Si le décodage échoue, utiliser le slug tel quel
+  }
+  // Normaliser : trim et remplacer les espaces multiples par un seul
+  slug = slug.trim().replace(/\s+/g, ' ');
+  
   let boat: any = null;
   try {
+    // Chercher d'abord avec le slug exact
     boat = await (prisma as any).usedBoat.findUnique({ where:{ slug }});
+    
+    // Si pas trouvé, essayer de chercher avec différentes variations (pour déboguer)
+    if (!boat) {
+      console.warn(`[used-sale] Boat not found with slug: "${slug}"`);
+      // Essayer avec le slug en minuscules
+      const allBoats = await (prisma as any).usedBoat.findMany({ 
+        where: { status: { in: ['listed', 'sold'] } },
+        select: { id: true, slug: true, titleFr: true }
+      });
+      const matchingBoat = allBoats.find((b: any) => 
+        b.slug?.toLowerCase() === slug.toLowerCase() || 
+        b.slug?.toLowerCase().replace(/\s+/g, '-') === slug.toLowerCase().replace(/\s+/g, '-')
+      );
+      if (matchingBoat) {
+        console.warn(`[used-sale] Found boat with similar slug: "${matchingBoat.slug}" (title: "${matchingBoat.titleFr}")`);
+        boat = await (prisma as any).usedBoat.findUnique({ where: { id: matchingBoat.id } });
+      }
+    }
   } catch (e) {
+    console.error('[used-sale] Error fetching boat:', e);
     // Impossible d'accéder à la DB pendant le build -> 404
     notFound();
   }
-  if(!boat || (boat.status !== 'listed' && boat.status !== 'sold')) notFound();
+  if(!boat || (boat.status !== 'listed' && boat.status !== 'sold')) {
+    console.warn(`[used-sale] Boat not found or invalid status. Slug: "${slug}", Boat found: ${boat ? `yes (title: "${boat.titleFr}", status: "${boat.status}")` : 'no'}`);
+    notFound();
+  }
+  
+  // Vérification supplémentaire : s'assurer que le slug correspond bien
+  if (boat.slug !== slug && boat.slug?.toLowerCase() !== slug.toLowerCase()) {
+    console.error(`[used-sale] Slug mismatch! Requested: "${slug}", Found: "${boat.slug}" (title: "${boat.titleFr}")`);
+    // Rediriger vers le bon slug si on a trouvé un bateau mais avec un slug différent
+    notFound();
+  }
   // Parse JSON photos
   let photos: string[] = [];
   if (boat.photoUrls) {

@@ -155,11 +155,21 @@ export async function POST(req:Request, { params }: { params: Promise<{ id:strin
       // Gestion upload de nouvelles images
       // Utiliser la même approche que la route des bateaux qui fonctionne
       const imageFiles: File[] = [];
-      data.forEach((value, key) => {
-        if(key === 'imageFiles' && value instanceof File){
-          imageFiles.push(value);
-        }
-      });
+      try {
+        data.forEach((value, key) => {
+          if(key === 'imageFiles' && value instanceof File){
+            imageFiles.push(value);
+            console.log(`Found image file: ${value.name}, size: ${value.size} bytes, type: ${(value as any).type}`);
+          }
+        });
+      } catch (forEachError: any) {
+        console.error('Error reading FormData:', forEachError);
+        return NextResponse.json({ 
+          error: 'server_error', 
+          details: 'Erreur lors de la lecture des fichiers',
+          message: 'Impossible de lire les fichiers uploadés : ' + (forEachError?.message || 'Erreur inconnue')
+        }, { status: 500 });
+      }
       
       console.log('Image files received:', imageFiles.length);
       
@@ -208,15 +218,46 @@ export async function POST(req:Request, { params }: { params: Promise<{ id:strin
           
           if(filesWithinLimit.length > 0){
             console.log(`Uploading ${filesWithinLimit.length} image(s) to Supabase (total size: ${(totalSize / 1024 / 1024).toFixed(2)}MB)`);
-            // Upload vers Supabase Storage (comme pour les bateaux)
-            const urls = await uploadMultipleToSupabase(filesWithinLimit, 'experiences');
-            uploadedUrls.push(...urls);
-            console.log('Uploaded', uploadedUrls.length, 'image(s) to Supabase');
+            // Validation de sécurité avec magic bytes (comme pour les bateaux)
+            const { validateImageFile } = await import('@/lib/security/file-validation');
+            const validImageFiles: File[] = [];
+            
+            for (const file of filesWithinLimit) {
+              const mime = (file as any).type;
+              if (allowedImages.includes(mime)) {
+                const validation = await validateImageFile(file);
+                if (validation.valid) {
+                  validImageFiles.push(file);
+                } else {
+                  console.warn(`⚠️ Image file rejected: ${file.name} - ${validation.error}`);
+                }
+              }
+            }
+            
+            if (validImageFiles.length > 0) {
+              // Upload vers Supabase Storage (comme pour les bateaux)
+              const urls = await uploadMultipleToSupabase(validImageFiles, 'experiences');
+              uploadedUrls.push(...urls);
+              console.log('Uploaded', uploadedUrls.length, 'image(s) to Supabase');
+            } else {
+              console.warn('No valid image files after security validation');
+              return NextResponse.json({ 
+                error: "upload_failed", 
+                details: "Aucune image valide après validation de sécurité",
+                message: "Les fichiers images ont été rejetés par la validation de sécurité. Vérifiez que les fichiers sont bien des images valides."
+              }, { status: 400 });
+            }
           } else {
             console.warn('No valid image files found');
           }
         } catch(e: any){
           console.error('Error uploading to Supabase Storage:', e);
+          console.error('Error details:', {
+            message: e?.message,
+            stack: e?.stack,
+            code: e?.code,
+            name: e?.name
+          });
           // Retourner une erreur appropriée selon le type
           if (e?.message?.includes('413') || e?.message?.includes('too large')) {
             return NextResponse.json({ 
@@ -225,8 +266,20 @@ export async function POST(req:Request, { params }: { params: Promise<{ id:strin
               suggestion: "Réduisez la taille des images (max 10MB par image)"
             }, { status: 413 });
           }
-          // Pour les autres erreurs, continuer avec les URLs existantes mais logger l'erreur
-          console.error('Upload failed but continuing with existing URLs:', e);
+          // Pour les erreurs de validation
+          if (e?.message?.includes('validation') || e?.message?.includes('rejected')) {
+            return NextResponse.json({ 
+              error: "upload_failed", 
+              details: e?.message || "Erreur de validation des fichiers",
+              message: "Les fichiers images ont été rejetés : " + (e?.message || "Erreur de validation")
+            }, { status: 400 });
+          }
+          // Pour les autres erreurs, retourner une erreur claire
+          return NextResponse.json({ 
+            error: "upload_failed", 
+            details: e?.message || "Erreur lors de l'upload vers Supabase",
+            message: "Erreur lors de l'upload : " + (e?.message || "Erreur inconnue")
+          }, { status: 500 });
         }
       }
       
@@ -306,7 +359,12 @@ export async function POST(req:Request, { params }: { params: Promise<{ id:strin
         console.error('Update error code:', updateError?.code);
         console.error('Update error message:', updateError?.message);
         console.error('Update error stack:', updateError?.stack);
-        throw updateError;
+        // Retourner une erreur claire au lieu de throw
+        return NextResponse.json({ 
+          error: 'server_error', 
+          details: updateError?.message || 'Erreur lors de la mise à jour de l\'expérience',
+          message: 'Erreur lors de la sauvegarde : ' + (updateError?.message || 'Erreur inconnue')
+        }, { status: 500 });
       }
       
       // Retourner les photoUrls pour mise à jour de l'interface

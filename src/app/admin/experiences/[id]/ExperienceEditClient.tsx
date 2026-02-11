@@ -222,8 +222,9 @@ export default function ExperienceEditClient({
           };
         }
         
-        const errorMessage = error.message || error.error || error.details || (locale === 'fr' ? 'Erreur lors de l\'upload' : 'Upload error');
-        alert(`${errorMessage} (Status: ${status})`);
+        const errorMessage = error.message || error.details || error.error || (locale === 'fr' ? 'Erreur lors de l\'upload' : 'Upload error');
+        const suggestion = error.suggestion ? `\n\n${error.suggestion}` : '';
+        alert(`${errorMessage}${suggestion} (Status: ${status})`);
         console.error('Full error object:', error);
         console.error('Response details:', { status, statusText, contentType });
         return;
@@ -257,9 +258,10 @@ export default function ExperienceEditClient({
       if (data.imageUrl) {
         setImageUrl(data.imageUrl);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
-      alert(locale === 'fr' ? 'Erreur lors de l\'upload' : 'Upload error');
+      const errorMsg = error?.message || error?.details || error?.error || (locale === 'fr' ? 'Erreur lors de l\'upload' : 'Upload error');
+      alert(errorMsg);
     } finally {
       setUploading(false);
       if (fileInputRef.current) {

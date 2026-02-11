@@ -1595,6 +1595,32 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                         <div className="text-base mt-1">{expSlotInfo.note}</div>
                       </div>
                     )}
+                    <div className="p-4 bg-gray-50 rounded-lg flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700 cursor-pointer flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={expSlotInfo.showInUpcoming !== false}
+                          onChange={async (e) => {
+                            const value = e.target.checked;
+                            try {
+                              const res = await fetch('/api/admin/availability/experiences', {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: expSlotInfo.id, showInUpcoming: value }),
+                              });
+                              if (res.ok) {
+                                setExpSlotInfo((prev: any) => prev ? { ...prev, showInUpcoming: value } : null);
+                                setCalendarUpdateKey(prev => prev + 1);
+                              }
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        {locale === 'fr' ? 'Afficher dans le bloc "Prochains événements" (accueil)' : 'Show in "Upcoming events" block (homepage)'}
+                      </label>
+                    </div>
                     <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                       <button
                         onClick={async () => {

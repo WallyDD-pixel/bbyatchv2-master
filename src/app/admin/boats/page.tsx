@@ -52,7 +52,7 @@ export default async function AdminBoatsPage({ searchParams }: { searchParams?: 
               },
               {
                 title: locale==='fr'?'Gérer les prix':'Manage prices',
-                description: locale==='fr'?'Vous pouvez définir des prix différents pour la journée complète, la demi-journée (matin/après-midi) et le coucher de soleil.':'You can set different prices for full day, half-day (morning/afternoon) and sunset.'
+                description: locale==='fr'?'Vous pouvez définir des prix pour la journée complète, la demi-journée et le Sunset.':'You can set prices for full day, half day and sunset.'
               },
               {
                 title: locale==='fr'?'Options et extras':'Options and extras',

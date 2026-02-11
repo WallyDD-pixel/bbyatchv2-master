@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -78,20 +78,28 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
     const isAgency = true; // Toujours agence pour cette interface
     
     let basePrice = 0;
+    // PRIORITÉ AUX PRIX AGENCE : toujours utiliser les prix agence s'ils existent
     if (part === 'FULL') {
-      basePrice = (selectedBoat.priceAgencyPerDay ?? selectedBoat.pricePerDay) * nbJours;
+      // Pour agence : utiliser priceAgencyPerDay en priorité, sinon calculer -20% du prix public
+      if (selectedBoat.priceAgencyPerDay) {
+        basePrice = selectedBoat.priceAgencyPerDay * nbJours;
+      } else if (selectedBoat.pricePerDay) {
+        basePrice = Math.round(selectedBoat.pricePerDay * 0.8 * nbJours); // -20% si pas de prix agence
+      }
     } else if (part === 'AM') {
-      basePrice = selectedBoat.priceAgencyAm ?? selectedBoat.priceAm ?? 0;
+      basePrice = selectedBoat.priceAgencyAm ?? (selectedBoat.priceAm ? Math.round(selectedBoat.priceAm * 0.8) : 0);
     } else if (part === 'PM') {
-      basePrice = selectedBoat.priceAgencyPm ?? selectedBoat.pricePm ?? 0;
+      basePrice = selectedBoat.priceAgencyPm ?? (selectedBoat.pricePm ? Math.round(selectedBoat.pricePm * 0.8) : 0);
     } else if (part === 'SUNSET') {
-      basePrice = selectedBoat.priceAgencySunset ?? selectedBoat.priceSunset ?? 0;
+      basePrice = selectedBoat.priceAgencySunset ?? (selectedBoat.priceSunset ? Math.round(selectedBoat.priceSunset * 0.8) : 0);
     }
 
-    // Skipper
+    // Skipper : Pour les agences, toujours 350€ par jour, peu importe le type
     const settings = { defaultSkipperPrice: 350 }; // TODO: récupérer depuis API si besoin
     const skipperPrice = selectedBoat.skipperPrice ?? settings.defaultSkipperPrice;
-    const skipperDays = (part === 'FULL' || part === 'SUNSET') ? Math.max(nbJours, 1) : 1;
+    // Pour les agences : toujours 1 jour de skipper (350€), même pour AM/PM
+    // Pour les clients directs : FULL/SUNSET = nbJours, AM/PM = 1 jour
+    const skipperDays = 1; // Pour les agences, toujours 1 jour (350€)
     const skipperTotal = selectedBoat.skipperRequired ? (skipperPrice * skipperDays) : 0;
 
     // Options
@@ -103,6 +111,13 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
   };
 
   const estimatedPrice = calculateEstimatedPrice();
+  
+  // Auto-remplir le prix total avec le prix estimé quand il change
+  useEffect(() => {
+    if (estimatedPrice !== null && estimatedPrice > 0 && !formData.totalPrice) {
+      setFormData(prev => ({ ...prev, totalPrice: estimatedPrice.toString() }));
+    }
+  }, [estimatedPrice]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -344,7 +359,9 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
           </p>
           {selectedBoat?.skipperRequired && (
             <p className="mt-2 text-xs text-blue-700">
-              {locale === 'fr' ? 'Inclut le skipper obligatoire' : 'Includes required skipper'}
+              {locale === 'fr' 
+                ? 'Inclut le skipper obligatoire (inclus dans la facture pour les agences)' 
+                : 'Includes required skipper (included in invoice for agencies)'}
             </p>
           )}
         </div>
@@ -366,7 +383,9 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
           className="w-full h-11 rounded-lg border border-black/15 px-3 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
         />
         <p className="mt-1 text-xs text-black/50">
-          {locale === 'fr' ? 'Prix final incluant toutes les options. Le carburant sera ajouté séparément après la location.' : 'Final price including all options. Fuel will be added separately after rental.'}
+          {locale === 'fr' 
+            ? 'Prix final incluant toutes les options et le skipper (si requis). Le carburant sera ajouté séparément après la location. Vous pouvez modifier ce prix si nécessaire.' 
+            : 'Final price including all options and skipper (if required). Fuel will be added separately after rental. You can modify this price if needed.'}
         </p>
       </div>
 

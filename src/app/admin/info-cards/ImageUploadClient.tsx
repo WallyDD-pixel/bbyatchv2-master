@@ -162,7 +162,7 @@ export default function ImageUploadClient({ locale, existingImageUrl }: ImageUpl
       {croppingImage && (
         <ImageCropper
           imageUrl={croppingImage}
-          aspectRatio={1}
+          aspectRatio={16/9}
           locale={locale}
           onCrop={handleCrop}
           onCancel={() => {

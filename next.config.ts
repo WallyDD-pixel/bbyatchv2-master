@@ -89,7 +89,7 @@ const nextConfig: NextConfig = {
               "media-src 'self' https: blob: data:",
               "font-src 'self' https://fonts.gstatic.com data:",
               "connect-src 'self' https://*.supabase.co https://api.stripe.com http://localhost:* ws://localhost:* wss://localhost:*",
-              "frame-src https://js.stripe.com https://hooks.stripe.com",
+              "frame-src https://js.stripe.com https://hooks.stripe.com https://www.youtube.com https://youtube.com https://player.vimeo.com",
               "object-src 'self' data:",
               "base-uri 'self'",
               "form-action 'self' http://localhost:* https://localhost:*",

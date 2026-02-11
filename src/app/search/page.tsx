@@ -146,7 +146,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
               available: true,
               id: { in: slotBoatIds.length > 0 ? slotBoatIds : [] }
             }, 
-            select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, enginePower:true, lengthM:true, cityId:true } 
+            select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true, enginePower:true, lengthM:true, cityId:true } 
           });
           console.log('[search] FULL - Found boats with slots:', allBoats.length);
           if (allBoats.length > 0) {
@@ -475,8 +475,36 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
         )}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {boats.map((b) => {
-            // Prix à partir de (demi-journée)
-            const priceFrom = b.priceAm || b.pricePm || Math.round(b.pricePerDay / 2);
+            // Calculer le prix à partir de
+            let priceFrom: number;
+            
+            if (partSel === 'FULL') {
+              // Pour une journée complète, utiliser le prix/jour multiplié par le nombre de jours
+              priceFrom = b.pricePerDay * (nbJours > 0 ? nbJours : 1);
+            } else {
+              // Pour AM/PM/Sunset, prendre le prix le plus bas disponible
+              const availablePrices: number[] = [];
+              
+              // Ajouter uniquement les prix partiels explicitement définis
+              if (b.priceAm !== null && b.priceAm !== undefined && !isNaN(b.priceAm) && b.priceAm > 0) {
+                availablePrices.push(b.priceAm);
+              }
+              if (b.pricePm !== null && b.pricePm !== undefined && !isNaN(b.pricePm) && b.pricePm > 0) {
+                availablePrices.push(b.pricePm);
+              }
+              if (b.priceSunset !== null && b.priceSunset !== undefined && !isNaN(b.priceSunset) && b.priceSunset > 0) {
+                availablePrices.push(b.priceSunset);
+              }
+              
+              // Si aucun prix partiel n'est défini, utiliser la moitié du prix par jour comme fallback
+              if (availablePrices.length === 0) {
+                const halfDay = Math.round(b.pricePerDay / 2);
+                priceFrom = halfDay > 0 ? halfDay : b.pricePerDay;
+              } else {
+                // Prendre le prix le plus bas parmi les prix définis
+                priceFrom = Math.min(...availablePrices);
+              }
+            }
             
             const specs: string[] = [];
             if (b.capacity) specs.push(`${locale === 'fr' ? 'Places max' : 'Max places'}: ${b.capacity}`);
@@ -520,6 +548,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
               qs.set('startTime','13:00');
               qs.set('endTime','18:00');
             }
+            if (city) qs.set('departurePort', city);
             const href = `/boats/${b.slug}?${qs.toString()}`;
             return (
             <Link

@@ -97,6 +97,7 @@ export default async function ReservationDetailPage(
           city: true,
           zip: true,
           country: true,
+          role: true,
         },
       },
       boat: {
@@ -396,7 +397,7 @@ export default async function ReservationDetailPage(
                     <div>
                       <span className='font-semibold text-black/70 block mb-1'>{locale === 'fr' ? 'Besoins spéciaux / Demandes spécifiques' : 'Special needs / Specific requests'}: </span>
                       <p className='text-black/70 whitespace-pre-line bg-white/50 rounded p-2 border border-black/10'>
-                        {typeof metadataObj.specialNeeds === 'string' ? (metadataObj.specialNeeds.includes('%') ? decodeURIComponent(metadataObj.specialNeeds) : metadataObj.specialNeeds) : String(metadataObj.specialNeeds)}
+                        {typeof metadataObj.specialNeeds === 'string' ? (() => { try { return decodeURIComponent(metadataObj.specialNeeds.replace(/\+/g, ' ')); } catch { return metadataObj.specialNeeds; } })() : String(metadataObj.specialNeeds)}
                       </p>
                     </div>
                   )}
@@ -600,7 +601,11 @@ export default async function ReservationDetailPage(
                   )}
                   {reservation.boat?.skipperRequired && reservation.boat?.skipperPrice && (
                     <div className='flex justify-between pt-2 border-t border-black/5'>
-                      <span className='text-black/50'>{locale === 'fr' ? 'Skipper (payé sur place)' : 'Skipper (paid on site)'}</span>
+                      <span className='text-black/50'>
+                        {locale === 'fr' 
+                          ? (reservation.user?.role === 'agency' ? 'Skipper (inclus)' : 'Skipper (payé sur place)')
+                          : (reservation.user?.role === 'agency' ? 'Skipper (included)' : 'Skipper (paid on site)')}
+                      </span>
                       <span className='font-medium text-blue-600'>{money(reservation.boat.skipperPrice * (dayCount || 1))}</span>
                     </div>
                   )}
@@ -628,8 +633,12 @@ export default async function ReservationDetailPage(
                   </p>
                   <p>
                     {locale === 'fr' 
-                      ? "Le skipper et le carburant sont payés séparément sur place le jour de l'embarquement."
-                      : "The skipper and fuel are paid separately on site on the day of boarding."}
+                      ? (reservation.user?.role === 'agency' 
+                          ? "Le skipper est inclus dans la facture. Le carburant est payé séparément sur place le jour de l'embarquement."
+                          : "Le skipper et le carburant sont payés séparément sur place le jour de l'embarquement.")
+                      : (reservation.user?.role === 'agency'
+                          ? "The skipper is included in the invoice. Fuel is paid separately on site on the day of boarding."
+                          : "The skipper and fuel are paid separately on site on the day of boarding.")}
                   </p>
                 </div>
 

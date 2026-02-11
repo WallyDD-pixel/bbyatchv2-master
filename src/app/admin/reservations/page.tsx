@@ -81,14 +81,10 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
     reservations = await (prisma as any).reservation.findMany({
       orderBy: { createdAt: "desc" },
       take: 100,
-      include: { user:{ select:{ email:true, firstName:true, lastName:true } }, boat:{ select:{ name:true, slug:true } } },
+      include: { user:{ select:{ email:true, firstName:true, lastName:true, role:true } }, boat:{ select:{ name:true, slug:true } } },
       select: undefined // Récupérer tous les champs y compris finalFuelAmount
     });
   } catch {}
-
-  // Compteur bateaux d'occasion
-  let usedBoatCount = 0;
-  try { usedBoatCount = await (prisma as any).usedBoat.count(); } catch {}
 
   const dateFmt = (d: Date) => d.toISOString().slice(0,10);
   const dayCount = (r:any) => { const s=new Date(r.startDate), e=new Date(r.endDate); return Math.round((e.getTime()-s.getTime())/86400000)+1; };
@@ -155,31 +151,6 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
               }
             ]}
           />
-        </div>
-
-        {/* Bloc gestion bateaux d'occasion */}
-        <div className="mt-8 grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-3 rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h2 className="text-base font-semibold flex items-center gap-2">
-                  <span>🛥️</span>
-                  Bateaux d'occasion
-                </h2>
-                <p className="text-xs text-black/60 mt-1">
-                  {`${usedBoatCount} bateau${usedBoatCount>1?'x':''} enregistré${usedBoatCount>1?'s':''}`}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <Link href="/admin/used-boats" className="h-9 px-4 rounded-full text-[13px] font-medium border border-black/15 hover:bg-black/5 inline-flex items-center gap-2">
-                  <span>📂</span>Gérer
-                </Link>
-                <Link href="/admin/used-boats/new" className="h-9 px-4 rounded-full text-[13px] font-medium bg-blue-600 hover:bg-blue-700 text-white shadow transition-colors inline-flex items-center gap-2">
-                  <span>➕</span>Ajouter
-                </Link>
-              </div>
-            </div>
-          </div>
         </div>
 
         <ReservationsTableClient

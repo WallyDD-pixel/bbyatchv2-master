@@ -53,10 +53,6 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
                   <option value="Monaco">Monaco</option>
                 </select>
               </label>
-              <label className="grid gap-1 text-sm">
-                <span>{locale === "fr" ? "Prix/jour (€)" : "Price/day (€)"}</span>
-                <input name="pricePerDay" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
-              </label>
             </div>
           </div>
 
@@ -83,26 +79,26 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
             </div>
           </div>
 
-          {/* Tarification */}
+          {/* Tarification : Journée complète / Demi-journée / Sunset */}
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Tarification" : "Pricing"}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <label className="grid gap-1 text-sm">
-                <span>{locale === "fr" ? "Prix matin (AM) (€)" : "Morning price (AM) (€)"}</span>
-                <input name="priceAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" placeholder={locale === 'fr' ? 'Prix matin' : 'Morning price'} />
+                <span>{locale === "fr" ? "Journée complète (€)" : "Full day (€)"}</span>
+                <input name="pricePerDay" type="number" min="0" required className="h-11 rounded-lg border border-black/15 px-3" placeholder={locale === 'fr' ? 'Prix journée' : 'Day price'} />
               </label>
               <label className="grid gap-1 text-sm">
-                <span>{locale === 'fr' ? 'Prix après-midi (PM) (€)' : 'Afternoon price (PM) (€)'}</span>
-                <input name="pricePm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
+                <span>{locale === "fr" ? "Demi-journée (€)" : "Half day (€)"}</span>
+                <input name="priceAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
               </label>
               <label className="grid gap-1 text-sm">
-                <span>{locale === "fr" ? "Prix Sunset (€)" : "Sunset price (€)"}</span>
+                <span>{locale === "fr" ? "Sunset (€)" : "Sunset (€)"}</span>
                 <input name="priceSunset" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3" />
               </label>
             </div>
-            <p className="text-xs text-black/50">{locale === 'fr' ? 'Optionnel: si laissés vides on dérive automatiquement à partir du prix/jour.' : 'Optional: if empty they are derived from day price.'}</p>
+            <p className="text-xs text-black/50">{locale === 'fr' ? 'Optionnel: demi-journée et Sunset si vides sont dérivés du prix journée complète.' : 'Optional: half day and Sunset derived from full day price if empty.'}</p>
             
-            {/* Prix Agence */}
+            {/* Prix Agence : Journée complète / Demi-journée / Sunset */}
             <div className="space-y-4 pt-4 border-t border-black/10">
               <h3 className="text-sm font-semibold">{locale === "fr" ? "Prix Agence (optionnel)" : "Agency Prices (optional)"}</h3>
               <p className="text-xs text-black/50">
@@ -110,21 +106,17 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
                   ? "Si les prix agence sont différents des prix publics, renseignez-les ici. Sinon, les prix publics seront utilisés."
                   : "If agency prices differ from public prices, fill them here. Otherwise, public prices will be used."}
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <label className="grid gap-1 text-sm">
-                  <span>{locale === "fr" ? "Prix Agence/jour (€)" : "Agency price/day (€)"}</span>
+                  <span>{locale === "fr" ? "Prix Agence Journée complète (€)" : "Agency full day (€)"}</span>
                   <input name="priceAgencyPerDay" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  <span>{locale === "fr" ? "Prix Agence matin (€)" : "Agency morning price (€)"}</span>
+                  <span>{locale === "fr" ? "Prix Agence Demi-journée (€)" : "Agency half day (€)"}</span>
                   <input name="priceAgencyAm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  <span>{locale === "fr" ? "Prix Agence après-midi (€)" : "Agency afternoon price (€)"}</span>
-                  <input name="priceAgencyPm" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span>{locale === "fr" ? "Prix Agence Sunset (€)" : "Agency sunset price (€)"}</span>
+                  <span>{locale === "fr" ? "Prix Agence Sunset (€)" : "Agency sunset (€)"}</span>
                   <input name="priceAgencySunset" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
                 </label>
               </div>

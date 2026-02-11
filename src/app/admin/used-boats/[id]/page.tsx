@@ -49,7 +49,8 @@ export default async function EditUsedBoatPage({ params, searchParams }: { param
             </label>
             <label className='grid gap-1 text-sm'>
               <span>Slug</span>
-              <input name='slug' defaultValue={boat.slug} readOnly className='h-11 rounded-lg border border-black/15 px-3 bg-black/5 text-black/60' />
+              <input name='slug' defaultValue={boat.slug} className='h-11 rounded-lg border border-black/15 px-3' placeholder='ranieri' />
+              <span className='text-xs text-black/50'>Modifiable pour corriger les erreurs de slug</span>
             </label>
           </div>
           <input type='hidden' name='titleEn' value='' />

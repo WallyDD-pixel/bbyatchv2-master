@@ -53,14 +53,13 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       setMain: "Définir principale",
       main: "Principale",
       orderSaved: "Ordre enregistré",
-      priceAm: "Prix matin (€)",
-      pricePm: "Prix après-midi (€)",
-      priceSunset: "Prix Sunset (€)",
-      priceAgencyPerDay: "Prix Agence/jour (€)",
-      priceAgencyAm: "Prix Agence matin (€)",
-      priceAgencyPm: "Prix Agence après-midi (€)",
+      pricePerDayLabel: "Journée complète (€)",
+      priceHalfDay: "Demi-journée (€)",
+      priceSunset: "Sunset (€)",
+      priceAgencyPerDay: "Prix Agence Journée complète (€)",
+      priceAgencyHalfDay: "Prix Agence Demi-journée (€)",
       priceAgencySunset: "Prix Agence Sunset (€)",
-      partialNote: "Optionnel: si laissés vides on dérive automatiquement à partir du prix/jour.",
+      partialNote: "Optionnel: si laissés vides on dérive automatiquement à partir du prix journée complète.",
     },
     en: {
       save: "Save",
@@ -78,14 +77,13 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       setMain: "Set main",
       main: "Main",
       orderSaved: "Order saved",
-      priceAm: "Morning price (€)",
-      pricePm: "Afternoon price (€)",
-      priceSunset: "Sunset price (€)",
-      priceAgencyPerDay: "Agency price/day (€)",
-      priceAgencyAm: "Agency morning price (€)",
-      priceAgencyPm: "Agency afternoon price (€)",
-      priceAgencySunset: "Agency sunset price (€)",
-      partialNote: "Optional: if empty they are derived from day price.",
+      pricePerDayLabel: "Full day (€)",
+      priceHalfDay: "Half day (€)",
+      priceSunset: "Sunset (€)",
+      priceAgencyPerDay: "Agency full day (€)",
+      priceAgencyHalfDay: "Agency half day (€)",
+      priceAgencySunset: "Agency sunset (€)",
+      partialNote: "Optional: if empty they are derived from full day price.",
     },
   }[locale];
 
@@ -207,12 +205,18 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       Array.from(files).forEach(f => fd.append('imageFiles', f));
 
       const res = await fetch(`/api/admin/boats/${boat.id}`, { method: 'PUT', body: fd });
-      if (!res.ok) throw new Error('upload_failed');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'upload_failed' }));
+        const errorMsg = errorData.details || errorData.message || errorData.error || 'upload_failed';
+        throw new Error(errorMsg);
+      }
       const data = await res.json();
       if (Array.isArray(data.photoUrls)) setPhotos(data.photoUrls);
       if (data.imageUrl) setForm((f: typeof form) => ({ ...f, imageUrl: data.imageUrl }));
-    } catch (err) {
-      alert(t.failed);
+    } catch (err: any) {
+      const errorMsg = err?.message || (locale === 'fr' ? 'Échec du téléversement des images.' : 'Image upload failed.');
+      alert(errorMsg);
+      console.error('Erreur upload images:', err);
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -550,7 +554,8 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'upload_failed' }));
-        throw new Error(errorData.error || errorData.message || 'upload_failed');
+        const msg = errorData.details || errorData.message || errorData.error || 'upload_failed';
+        throw new Error(msg);
       }
       
       const contentType = res.headers.get('content-type') || '';
@@ -562,7 +567,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       const data = await res.json();
       if (Array.isArray(data.videoUrls)) setVideosList(data.videoUrls);
     } catch (e: any) {
-      const errorMsg = e?.message || t.failed;
+      const errorMsg = e?.message || (locale === 'fr' ? 'Échec de l\'upload des vidéos.' : 'Video upload failed.');
       alert(errorMsg);
       console.error('Erreur upload vidéos:', e);
     } finally { 
@@ -591,7 +596,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       {croppingImage && croppingIndex !== null && (
         <ImageCropper
           imageUrl={croppingImage}
-          aspectRatio={1} // Ratio libre, peut être ajusté
+          aspectRatio={16/9}
           locale={locale}
           onCrop={(croppedFile) => handleCropImage(croppedFile, croppingImage, croppingIndex)}
           onCancel={() => {
@@ -626,19 +631,15 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
           </select>
         </label>
         <label className="grid gap-1 text-sm">
-          <span>{locale === "fr" ? "Prix/jour (€)" : "Price/day (€)"}</span>
+          <span>{t.pricePerDayLabel}</span>
           <input name="pricePerDay" type="number" value={form.pricePerDay ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
         </label>
       </div>
-      {/* Prix partiels AM / PM / Sunset */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Prix : Demi-journée / Journée complète / Sunset */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <label className="grid gap-1 text-sm">
-          <span>{t.priceAm}</span>
+          <span>{t.priceHalfDay}</span>
           <input name="priceAm" type="number" value={form.priceAm ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span>{t.pricePm}</span>
-          <input name="pricePm" type="number" value={form.pricePm ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
         </label>
         <label className="grid gap-1 text-sm">
           <span>{t.priceSunset}</span>
@@ -647,7 +648,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       </div>
       <p className="text-xs text-black/50 -mt-2">{t.partialNote}</p>
       
-      {/* Prix Agence */}
+      {/* Prix Agence : Journée complète / Demi-journée / Sunset */}
       <div className="space-y-4 pt-4 border-t border-black/10">
         <h3 className="text-sm font-semibold">{locale === "fr" ? "Prix Agence (optionnel)" : "Agency Prices (optional)"}</h3>
         <p className="text-xs text-black/50">
@@ -655,18 +656,14 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
             ? "Si les prix agence sont différents des prix publics, renseignez-les ici. Sinon, les prix publics seront utilisés."
             : "If agency prices differ from public prices, fill them here. Otherwise, public prices will be used."}
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <label className="grid gap-1 text-sm">
             <span>{t.priceAgencyPerDay}</span>
             <input name="priceAgencyPerDay" type="number" value={form.priceAgencyPerDay ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
           </label>
           <label className="grid gap-1 text-sm">
-            <span>{t.priceAgencyAm}</span>
+            <span>{t.priceAgencyHalfDay}</span>
             <input name="priceAgencyAm" type="number" value={form.priceAgencyAm ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span>{t.priceAgencyPm}</span>
-            <input name="priceAgencyPm" type="number" value={form.priceAgencyPm ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
           </label>
           <label className="grid gap-1 text-sm">
             <span>{t.priceAgencySunset}</span>
@@ -869,7 +866,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
                 type="text"
                 value={videoInput}
                 onChange={(e) => setVideoInput(e.target.value)}
-                placeholder={locale === "fr" ? "URL YouTube, Vimeo ou fichier vidéo (séparées par des virgules)" : "YouTube, Vimeo or video file URLs (comma separated)"}
+                placeholder={locale === "fr" ? "URL YouTube, Vimeo (séparées par des virgules)" : "YouTube, Vimeo URLs (comma separated)"}
                 className="flex-1 h-10 rounded-lg border border-black/15 px-3 text-sm"
               />
               <button
@@ -907,8 +904,8 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
             </label>
             <p className="text-xs text-black/50">
               {locale === "fr" 
-                ? "Formats acceptés: MP4, WebM, OGG (max 100MB par fichier)"
-                : "Accepted formats: MP4, WebM, OGG (max 100MB per file)"}
+                ? "Formats acceptés: MP4, WebM, OGG, MOV (max 200 Mo par fichier)"
+                : "Accepted formats: MP4, WebM, OGG, MOV (max 200MB per file)"}
             </p>
           </label>
         </div>

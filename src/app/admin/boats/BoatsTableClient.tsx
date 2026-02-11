@@ -99,13 +99,10 @@ export function BoatsTableClient({
               {locale === "fr" ? "Ville" : "City"}
             </th>
             <th className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell">
-              {locale === "fr" ? "Prix/jour" : "Price/day"}
+              {locale === "fr" ? "Journée complète" : "Full day"}
             </th>
             <th className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell">
-              {locale === "fr" ? "Matin" : "AM"}
-            </th>
-            <th className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell">
-              {locale === "fr" ? "Après‑midi" : "PM"}
+              {locale === "fr" ? "Demi-journée" : "Half day"}
             </th>
             <th className="py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell">
               {locale === "fr" ? "Dispo" : "Avail."}
@@ -119,7 +116,7 @@ export function BoatsTableClient({
           {boats.length === 0 ? (
             <tr>
               <td
-                colSpan={9}
+                colSpan={8}
                 className="text-center py-8 text-black/60 whitespace-nowrap"
               >
                 {locale === "fr" ? "Aucun bateau." : "No boats."}
@@ -148,9 +145,6 @@ export function BoatsTableClient({
                   </td>
                   <td className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell">
                     {b.priceAm != null ? `${b.priceAm}€` : "-"}
-                  </td>
-                  <td className="py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell">
-                    {b.pricePm != null ? `${b.pricePm}€` : "-"}
                   </td>
                   <td className="py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell">{b.available ? "✔" : "✖"}</td>
                   <td className="py-2 sm:py-2.5 px-2 sm:px-3">

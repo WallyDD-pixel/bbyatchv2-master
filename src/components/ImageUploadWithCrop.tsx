@@ -133,7 +133,7 @@ export default function ImageUploadWithCrop({
       {croppingImage && (
         <ImageCropper
           imageUrl={croppingImage}
-          aspectRatio={aspectRatio || 1}
+          aspectRatio={aspectRatio ?? 16/9}
           locale={locale}
           onCrop={handleCrop}
           onCancel={() => {

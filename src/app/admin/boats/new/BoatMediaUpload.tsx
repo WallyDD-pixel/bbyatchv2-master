@@ -204,7 +204,7 @@ export default function BoatMediaUpload({ locale }: BoatMediaUploadProps) {
       {croppingImage && (
         <ImageCropper
           imageUrl={croppingImage.url}
-          aspectRatio={1}
+          aspectRatio={16/9}
           locale={locale}
           onCrop={(croppedFile) => {
             if (croppingImage.index >= imagePreviews.length) {

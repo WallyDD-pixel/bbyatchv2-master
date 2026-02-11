@@ -26,7 +26,7 @@ export async function GET(req: Request) {
     const experiences = await (prisma as any).experience.findMany({ select: { id:true, slug:true, titleFr:true, titleEn:true, imageUrl:true } });
     let slots: any[] = [];
     try {
-      slots = await (prisma as any).experienceAvailabilitySlot.findMany({ where: { date: { gte: start, lte: end } }, select: { id:true, experienceId:true, boatId:true, date:true, part:true, status:true, note:true } });
+      slots = await (prisma as any).experienceAvailabilitySlot.findMany({ where: { date: { gte: start, lte: end } }, select: { id:true, experienceId:true, boatId:true, date:true, part:true, status:true, note:true, showInUpcoming:true } });
     } catch {
       // Table absente (migration non appliquée) => on renvoie quand même les expériences
     }
@@ -34,14 +34,17 @@ export async function GET(req: Request) {
   } catch { return NextResponse.json({ error: 'failed' }, { status: 500 }); }
 }
 
-// PATCH note { id, note }
+// PATCH { id, note?, showInUpcoming? }
 export async function PATCH(req: Request) {
   if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   let body: any = {}; try { body = await req.json(); } catch {}
-  const { id, note } = body || {};
+  const { id, note, showInUpcoming } = body || {};
   if (!id) return NextResponse.json({ error: 'missing_id' }, { status: 400 });
   try {
-    const updated = await (prisma as any).experienceAvailabilitySlot.update({ where: { id: Number(id) }, data: { note: note || null } });
+    const data: any = {};
+    if (note !== undefined) data.note = note || null;
+    if (showInUpcoming !== undefined) data.showInUpcoming = !!showInUpcoming;
+    const updated = await (prisma as any).experienceAvailabilitySlot.update({ where: { id: Number(id) }, data });
     return NextResponse.json({ ok:true, slot: updated });
   } catch { return NextResponse.json({ error: 'failed' }, { status: 500 }); }
 }
@@ -103,7 +106,7 @@ export async function POST(req: Request) {
     }
     
     const created = await (prisma as any).experienceAvailabilitySlot.create({ 
-      data: { experienceId: expId, boatId: bId, date: day, part, status:'available', note: note||null } 
+      data: { experienceId: expId, boatId: bId, date: day, part, status:'available', note: note||null, showInUpcoming: true } 
     });
     
     // Si un boatId est fourni et un prix est défini, créer ou mettre à jour le BoatExperience

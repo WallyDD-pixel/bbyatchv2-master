@@ -5,6 +5,9 @@ import { uploadMultipleToSupabase } from "@/lib/storage";
 import path from "path";
 import fs from "fs";
 
+// Timeout plus long pour les uploads d'images/vidéos
+export const maxDuration = 60;
+
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const guard = await ensureAdmin();
   if (guard) return guard;
@@ -40,19 +43,23 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     body = await req.json().catch(()=>({}));
   }
 
-  const { slug, name, city, capacity, speedKn, fuel, enginePower, lengthM, pricePerDay, priceAm, pricePm, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice } = body || {};
+  const { slug, name, city, capacity, speedKn, fuel, enginePower, lengthM, pricePerDay, priceAm, pricePm, priceSunset, priceAgencyPerDay, priceAgencyAm, priceAgencyPm, priceAgencySunset, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice } = body || {};
   const optionsPayload = body.options; // tableau attendu {id?, label, price|null}
   const experiencesPayload = body.experiences; // [{experienceId, price|null}]
   // Dérivation éventuelle prix AM/PM si uniquement day fourni
+  // IMPORTANT: Ne pas modifier les prix explicitement entrés (comme priceSunset)
   let derivedPricePerDay = pricePerDay;
   let derivedPriceAm = priceAm;
   let derivedPricePm = pricePm;
-  if (derivedPricePerDay != null && derivedPricePerDay !== '' && (derivedPriceAm == null || derivedPriceAm === '') && (derivedPricePm == null || derivedPricePm === '')) {
+  // Ne calculer automatiquement que si les prix AM/PM sont vides ET que priceSunset n'est pas fourni
+  // Si priceSunset est fourni, on ne touche pas aux prix AM/PM
+  const hasExplicitSunset = priceSunset != null && priceSunset !== '';
+  if (!hasExplicitSunset && derivedPricePerDay != null && derivedPricePerDay !== '' && (derivedPriceAm == null || derivedPriceAm === '') && (derivedPricePm == null || derivedPricePm === '')) {
     const dayNum = Number(derivedPricePerDay) || 0;
     const half = Math.round(dayNum / 2);
     derivedPriceAm = String(half);
     derivedPricePm = String(dayNum - half);
-  } else if (derivedPricePerDay != null && derivedPricePerDay !== '') {
+  } else if (!hasExplicitSunset && derivedPricePerDay != null && derivedPricePerDay !== '') {
     const dayNum = Number(derivedPricePerDay) || 0;
     if ((derivedPriceAm == null || derivedPriceAm === '') && (derivedPricePm != null && derivedPricePm !== '')) {
       const pmVal = Number(derivedPricePm) || 0;
@@ -79,10 +86,11 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 
   // Gestion upload vers Supabase Storage avec validation de sécurité
   const allowed = ['image/jpeg','image/png','image/webp','image/gif'];
-  const allowedVideo = ['video/mp4','video/webm','video/ogg'];
+  const allowedVideo = ['video/mp4','video/webm','video/ogg','video/quicktime'];
   
   let uploaded: string[] = [];
   let uploadedVideos: string[] = [];
+  const validationErrors: string[] = [];
   try {
     // Upload images avec validation
     if (newFiles.length) {
@@ -96,9 +104,22 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
           if (validation.valid) {
             validImageFiles.push(file);
           } else {
-            console.warn(`⚠️ Image file rejected: ${file.name} - ${validation.error}`);
+            const msg = `${file.name}: ${validation.error}`;
+            console.warn(`⚠️ Image file rejected: ${msg}`);
+            validationErrors.push(msg);
           }
+        } else {
+          const msg = `${file.name}: Type non autorisé (${mime}). Utilisez JPEG, PNG, WebP ou GIF.`;
+          validationErrors.push(msg);
         }
+      }
+      
+      if (newFiles.length > 0 && validImageFiles.length === 0) {
+        return NextResponse.json({
+          error: 'image_upload_failed',
+          message: validationErrors[0] || 'Aucune image valide. Formats acceptés : JPEG, PNG, WebP, GIF. Max 20 Mo par fichier.',
+          details: validationErrors.join(' ; '),
+        }, { status: 400 });
       }
       
       if (validImageFiles.length > 0) {
@@ -114,8 +135,16 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
           const result = await uploadMultipleToSupabase([singleFile], 'boats');
           if (result.length > 0) uploaded.push(...result);
         } else {
-          console.warn(`⚠️ Image file rejected: ${singleFile.name} - ${validation.error}`);
+          return NextResponse.json({
+            error: 'image_upload_failed',
+            message: validation.error || 'Image refusée',
+          }, { status: 400 });
         }
+      } else {
+        return NextResponse.json({
+          error: 'image_upload_failed',
+          message: `Type non autorisé (${mime}). Utilisez JPEG, PNG, WebP ou GIF.`,
+        }, { status: 400 });
       }
     }
     
@@ -123,6 +152,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     if (videoFiles.length) {
       const { validateVideoFile } = await import('@/lib/security/file-validation');
       const validVideoFiles: File[] = [];
+      const videoErrors: string[] = [];
       
       for (const file of videoFiles) {
         const mime = (file as any).type;
@@ -131,9 +161,22 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
           if (validation.valid) {
             validVideoFiles.push(file);
           } else {
-            console.warn(`⚠️ Video file rejected: ${file.name} - ${validation.error}`);
+            const msg = `${file.name}: ${validation.error}`;
+            console.warn(`⚠️ Video file rejected: ${msg}`);
+            videoErrors.push(msg);
           }
+        } else {
+          const msg = `${file.name}: Type non autorisé (${mime}). Utilisez MP4, WebM, OGG ou MOV (max 200 Mo).`;
+          videoErrors.push(msg);
         }
+      }
+      
+      if (videoFiles.length > 0 && validVideoFiles.length === 0) {
+        return NextResponse.json({
+          error: 'video_upload_failed',
+          message: videoErrors[0] || 'Aucune vidéo valide. Formats acceptés : MP4, WebM, OGG, MOV. Max 200 Mo par fichier.',
+          details: videoErrors.join(' ; '),
+        }, { status: 400 });
       }
       
       if (validVideoFiles.length > 0) {
@@ -141,9 +184,22 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         uploadedVideos.push(...urls);
       }
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error('Error uploading to Supabase Storage:', e);
-    return NextResponse.json({ error: 'image_upload_failed' }, { status: 500 });
+    const errorMessage = e?.message || 'Erreur lors de l\'upload des fichiers';
+    // Si c'est une erreur de validation, donner plus de détails
+    if (errorMessage.includes('validation') || errorMessage.includes('rejected')) {
+      return NextResponse.json({ 
+        error: 'image_upload_failed', 
+        details: errorMessage,
+        message: 'Fichier rejeté : ' + errorMessage 
+      }, { status: 400 });
+    }
+    return NextResponse.json({ 
+      error: 'image_upload_failed', 
+      details: errorMessage,
+      message: 'Erreur lors de l\'upload : ' + errorMessage 
+    }, { status: 500 });
   }
 
   let finalImageUrl = imageUrl;
@@ -233,6 +289,11 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         pricePerDay: derivedPricePerDay != null && derivedPricePerDay !== '' ? Number(derivedPricePerDay) : undefined,
         priceAm: derivedPriceAm != null && derivedPriceAm !== '' ? Number(derivedPriceAm) : undefined,
         pricePm: derivedPricePm != null && derivedPricePm !== '' ? Number(derivedPricePm) : undefined,
+        priceSunset: priceSunset != null && priceSunset !== '' ? Number(priceSunset) : undefined,
+        priceAgencyPerDay: priceAgencyPerDay != null && priceAgencyPerDay !== '' ? Number(priceAgencyPerDay) : undefined,
+        priceAgencyAm: priceAgencyAm != null && priceAgencyAm !== '' ? Number(priceAgencyAm) : undefined,
+        priceAgencyPm: priceAgencyPm != null && priceAgencyPm !== '' ? Number(priceAgencyPm) : undefined,
+        priceAgencySunset: priceAgencySunset != null && priceAgencySunset !== '' ? Number(priceAgencySunset) : undefined,
         imageUrl: finalImageUrl,
         available: available != null ? (typeof available === 'string' ? (available === 'true' || available === 'on') : Boolean(available)) : undefined,
         videoUrls: (() => { 

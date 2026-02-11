@@ -71,7 +71,7 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell'>{locale==='fr'? 'Dates':'Dates'}</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell'>{locale==='fr'? 'Partie':'Part'}</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell'>{locale==='fr'? 'Passagers':'Pax'}</th>
-                <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell'>{locale==='fr'? 'Commentaire':'Comment'}</th>
+                <th className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell'>{locale==='fr'? 'Commentaire / Special needs':'Comment / Special needs'}</th>
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3'>{locale==='fr'? 'Statut':'Status'}</th>
                 {/* Colonne Prix supprimée */}
                 <th className='py-2 sm:py-2.5 px-2 sm:px-3'>{locale==='fr'? 'Actions':'Actions'}</th>
@@ -92,9 +92,8 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
                   try {
                     const metadataObj = typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata;
                     if (metadataObj.specialNeeds) {
-                      specialNeeds = typeof metadataObj.specialNeeds === 'string' 
-                        ? (metadataObj.specialNeeds.includes('%') ? decodeURIComponent(metadataObj.specialNeeds) : metadataObj.specialNeeds)
-                        : String(metadataObj.specialNeeds);
+                      const raw = typeof metadataObj.specialNeeds === 'string' ? metadataObj.specialNeeds : String(metadataObj.specialNeeds);
+                      try { specialNeeds = decodeURIComponent(raw.replace(/\+/g, ' ')); } catch { specialNeeds = raw; }
                       // Limiter à 50 caractères pour l'affichage dans le tableau
                       if (specialNeeds.length > 50) {
                         specialNeeds = specialNeeds.substring(0, 50) + '...';
@@ -118,7 +117,7 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[9px] sm:text-xs'>{dateDisplay}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell text-[9px] sm:text-xs'>{r.part ? (r.part === 'AM' ? (locale==='fr'? 'Matin':'AM') : r.part === 'PM' ? (locale==='fr'? 'Après-midi':'PM') : r.part) : (locale==='fr'? 'Journée':'FULL')}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[10px] sm:text-xs'>{r.passengers??'—'}</td>
-                    <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[9px] sm:text-xs text-black/70' title={specialNeeds || undefined}>
+                    <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell text-[9px] sm:text-xs text-black/70 max-w-[180px] truncate' title={specialNeeds || undefined}>
                       {specialNeeds || '—'}
                     </td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3'>

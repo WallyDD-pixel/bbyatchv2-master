@@ -16,7 +16,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
   const { boat: boatSlug, start, end, part, pax, opts, waterToys, children, specialNeeds, excursion, departurePort } = sp;
-  const slot = (part==='AM'||part==='PM'||part==='FULL'||part==='SUNSET')? part : 'FULL';
+  const slot = (part==='AM'||part==='PM'||part==='FULL'||part==='SUNSET') ? part : 'FULL';
   let boat: any = null;
   if (boatSlug) {
     boat = await (prisma as any).boat.findUnique({ 

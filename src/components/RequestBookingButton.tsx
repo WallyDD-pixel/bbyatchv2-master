@@ -23,9 +23,10 @@ interface Props {
   optionIds?: number[]; // nouvelles options sélectionnées
   needsSkipper?: boolean;
   additionalInfo?: AdditionalInfo;
+  departurePort?: string;
 }
 
-export default function RequestBookingButton({ t, locale, slug, hasDates, disabled, disabledMessage, startDate, endDate, part='FULL', optionIds, needsSkipper, additionalInfo }: Props){
+export default function RequestBookingButton({ t, locale, slug, hasDates, disabled, disabledMessage, startDate, endDate, part='FULL', optionIds, needsSkipper, additionalInfo, departurePort }: Props){
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -37,7 +38,8 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
     params.set('boat', slug);
     params.set('start', vals.startDate);
     if (vals.part === 'FULL' && vals.endDate) params.set('end', vals.endDate);
-    if (vals.part) params.set('part', vals.part);
+    // Envoyer AM pour demi-journée (HALF) afin que le checkout affiche et facture le prix demi-journée
+    if (vals.part) params.set('part', vals.part === 'HALF' ? 'AM' : vals.part);
     if (vals.passengers) params.set('pax', String(vals.passengers));
     if (optionIds && optionIds.length) params.set('opts', optionIds.join(','));
     if (needsSkipper) params.set('skipper', '1');
@@ -67,7 +69,7 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
       if (additionalInfo.specialNeeds) params.set('specialNeeds', encodeURIComponent(additionalInfo.specialNeeds));
       if (additionalInfo.wantsExcursion) params.set('excursion', '1');
     }
-    // Note: departurePort devrait être récupéré depuis l'URL ou les searchParams si disponible
+    if (departurePort) params.set('departurePort', departurePort);
     return `/checkout?${params.toString()}`;
   };
 

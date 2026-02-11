@@ -131,13 +131,23 @@ export default function BoatMediaCarousel({ images, videos = [] }: Props) {
               />
             ) : media.embedUrl ? (
               // Vidéo YouTube/Vimeo embed
-              <iframe
-                src={media.embedUrl}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={`Vidéo ${i + 1}`}
-              />
+              <div className="w-full h-full flex flex-col">
+                <iframe
+                  src={media.embedUrl}
+                  className="w-full flex-1 min-h-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={`Vidéo ${i + 1}`}
+                />
+                <a
+                  href={media.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-white/80 hover:text-white bg-black/30 px-2 py-1 text-center"
+                >
+                  Si la vidéo ne s&apos;affiche pas, ouvrir sur YouTube/Vimeo →
+                </a>
+              </div>
             ) : (
               // Vidéo fichier direct
               <video

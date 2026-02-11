@@ -79,17 +79,8 @@ export default function AdminHomepageSettingsPage() {
     setToast(null);
     
     const formData = new FormData(e.currentTarget);
-    
-    // Ajouter les fichiers d'images sélectionnés
-    const fileInputs = e.currentTarget.querySelectorAll<HTMLInputElement>('input[type="file"]');
-    fileInputs.forEach((input) => {
-      if (input.files) {
-        for (let i = 0; i < input.files.length; i++) {
-          formData.append(input.name, input.files[i]);
-        }
-      }
-    });
-    
+    // Ne pas ré-ajouter les fichiers : FormData(form) les inclut déjà. Les ajouter à la main créait des doublons.
+
     try {
       const response = await fetch("/api/admin/homepage-settings", {
         method: "POST",

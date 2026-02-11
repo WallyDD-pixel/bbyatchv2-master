@@ -32,14 +32,15 @@ export async function POST(req: Request) {
   
   try {
     const data = await req.formData();
-    const mainSliderTitle = (data.get('mainSliderTitle') || '').toString().trim();
-    const mainSliderSubtitle = (data.get('mainSliderSubtitle') || '').toString().trim();
-    const mainSliderText = (data.get('mainSliderText') || '').toString().trim();
+    const has = (k: string) => data.has(k);
+    const mainSliderTitle = has('mainSliderTitle') ? (data.get('mainSliderTitle') || '').toString().trim() : undefined;
+    const mainSliderSubtitle = has('mainSliderSubtitle') ? (data.get('mainSliderSubtitle') || '').toString().trim() : undefined;
+    const mainSliderText = has('mainSliderText') ? (data.get('mainSliderText') || '').toString().trim() : undefined;
     const mainSliderImageFile = data.get('mainSliderImageFile') as File | null; // legacy, un seul fichier
     const mainSliderImagesFiles = data.getAll('mainSliderImagesFiles') as File[]; // multi fichiers
-    const aboutUsTitle = (data.get('aboutUsTitle') || '').toString().trim();
-    const aboutUsSubtitle = (data.get('aboutUsSubtitle') || '').toString().trim();
-    const aboutUsText = (data.get('aboutUsText') || '').toString().trim();
+    const aboutUsTitle = has('aboutUsTitle') ? (data.get('aboutUsTitle') || '').toString().trim() : undefined;
+    const aboutUsSubtitle = has('aboutUsSubtitle') ? (data.get('aboutUsSubtitle') || '').toString().trim() : undefined;
+    const aboutUsText = has('aboutUsText') ? (data.get('aboutUsText') || '').toString().trim() : undefined;
     const whyChooseImageFile = data.get('whyChooseImageFile') as File | null;
 
   // Gestion upload image "Pourquoi choisir" vers Supabase Storage avec validation
@@ -172,27 +173,27 @@ export async function POST(req: Request) {
     // on ignore l'erreur d'upload, pas bloquant
   }
 
-  // Concaténer avec la liste existante si on a uploadé quelque chose
+  // Ne mettre à jour que les champs envoyés dans le formulaire (évite d'écraser les réseaux sociaux quand on enregistre depuis Page d'accueil, et inversement)
   let dataUpdate: any = {};
   
-  // Toujours mettre à jour les champs texte (même si vides, pour permettre la suppression)
-  dataUpdate.mainSliderTitle = mainSliderTitle || null;
-  dataUpdate.mainSliderSubtitle = mainSliderSubtitle || null;
-  dataUpdate.mainSliderText = mainSliderText || null;
-  dataUpdate.aboutUsTitle = aboutUsTitle || null;
-  dataUpdate.aboutUsSubtitle = aboutUsSubtitle || null;
-  dataUpdate.aboutUsText = aboutUsText || null;
+  if (has('mainSliderTitle')) dataUpdate.mainSliderTitle = (mainSliderTitle ?? '').toString().trim() || null;
+  if (has('mainSliderSubtitle')) dataUpdate.mainSliderSubtitle = (mainSliderSubtitle ?? '').toString().trim() || null;
+  if (has('mainSliderText')) dataUpdate.mainSliderText = (mainSliderText ?? '').toString().trim() || null;
+  if (has('aboutUsTitle')) dataUpdate.aboutUsTitle = (aboutUsTitle ?? '').toString().trim() || null;
+  if (has('aboutUsSubtitle')) dataUpdate.aboutUsSubtitle = (aboutUsSubtitle ?? '').toString().trim() || null;
+  if (has('aboutUsText')) dataUpdate.aboutUsText = (aboutUsText ?? '').toString().trim() || null;
+
+  // Réseaux sociaux (page Réseaux sociaux n'envoie que ces champs — les persister sans écraser le reste)
+  ['footerInstagram', 'footerFacebook', 'footerLinkedIn', 'footerYouTube', 'footerTikTok'].forEach((key) => {
+    if (data.has(key)) dataUpdate[key] = (data.get(key) as string)?.toString().trim() || null;
+  });
 
   // Ajouter l'URL de l'image "Pourquoi choisir" si uploadée ou téléchargée
-  // Si une URL vide est fournie explicitement, on supprime l'image
-  if (whyChooseImageUrlInput === '' && !whyChooseImageFile) {
-    // L'utilisateur veut supprimer l'image (champ URL vide et pas de fichier)
+  if (has('whyChooseImageUrl') && whyChooseImageUrlInput === '' && !whyChooseImageFile) {
     dataUpdate.whyChooseImageUrl = null;
   } else if (whyChooseImageUrl) {
-    // Nouvelle image téléchargée ou uploadée
     dataUpdate.whyChooseImageUrl = whyChooseImageUrl;
   }
-  // Sinon, on garde l'image existante (pas de modification)
 
   if (uploadedUrls.length > 0) {
     const current: any = await prisma.settings.findFirst();
@@ -203,13 +204,13 @@ export async function POST(req: Request) {
         if (Array.isArray(parsed)) existing = parsed;
       } catch {}
     }
-    // Ne conserver que les URLs pointant vers des fichiers d'images (par extension)
+    // Ne conserver que les URLs pointant vers des fichiers d'images (par extension), sans doublon
     const allowedExt = new Set(['jpg', 'jpeg', 'png', 'svg', 'webp']);
     const keep = (u: string) => {
-      const ext = u.split('.').pop()?.toLowerCase() || '';
+      const ext = u.split('.').pop()?.split('?')[0]?.toLowerCase() || '';
       return allowedExt.has(ext);
     };
-    const combined = [...existing.filter(keep), ...uploadedUrls.filter(keep)];
+    const combined = Array.from(new Set([...existing.filter(keep), ...uploadedUrls.filter(keep)]));
     dataUpdate.mainSliderImageUrls = JSON.stringify(combined);
     // garder mainSliderImageUrl en cohérence (première image)
     dataUpdate.mainSliderImageUrl = combined[0] ?? mainSliderImageUrl;
@@ -228,6 +229,14 @@ export async function POST(req: Request) {
     revalidatePath('/', 'page');
     revalidatePath('/');
     revalidatePath('/admin/homepage-settings', 'page');
+
+    // Si la requête ne contient que les champs réseaux sociaux (enregistrement depuis page Réseaux sociaux), retourner JSON au lieu de rediriger
+    const onlySocial =
+      Object.keys(dataUpdate).every((k) => ['footerInstagram', 'footerFacebook', 'footerLinkedIn', 'footerYouTube', 'footerTikTok'].includes(k)) &&
+      Object.keys(dataUpdate).length > 0;
+    if (onlySocial) {
+      return NextResponse.json({ ok: true, message: 'Réseaux sociaux enregistrés' });
+    }
 
     // Redirection avec URL correcte (évite localhost)
     const redirectUrl = createRedirectUrl('/admin/homepage-settings?success=1', req);

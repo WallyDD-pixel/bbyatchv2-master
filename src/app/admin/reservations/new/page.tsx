@@ -33,7 +33,23 @@ export default async function AdminCreateReservationPage({ searchParams }: { sea
   try {
     boats = await (prisma as any).boat.findMany({
       where: { available: true },
-      include: { options: { select: { id: true, label: true, price: true } } },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        capacity: true,
+        pricePerDay: true,
+        priceAm: true,
+        pricePm: true,
+        priceSunset: true,
+        priceAgencyPerDay: true,
+        priceAgencyAm: true,
+        priceAgencyPm: true,
+        priceAgencySunset: true,
+        skipperRequired: true,
+        skipperPrice: true,
+        options: { select: { id: true, label: true, price: true } }
+      },
       orderBy: { name: 'asc' }
     });
   } catch {}

@@ -234,8 +234,34 @@ export async function POST(req: Request){
       }
     }
 
+    // Gestion du slug : permettre la modification si fourni, sinon conserver l'existant
+    let newSlug = existing.slug;
+    const slugInput = String(data.get('slug') || '').trim();
+    if (slugInput && slugInput !== existing.slug) {
+      // Normaliser le slug
+      const slugify = (str:string)=> (str||'').toLowerCase()
+        .normalize('NFD').replace(/\p{Diacritic}/gu,'')
+        .replace(/[^a-z0-9]+/g,'-')
+        .replace(/^-+|-+$/g,'') || 'item';
+      const normalizedSlug = slugify(slugInput);
+      
+      // Vérifier que le nouveau slug n'existe pas déjà (sauf pour ce bateau)
+      const existingWithSlug = await (prisma as any).usedBoat.findUnique({ 
+        where: { slug: normalizedSlug },
+        select: { id: true }
+      });
+      if (existingWithSlug && existingWithSlug.id !== id) {
+        // Slug déjà utilisé par un autre bateau
+        return NextResponse.json({ 
+          error: 'slug_taken', 
+          details: `Le slug "${normalizedSlug}" est déjà utilisé par un autre bateau` 
+        }, { status: 409 });
+      }
+      newSlug = normalizedSlug;
+    }
+    
     const update:any = {
-      slug: existing.slug,
+      slug: newSlug,
       titleFr: String(data.get('titleFr')).trim(),
       titleEn: (data.get('titleEn')? String(data.get('titleEn')): String(data.get('titleFr')||'')).trim(),
       year: parseInt(String(data.get('year')),10),

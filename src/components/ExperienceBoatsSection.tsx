@@ -161,15 +161,13 @@ export default async function ExperienceBoatsSection({ locale }: { locale: Local
             year: 'numeric'
           });
           
-          // Afficher les deux images si disponibles (expérience en grand, bateau en petit)
+          // Image : uniquement l'expérience (nom et photo du bateau retirés du bloc)
           const experienceImageUrl = item.experienceImageUrl;
-          const boatImageUrl = item.boatImageUrl;
-          const hasBothImages = experienceImageUrl && boatImageUrl;
           
           return (
             <article key={i} className="group rounded-2xl bg-white shadow-lg border border-black/10 overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
               <Link href={experienceUrl} className="block relative h-56 sm:h-64 md:h-72 bg-gradient-to-b from-black/10 to-black/5 overflow-hidden">
-                {/* Image principale de l'expérience */}
+                {/* Image principale de l'expérience uniquement */}
                 {experienceImageUrl ? (
                   <Image 
                     src={experienceImageUrl} 
@@ -177,40 +175,12 @@ export default async function ExperienceBoatsSection({ locale }: { locale: Local
                     fill 
                     className="object-cover group-hover:scale-110 transition-transform duration-500" 
                   />
-                ) : boatImageUrl ? (
-                  <Image 
-                    src={boatImageUrl} 
-                    alt={item.boatName} 
-                    fill 
-                    className="object-cover group-hover:scale-110 transition-transform duration-500" 
-                  />
                 ) : (
                   <div className="absolute inset-0 bg-[linear-gradient(180deg,#e5e7eb,transparent)]" />
                 )}
                 
-                {/* Image du bateau en overlay si les deux images sont disponibles */}
-                {hasBothImages && boatImageUrl && (
-                  <div className="absolute top-3 right-3 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 border-white shadow-xl z-10">
-                    <Image 
-                      src={boatImageUrl} 
-                      alt={item.boatName} 
-                      fill 
-                      className="object-cover" 
-                    />
-                  </div>
-                )}
-                
                 {/* Overlay gradient pour améliorer la lisibilité */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                
-                {/* Badge avec le nom du bateau en haut à gauche */}
-                <div className="absolute top-3 left-3 z-10">
-                  <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
-                    <span className="text-xs font-bold text-black/80 uppercase tracking-wide">
-                      {item.boatName}
-                    </span>
-                  </div>
-                </div>
                 
                 {/* Date en bas de l'image */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 z-10">

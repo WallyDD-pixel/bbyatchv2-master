@@ -465,6 +465,7 @@ model ExperienceAvailabilitySlot {
   // Horaires fixes spécifiques à ce slot (override ceux de l'expérience si définis)
   fixedDepartureTime String? // Format HH:mm (ex: "20:30")
   fixedReturnTime    String? // Format HH:mm (ex: "23:00")
+  showInUpcoming     Boolean    @default(true) // Afficher dans le bloc "Prochains événements" de l'accueil
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
   experience         Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)

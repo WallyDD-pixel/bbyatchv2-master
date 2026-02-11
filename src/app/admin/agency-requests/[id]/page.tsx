@@ -270,7 +270,7 @@ export default async function AgencyRequestDetailPage(
                     <div>
                       <span className='font-semibold text-black/70 block mb-1'>{locale==='fr'? 'Besoins spéciaux / Demandes spécifiques':'Special needs / Specific requests'}: </span>
                       <p className='text-black/70 whitespace-pre-line bg-white/50 rounded p-2 border border-black/10'>
-                        {typeof metadataObj.specialNeeds === 'string' ? (metadataObj.specialNeeds.includes('%') ? decodeURIComponent(metadataObj.specialNeeds) : metadataObj.specialNeeds) : String(metadataObj.specialNeeds)}
+                        {typeof metadataObj.specialNeeds === 'string' ? (() => { try { return decodeURIComponent(metadataObj.specialNeeds.replace(/\+/g, ' ')); } catch { return metadataObj.specialNeeds; } })() : String(metadataObj.specialNeeds)}
                       </p>
                     </div>
                   )}

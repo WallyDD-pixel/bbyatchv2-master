@@ -66,7 +66,8 @@ export async function POST(req:Request, { params }:{ params:Promise<{ id:string 
           totalPrice: true,
           locale: true,
           currency: true,
-          reservationId: true
+          reservationId: true,
+          metadata: true
         }
       });
       
@@ -99,7 +100,7 @@ export async function POST(req:Request, { params }:{ params:Promise<{ id:string 
           return NextResponse.redirect(redirectUrl, 303);
         }
         
-        // Créer la réservation
+        // Créer la réservation (copier les métadonnées pour facture / détail : port, options, needsSkipper, etc.)
         const reservation = await (prisma as any).reservation.create({
           data: {
             userId: agencyRequest.userId,
@@ -112,6 +113,7 @@ export async function POST(req:Request, { params }:{ params:Promise<{ id:string 
             status: 'pending_deposit',
             locale: agencyRequest.locale,
             currency: agencyRequest.currency || 'eur',
+            metadata: agencyRequest.metadata ?? undefined,
           }
         });
         

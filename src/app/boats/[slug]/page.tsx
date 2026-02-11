@@ -10,12 +10,12 @@ import BoatOptionsAndBooking from '@/components/BoatOptionsAndBooking';
 import { getServerSession } from '@/lib/auth';
 import { getLabelsWithSettings } from '@/lib/settings';
 
-interface Props { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; start?: string; end?: string; startTime?: string; endTime?: string; part?: string; }> }
+interface Props { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; start?: string; end?: string; startTime?: string; endTime?: string; part?: string; departurePort?: string; }> }
 
 export default async function BoatDetailPage({ params, searchParams }: Props){
   const { slug } = await params;
   const sp = (await searchParams) || {};
-  const { start, end, part: rawPart } = sp;
+  const { start, end, part: rawPart, departurePort: departurePortFromUrl } = sp;
   const part = (rawPart==='AM' || rawPart==='PM' || rawPart==='FULL' || rawPart==='SUNSET') ? rawPart : 'FULL';
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
@@ -357,6 +357,7 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
             skipperPrice={(boat as any).skipperPrice || 350}
             startDate={start}
             endDate={end}
+            departurePort={departurePortFromUrl}
           />
         </div>
       </main>

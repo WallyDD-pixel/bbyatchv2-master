@@ -14,7 +14,7 @@ interface Reservation {
   remainingAmount: number | null;
   status: string;
   finalFuelAmount: number | null;
-  user?: { email?: string; firstName?: string | null; lastName?: string | null } | null;
+  user?: { email?: string; firstName?: string | null; lastName?: string | null; role?: string | null } | null;
   boat?: { name: string; slug: string } | null;
 }
 
@@ -33,6 +33,12 @@ export default function ReservationsTableClient({
   updateFinalFuelAmount,
   deleteReservations,
 }: Props) {
+  // États pour les filtres
+  const [filterAgency, setFilterAgency] = useState<string>('');
+  const [filterName, setFilterName] = useState<string>('');
+  const [filterBoat, setFilterBoat] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  
   // Fonctions utilitaires définies dans le composant client
   const dateFmt = (d: Date) => d.toISOString().slice(0, 10);
   const dayCount = (r: Reservation) => {
@@ -86,6 +92,33 @@ export default function ReservationsTableClient({
   };
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  
+  // Filtrer les réservations
+  const filteredReservations = reservations.filter((r) => {
+    const userName = [r.user?.firstName, r.user?.lastName]
+      .filter(Boolean)
+      .join(" ") || r.user?.email || '';
+    const userEmail = r.user?.email || '';
+    const boatName = r.boat?.name || '';
+    
+    // Vérifier si l'utilisateur est une agence en utilisant le rôle
+    const isAgency = r.user?.role === 'agency';
+    
+    if (filterAgency === 'agency' && !isAgency) return false;
+    if (filterAgency === 'client' && isAgency) return false;
+    
+    if (filterName && !userName.toLowerCase().includes(filterName.toLowerCase()) && 
+        !userEmail.toLowerCase().includes(filterName.toLowerCase())) return false;
+    
+    if (filterBoat && !boatName.toLowerCase().includes(filterBoat.toLowerCase())) return false;
+    
+    if (filterStatus && r.status !== filterStatus) return false;
+    
+    return true;
+  });
+  
+  // Extraire les noms uniques des bateaux pour le filtre
+  const uniqueBoats = Array.from(new Set(reservations.map(r => r.boat?.name).filter(Boolean) as string[])).sort();
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -100,10 +133,10 @@ export default function ReservationsTableClient({
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === reservations.length) {
+    if (selectedIds.size === filteredReservations.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(reservations.map((r) => r.id)));
+      setSelectedIds(new Set(filteredReservations.map((r) => r.id)));
     }
   };
 
@@ -126,6 +159,96 @@ export default function ReservationsTableClient({
 
   return (
     <>
+      {/* Filtres de recherche */}
+      <div className="mb-4 p-4 rounded-xl border border-black/10 bg-white shadow-sm">
+        <h3 className="text-sm font-semibold text-black/70 mb-3">
+          {locale === 'fr' ? 'Filtres de recherche' : 'Search filters'}
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Filtre par type (agence/client) */}
+          <div>
+            <label className="block text-xs font-medium text-black/60 mb-1">
+              {locale === 'fr' ? 'Type' : 'Type'}
+            </label>
+            <select
+              value={filterAgency}
+              onChange={(e) => setFilterAgency(e.target.value)}
+              className="w-full h-9 rounded-lg border border-black/15 px-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+            >
+              <option value="">{locale === 'fr' ? 'Tous' : 'All'}</option>
+              <option value="agency">{locale === 'fr' ? 'Agences' : 'Agencies'}</option>
+              <option value="client">{locale === 'fr' ? 'Clients directs' : 'Direct clients'}</option>
+            </select>
+          </div>
+          
+          {/* Filtre par nom/email */}
+          <div>
+            <label className="block text-xs font-medium text-black/60 mb-1">
+              {locale === 'fr' ? 'Nom ou email' : 'Name or email'}
+            </label>
+            <input
+              type="text"
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+              placeholder={locale === 'fr' ? 'Rechercher...' : 'Search...'}
+              className="w-full h-9 rounded-lg border border-black/15 px-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+            />
+          </div>
+          
+          {/* Filtre par bateau */}
+          <div>
+            <label className="block text-xs font-medium text-black/60 mb-1">
+              {locale === 'fr' ? 'Bateau' : 'Boat'}
+            </label>
+            <input
+              type="text"
+              value={filterBoat}
+              onChange={(e) => setFilterBoat(e.target.value)}
+              placeholder={locale === 'fr' ? 'Nom du bateau...' : 'Boat name...'}
+              className="w-full h-9 rounded-lg border border-black/15 px-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+            />
+          </div>
+          
+          {/* Filtre par statut */}
+          <div>
+            <label className="block text-xs font-medium text-black/60 mb-1">
+              {locale === 'fr' ? 'Statut' : 'Status'}
+            </label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full h-9 rounded-lg border border-black/15 px-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+            >
+              <option value="">{locale === 'fr' ? 'Tous' : 'All'}</option>
+              <option value="pending_deposit">{locale === 'fr' ? 'Acompte en attente' : 'Deposit pending'}</option>
+              <option value="deposit_paid">{locale === 'fr' ? 'Acompte payé' : 'Deposit paid'}</option>
+              <option value="completed">{locale === 'fr' ? 'Terminée' : 'Completed'}</option>
+              <option value="cancelled">{locale === 'fr' ? 'Annulée' : 'Cancelled'}</option>
+            </select>
+          </div>
+        </div>
+        {(filterAgency || filterName || filterBoat || filterStatus) && (
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              onClick={() => {
+                setFilterAgency('');
+                setFilterName('');
+                setFilterBoat('');
+                setFilterStatus('');
+              }}
+              className="text-xs text-[color:var(--primary)] hover:underline"
+            >
+              {locale === 'fr' ? 'Réinitialiser les filtres' : 'Reset filters'}
+            </button>
+            <span className="text-xs text-black/50">
+              {locale === 'fr' 
+                ? `${filteredReservations.length} réservation(s) trouvée(s)`
+                : `${filteredReservations.length} reservation(s) found`}
+            </span>
+          </div>
+        )}
+      </div>
+      
       {/* Barre d'actions pour les sélections */}
       {selectedIds.size > 0 && (
         <div className="mt-4 mb-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -157,7 +280,7 @@ export default function ReservationsTableClient({
               <th className="py-2 sm:py-2.5 px-2 sm:px-3 w-10 sm:w-12">
                 <input
                   type="checkbox"
-                  checked={selectedIds.size === reservations.length && reservations.length > 0}
+                  checked={selectedIds.size === filteredReservations.length && filteredReservations.length > 0}
                   onChange={toggleSelectAll}
                   className="w-3 h-3 sm:w-4 sm:h-4 cursor-pointer"
                   title={locale === "fr" ? "Tout sélectionner" : "Select all"}
@@ -182,14 +305,16 @@ export default function ReservationsTableClient({
             </tr>
           </thead>
           <tbody>
-            {reservations.length === 0 && (
+            {filteredReservations.length === 0 && (
               <tr>
                 <td colSpan={17} className="py-8 text-center text-black/60">
-                  {locale === "fr" ? "Aucune réservation." : "No reservations."}
+                  {locale === "fr" 
+                    ? (reservations.length === 0 ? "Aucune réservation." : "Aucune réservation ne correspond aux filtres.")
+                    : (reservations.length === 0 ? "No reservations." : "No reservations match the filters.")}
                 </td>
               </tr>
             )}
-            {reservations.map((r) => {
+            {filteredReservations.map((r) => {
               const userName = [r.user?.firstName, r.user?.lastName]
                 .filter(Boolean)
                 .join(" ") || r.user?.email || r.id;

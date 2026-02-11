@@ -101,39 +101,42 @@ export default function ImageGalleryManager({
     });
   }, [images, onNewFilesChange]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    console.log('📁 Fichiers sélectionnés:', files.length);
+    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
 
-    // Pour le premier fichier, proposer le recadrage
-    const firstFile = Array.from(files).find(f => f.type.startsWith('image/'));
-    if (firstFile) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const url = event.target?.result as string;
-        if (url) {
-          // Proposer le recadrage pour le premier fichier
-          setCroppingImage({ url, index: images.length });
-          // Traiter les autres fichiers normalement
-          Array.from(files).slice(1).forEach(file => {
-            if (!file.type.startsWith('image/')) return;
-            const reader2 = new FileReader();
-            reader2.onload = (ev) => {
-              const url2 = ev.target?.result as string;
-              if (url2) {
-                setImages(prev => [...prev, { url: url2, isMain: false, isTemp: true, file }]);
-              }
-            };
-            reader2.readAsDataURL(file);
-          });
-        }
-      };
-      reader.readAsDataURL(firstFile);
+    console.log('📁 Fichiers sélectionnés:', imageFiles.length);
+
+    const firstFile = imageFiles[0];
+    const restFiles = imageFiles.slice(1);
+
+    const readAsDataUrl = (file: File): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve((r.result as string) || '');
+        r.onerror = () => reject(new Error('Read failed'));
+        r.readAsDataURL(file);
+      });
+
+    if (restFiles.length > 0) {
+      const restUrls = await Promise.all(restFiles.map(readAsDataUrl));
+      const newItems: ImageItem[] = restUrls.map((url, i) => ({
+        url,
+        isMain: false,
+        isTemp: true,
+        file: restFiles[i],
+      }));
+      setImages(prev => [...prev, ...newItems]);
     }
 
-    // Reset input
+    const firstUrl = await readAsDataUrl(firstFile);
+    if (firstUrl) {
+      setCroppingImage({ url: firstUrl, index: images.length + restFiles.length });
+    }
+
     e.target.value = '';
   };
 
@@ -353,7 +356,7 @@ export default function ImageGalleryManager({
       {croppingImage && (
         <ImageCropper
           imageUrl={croppingImage.url}
-          aspectRatio={1}
+          aspectRatio={16/9}
           locale={locale}
           onCrop={croppingImage.index >= images.length ? handleCropNewImage : handleCropExistingImage}
           onCancel={() => {

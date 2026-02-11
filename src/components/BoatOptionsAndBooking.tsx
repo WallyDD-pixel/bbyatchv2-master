@@ -17,6 +17,7 @@ interface Props {
   slug: string;
   startDate?: string;
   endDate?: string;
+  departurePort?: string;
   isAgency?: boolean;
   skipperRequired?: boolean;
   skipperPrice?: number;
@@ -29,7 +30,7 @@ interface AdditionalInfo {
   wantsExcursion: boolean;
 }
 
-export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalLabel, pricePerDay, part, nbJours, options, disabled, disabledMessage, slug, startDate, endDate, isAgency = false, skipperRequired = false, skipperPrice = 350 }: Props){
+export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalLabel, pricePerDay, part, nbJours, options, disabled, disabledMessage, slug, startDate, endDate, departurePort, isAgency = false, skipperRequired = false, skipperPrice = 350 }: Props){
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [needsSkipper, setNeedsSkipper] = useState(skipperRequired && !isAgency); // Si obligatoire et pas agence, coché par défaut
   const [additionalInfo, setAdditionalInfo] = useState<AdditionalInfo>({
@@ -236,6 +237,7 @@ export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalL
           optionIds={Array.from(selected)}
           needsSkipper={needsSkipper}
           additionalInfo={additionalInfo}
+          departurePort={departurePort}
         />
       </section>
     </div>

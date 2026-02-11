@@ -21,6 +21,12 @@ function formatMoney(v: number){
   return raw.replace(/[\u202F\u00A0]/g,' ');
 }
 
+// Fonction pour calculer la position X pour aligner le texte à droite
+function getRightAlignedX(text: string, fontSize: number, font: any, maxX: number): number {
+  const textWidth = font.widthOfTextAtSize(text, fontSize);
+  return maxX - textWidth;
+}
+
 function sanitize(text: string){
   if (!text) return '';
   
@@ -75,14 +81,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       where: { id }, 
       include: { 
         boat: { include: { options: true } }, 
-        user: true 
+        user: { select: { id: true, email: true, role: true } }
       } 
     });
     if(!reservation) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if(reservation.user?.email !== sessionEmail && !isAdmin) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
+    // Vérifier si c'est une réservation agence
+    const isAgencyReservation = reservation.user?.role === 'agency';
+
     const invoiceNumber = `AC-${new Date().getFullYear()}-${reservation.id.slice(-6)}`;
-    // IMPORTANT: Le skipper et le carburant sont payés sur place
+    // IMPORTANT: Pour les agences, le skipper est inclus dans la facture. Pour les clients directs, le skipper et le carburant sont payés sur place.
     // L'acompte de 20% ne s'applique QUE sur le prix du bateau + options (sans skipper ni carburant)
     const deposit = reservation.depositAmount || 0;
     const total = reservation.totalPrice || 0;
@@ -94,7 +103,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     
     // Calculer les montants détaillés
     const part = reservation.part || 'FULL';
-    const partLabel = part==='FULL'? 'Journée entière' : part==='AM'? 'Matin' : part==='PM'? 'Après-midi' : part==='SUNSET'? 'Sunset (2h)' : part;
+    const partLabel = part==='FULL'? 'Journée entière' : part==='AM'? 'Matin' : part==='PM'? '½ journée' : part==='SUNSET'? 'Sunset (2h)' : part;
     const nbJours = (()=>{ 
       const s = new Date(reservation.startDate); 
       const e = new Date(reservation.endDate); 
@@ -106,23 +115,50 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const defaultSkipperPrice = settings?.defaultSkipperPrice || 350;
     const boatData = reservation.boat as any;
     const effectiveSkipperPrice = boatData?.skipperPrice ?? defaultSkipperPrice;
-    const skipperDays = (part==='FULL' || part==='SUNSET') ? Math.max(nbJours, 1) : 1;
-    const skipperTotal = boatData?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0;
     
-    // IMPORTANT: Le skipper et le carburant sont payés sur place
-    // L'acompte de 20% ne s'applique QUE sur le prix du bateau + options (sans skipper ni carburant)
+    // Calcul du skipper :
+    // Pour les agences : selon meta.needsSkipper (si false, pas de skipper dans la facture)
+    // Pour les clients directs : FULL/SUNSET = nbJours, AM/PM = 1 jour
+    const agencyWantsSkipper = isAgencyReservation && (meta?.needsSkipper === true || meta?.needsSkipper === '1');
+    const skipperDays = isAgencyReservation 
+      ? (agencyWantsSkipper ? 1 : 0)  // Agences : 1 jour si besoin skipper, sinon 0
+      : ((part==='FULL' || part==='SUNSET') ? Math.max(nbJours, 1) : 1);
+    const skipperTotal = (isAgencyReservation && !agencyWantsSkipper) ? 0 : (boatData?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0);
     
     // Récupérer les options sélectionnées (si stockées dans metadata)
     const selectedOptionIds = meta?.optionIds || [];
     const selectedOptions = (reservation.boat?.options || []).filter((o:any) => selectedOptionIds.includes(o.id));
     const optionsTotal = selectedOptions.reduce((sum:number, o:any) => sum + (o.price || 0), 0);
     
-    // Calculer le prix de base pour l'acompte (prix bateau + options, SANS skipper ni carburant)
-    // Le total dans la réservation inclut déjà le skipper, donc on le soustrait
-    const basePriceForDeposit = total - skipperTotal; // Prix bateau + options (sans skipper)
+    // Pour les agences : recalculer le skipper à 350€ (toujours 1 jour)
+    const actualSkipperTotalForAgency = isAgencyReservation && boatData?.skipperRequired 
+      ? (effectiveSkipperPrice * 1)  // Agences : toujours 350€
+      : 0;
     
-    // Le reste à payer = prix bateau + options - acompte (sans skipper ni carburant, payés sur place)
+    // Calculer le prix de base pour l'acompte
+    // Pour les agences : le skipper est inclus dans le total, donc basePriceForDeposit = total (skipper inclus à 350€)
+    // Pour les clients directs : le skipper est payé sur place, donc basePriceForDeposit = total - skipperTotal
+    const basePriceForDeposit = isAgencyReservation 
+      ? total  // Pour agences, total inclut déjà le skipper
+      : (total - skipperTotal);
+    
+    // Le reste à payer
+    // Pour les agences : total - acompte (skipper inclus)
+    // Pour les clients directs : prix bateau + options - acompte (sans skipper ni carburant, payés sur place)
     const basePrice = basePriceForDeposit; // Pour l'affichage dans la facture
+    
+    // Debug: Vérifier le prix utilisé (pour déboguer les problèmes de prix PM vs SUNSET)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[invoice] Reservation details:', {
+        part,
+        partLabel,
+        totalPrice: total,
+        basePrice,
+        skipperTotal,
+        isAgencyReservation,
+        boatName: reservation.boat?.name
+      });
+    }
 
     const pdfDoc = await PDFDocument.create();
     let page = pdfDoc.addPage();
@@ -251,7 +287,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     
     // Colonne 1
     resLines.push({ text: `Bateau : ${reservation.boat?.name||''}`, size:9, color:textDark, gap:2, col: 1 });
-    if(reservation.boat?.lengthM) resLines.push({ text: `${reservation.boat.lengthM}m • ${reservation.boat.capacity||''} pers • ${reservation.boat.speedKn||''} nœuds`, size:8, color:textMuted, gap:2, col: 1 });
+    if(reservation.boat?.lengthM) resLines.push({ text: `${reservation.boat.lengthM}m • ${reservation.boat.capacity||''} pers`, size:8, color:textMuted, gap:2, col: 1 });
     if(meta?.experienceTitleFr || meta?.expSlug){
       resLines.push({ text: `Expérience : ${meta.experienceTitleFr || meta.expSlug}`, size:9, color:textDark, gap:2, col: 1 });
     }
@@ -340,7 +376,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     draw('Détail des prestations', 11, primary, leftMargin, true); y -= 4;
     const tableX1 = leftMargin;
     const tableXQty = width - 100;
-    const tableXAmt = width - 60;
+    const tableXAmt = width - 60; // Position fixe pour aligner les montants à droite
     page.drawLine({ start:{ x:tableX1, y:y }, end:{ x: width-leftMargin, y:y }, thickness:0.8, color: primary });
     y -= 12;
     page.drawText('Description', { x: tableX1, y: y, size:9, font: fontBold, color: textDark });
@@ -350,26 +386,36 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     page.drawLine({ start:{ x:tableX1, y:y+3 }, end:{ x: width-leftMargin, y:y+3 }, thickness:0.4, color: lightGray });
     
     // Ligne 1: Prix de base
+    const basePriceText = formatMoney(basePrice);
     page.drawText(sanitize(`Location bateau (${partLabel})`), { x: tableX1, y: y-1, size:9, font, color: textMuted });
     page.drawText('1', { x: tableXQty, y: y-1, size:9, font, color: textMuted });
-    page.drawText(formatMoney(basePrice), { x: tableXAmt, y: y-1, size:9, font, color: textMuted });
+    page.drawText(basePriceText, { x: getRightAlignedX(basePriceText, 9, font, width - leftMargin), y: y-1, size:9, font, color: textMuted });
     y -= 13;
     
     // Lignes options
     if(selectedOptions.length > 0){
       selectedOptions.forEach((opt:any) => {
+        const optPriceText = formatMoney(opt.price || 0);
         page.drawText(sanitize(`Option : ${opt.label}`), { x: tableX1, y: y-1, size:8, font, color: textMuted });
         page.drawText('1', { x: tableXQty, y: y-1, size:8, font, color: textMuted });
-        page.drawText(formatMoney(opt.price || 0), { x: tableXAmt, y: y-1, size:8, font, color: textMuted });
+        page.drawText(optPriceText, { x: getRightAlignedX(optPriceText, 8, font, width - leftMargin), y: y-1, size:8, font, color: textMuted });
         y -= 12;
       });
     }
     
-    // Ligne skipper (payé sur place)
-    if(skipperTotal > 0){
-      page.drawText(sanitize(`Skipper (${effectiveSkipperPrice}€ × ${skipperDays}j) - Payé sur place`), { x: tableX1, y: y-1, size:9, font, color: textMuted });
+    // Ligne skipper : TOUJOURS inclus pour les agences, payé sur place pour clients directs
+    if(skipperTotal > 0 || (isAgencyReservation && boatData?.skipperRequired)){
+      // Pour les agences : toujours afficher le skipper comme inclus (350€)
+      const actualSkipperTotal = isAgencyReservation && boatData?.skipperRequired 
+        ? (effectiveSkipperPrice * 1)  // Agences : toujours 350€
+        : skipperTotal;
+      const skipperLabel = isAgencyReservation 
+        ? `Skipper (${effectiveSkipperPrice}€) - Inclus`
+        : `Skipper (${effectiveSkipperPrice}€ × ${skipperDays}j) - Payé sur place`;
+      const skipperPriceText = formatMoney(actualSkipperTotal);
+      page.drawText(sanitize(skipperLabel), { x: tableX1, y: y-1, size:9, font, color: textMuted });
       page.drawText('1', { x: tableXQty, y: y-1, size:9, font, color: textMuted });
-      page.drawText(formatMoney(skipperTotal), { x: tableXAmt, y: y-1, size:9, font, color: textMuted });
+      page.drawText(skipperPriceText, { x: getRightAlignedX(skipperPriceText, 9, font, width - leftMargin), y: y-1, size:9, font, color: textMuted });
       y -= 13;
     }
     
@@ -377,21 +423,66 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     page.drawLine({ start:{ x:tableX1, y:y+2 }, end:{ x: width-leftMargin, y:y+2 }, thickness:0.4, color: lightGray });
     y -= 6;
     
-    // Total hors carburant
-    page.drawText('Total hors carburant', { x: tableX1, y: y-1, size:9, font: fontBold, color: textDark });
+    // Calcul HT/TVA/TTC
+    // TVA = 20% sur bateau + options (skipper HT, pas de TVA)
+    const tvaRate = 0.20; // 20%
+    // Pour les agences : skipper toujours 350€, pour clients directs utiliser skipperTotal calculé
+    const skipperTotalForCalc = isAgencyReservation && boatData?.skipperRequired 
+      ? (effectiveSkipperPrice * 1)  // Agences : toujours 350€
+      : (skipperTotal || 0);
+    // Base pour TVA = bateau + options (sans skipper)
+    const baseForTVA = basePrice - skipperTotalForCalc;
+    const tvaAmount = Math.round(baseForTVA * tvaRate);
+    const totalHT = basePrice; // Total HT = bateau + options + skipper (skipper HT)
+    const totalTTC = totalHT + tvaAmount; // Total TTC = HT + TVA
+    
+    // Ligne séparatrice avant totaux
+    page.drawLine({ start:{ x:tableX1, y:y+2 }, end:{ x: width-leftMargin, y:y+2 }, thickness:0.4, color: lightGray });
+    y -= 6;
+    
+    // Total HT
+    const totalHTText = formatMoney(totalHT);
+    page.drawText('Total HT', { x: tableX1, y: y-1, size:9, font: fontBold, color: textDark });
     page.drawText('', { x: tableXQty, y: y-1, size:9, font, color: textDark });
-    page.drawText(formatMoney(total), { x: tableXAmt, y: y-1, size:9, font: fontBold, color: textDark });
+    page.drawText(totalHTText, { x: getRightAlignedX(totalHTText, 9, fontBold, width - leftMargin), y: y-1, size:9, font: fontBold, color: textDark });
+    y -= 13;
+    
+    // TVA (20% sur bateau + options uniquement, pas sur skipper)
+    const tvaText = formatMoney(tvaAmount);
+    page.drawText(`TVA (20% sur bateau + options)`, { x: tableX1, y: y-1, size:8, font, color: textMuted });
+    page.drawText('', { x: tableXQty, y: y-1, size:8, font, color: textMuted });
+    page.drawText(tvaText, { x: getRightAlignedX(tvaText, 8, font, width - leftMargin), y: y-1, size:8, font, color: textMuted });
+    y -= 12;
+    
+    // Note sur skipper HT
+    if(skipperTotalForCalc > 0 && isAgencyReservation){
+      page.drawText('Note : Skipper HT (non soumis à TVA)', { x: tableX1, y: y-1, size:7, font, color: textMuted });
+      y -= 10;
+    }
+    
+    // Total TTC
+    const totalTTCText = formatMoney(totalTTC);
+    page.drawText('Total TTC hors carburant', { x: tableX1, y: y-1, size:9, font: fontBold, color: textDark });
+    page.drawText('', { x: tableXQty, y: y-1, size:9, font, color: textDark });
+    page.drawText(totalTTCText, { x: getRightAlignedX(totalTTCText, 9, fontBold, width - leftMargin), y: y-1, size:9, font: fontBold, color: textDark });
     y -= 15;
     
-    // Note compacte
-    page.drawText(sanitize('Note : Acompte 20% sur bateau+options uniquement. Skipper et carburant payés sur place.'), { x: tableX1, y: y-1, size:7, font, color: textMuted });
+    // Note compacte (différente selon agence ou client direct)
+    const noteText = isAgencyReservation
+      ? 'Note : Acompte sur le total (bateau + options + skipper). Carburant payé sur place.'
+      : 'Note : Acompte 20% sur bateau+options uniquement. Skipper et carburant payés sur place.';
+    page.drawText(sanitize(noteText), { x: tableX1, y: y-1, size:7, font, color: textMuted });
     y -= 15;
 
     // ===== Récapitulatif - Compact =====
     const recapX = width - 200;
     const recapWidth = 150;
-    let recapLinesCount = 3;
-    if(skipperTotal > 0) recapLinesCount++;
+    // Calculer le skipper pour le récapitulatif (une seule fois)
+    const actualSkipperForRecap = isAgencyReservation && boatData?.skipperRequired 
+      ? (effectiveSkipperPrice * 1)  // Agences : toujours 350€
+      : (skipperTotal || 0);
+    let recapLinesCount = 5; // Acompte, Total HT, TVA, Total TTC, Reste à payer
+    if(actualSkipperForRecap > 0) recapLinesCount++;
     recapLinesCount++; // Carburant
     const recapHeight = recapLinesCount * 11 + 15;
     
@@ -406,12 +497,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       page.drawText(sanitize(value), { x: recapX + recapWidth - 70, y: recapY, size: 8, font: bold? fontBold: font, color: textDark });
       recapY -= 11;
     };
-    writeRecap('Acompte (20%)', formatMoney(deposit), true);
-    writeRecap('Total contrat', formatMoney(basePrice));
+    writeRecap(isAgencyReservation ? 'Acompte' : 'Acompte (20%)', formatMoney(deposit), true);
+    writeRecap('Total HT', formatMoney(totalHT));
+    writeRecap('TVA (20%)', formatMoney(tvaAmount));
+    writeRecap('Total TTC', formatMoney(totalTTC), true);
     writeRecap('Reste à payer', formatMoney(remaining), true);
     recapY -= 4;
-    if(skipperTotal > 0) {
-      writeRecap('Skipper (sur place)', formatMoney(skipperTotal));
+    if(actualSkipperForRecap > 0) {
+      writeRecap(isAgencyReservation ? 'Skipper (inclus, HT)' : 'Skipper (sur place)', formatMoney(actualSkipperForRecap));
     }
     writeRecap('Carburant (sur place)', 'À définir');
     y -= recapHeight + 15;
@@ -425,10 +518,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     draw('Conditions importantes', 10, primary, leftMargin, true, 4);
     y -= 3;
     
-    drawWrapped("• Acompte 20% sur bateau+options uniquement. Skipper et carburant payés sur place.",7,textMuted,leftMargin,width-leftMargin*2,false,2);
-    drawWrapped("• Solde bateau+options à régler avant ou le jour de l'embarquement.",7,textMuted,leftMargin,width-leftMargin*2,false,2);
-    if(boatData?.skipperRequired) {
-      drawWrapped("• Skipper obligatoire inclus (payé sur place).",7,textMuted,leftMargin,width-leftMargin*2,false,2);
+    if(isAgencyReservation) {
+      drawWrapped("• Acompte sur le total (bateau + options + skipper). Carburant payé sur place.",7,textMuted,leftMargin,width-leftMargin*2,false,2);
+      drawWrapped("• Solde à régler avant ou le jour de l'embarquement.",7,textMuted,leftMargin,width-leftMargin*2,false,2);
+      if(boatData?.skipperRequired) {
+        drawWrapped("• Skipper obligatoire inclus dans la facture.",7,textMuted,leftMargin,width-leftMargin*2,false,2);
+      }
+    } else {
+      drawWrapped("• Acompte 20% sur bateau+options uniquement. Skipper et carburant payés sur place.",7,textMuted,leftMargin,width-leftMargin*2,false,2);
+      drawWrapped("• Solde bateau+options à régler avant ou le jour de l'embarquement.",7,textMuted,leftMargin,width-leftMargin*2,false,2);
+      if(boatData?.skipperRequired) {
+        drawWrapped("• Skipper obligatoire inclus (payé sur place).",7,textMuted,leftMargin,width-leftMargin*2,false,2);
+      }
     }
     drawWrapped("• Rendez-vous et instructions communiqués 24h avant.",7,textMuted,leftMargin,width-leftMargin*2,false,2);
     
