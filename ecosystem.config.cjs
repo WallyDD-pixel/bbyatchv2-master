@@ -44,11 +44,11 @@ module.exports = {
         NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
         STRIPE_TEST_SK: process.env.STRIPE_TEST_SK,
         STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-        NODE_OPTIONS: '--max-old-space-size=2048', // Limiter Node.js à 2GB pour éviter OOM
+        NODE_OPTIONS: '--max-old-space-size=1536', // 1.5GB heap pour laisser de la RAM à libvips/Sharp
       },
-      // Limites de mémoire pour éviter Out of Memory (OOM)
-      max_memory_restart: '2G', // Redémarrer si > 2GB
-      node_args: '--max-old-space-size=2048', // Limiter le heap Node.js à 2GB
+      // Limites de mémoire pour éviter Out of Memory (OOM) sur instances 4GB
+      max_memory_restart: '1800M', // Redémarrer si > 1.8GB (marge pour workers Sharp)
+      node_args: '--max-old-space-size=1536',
       instances: 1,
       exec_mode: 'fork',
       // Limites de ressources
