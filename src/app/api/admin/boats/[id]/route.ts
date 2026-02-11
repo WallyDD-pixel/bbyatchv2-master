@@ -9,6 +9,7 @@ import fs from "fs";
 export const maxDuration = 60;
 
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  try {
   const guard = await ensureAdmin();
   if (guard) return guard;
   // Next.js 15: params is a Promise
@@ -424,6 +425,16 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       error: 'image_upload_failed', 
       message: msg,
       details: process.env.NODE_ENV === 'development' ? (e instanceof Error ? e.stack : String(e)) : undefined,
+    }, { status: 500 });
+  }
+  } catch (topLevel: any) {
+    // Intercepter toute erreur (formData trop gros, crash Sharp, etc.) pour toujours renvoyer du JSON
+    console.error('❌ [boats PUT] Erreur non gérée:', topLevel);
+    const msg = topLevel instanceof Error ? topLevel.message : String(topLevel);
+    return NextResponse.json({
+      error: 'image_upload_failed',
+      message: msg || 'Erreur lors de l\'upload. Vérifiez la taille des fichiers (max 20 Mo par image) et les logs serveur.',
+      details: process.env.NODE_ENV === 'development' && topLevel instanceof Error ? topLevel.stack : undefined,
     }, { status: 500 });
   }
 }
