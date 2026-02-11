@@ -8,6 +8,10 @@ import { revalidatePath } from 'next/cache';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+function isFileLike(value: unknown): value is File {
+  return typeof value === 'object' && value !== null && typeof (value as any).arrayBuffer === 'function' && typeof (value as any).name === 'string';
+}
+
 async function ensureAdmin() {
   const session = await getServerSession() as any;
   if (!session?.user) return null;
@@ -76,7 +80,7 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
-  } else if (whyChooseImageFile && whyChooseImageFile instanceof File && whyChooseImageFile.size > 0) {
+  } else if (whyChooseImageFile && isFileLike(whyChooseImageFile) && whyChooseImageFile.size > 0) {
     try {
       const { validateImageFile } = await import('@/lib/security/file-validation');
       const validation = await validateImageFile(whyChooseImageFile);
@@ -137,7 +141,7 @@ export async function POST(req: Request) {
       const validFiles: File[] = [];
       
       for (const file of mainSliderImagesFiles) {
-        if (!file || !(file instanceof File) || file.size === 0) continue;
+        if (!file || !isFileLike(file) || file.size === 0) continue;
         const validation = await validateImageFile(file);
         if (validation.valid) {
           validFiles.push(file);
@@ -156,7 +160,7 @@ export async function POST(req: Request) {
     }
 
     // Legacy: un seul fichier si pas de multi fourni
-    if (!mainSliderImageUrl && mainSliderImageFile && mainSliderImageFile instanceof File && mainSliderImageFile.size > 0) {
+    if (!mainSliderImageUrl && mainSliderImageFile && isFileLike(mainSliderImageFile) && mainSliderImageFile.size > 0) {
       const validation = await validateImageFile(mainSliderImageFile);
       if (validation.valid) {
         const result = await uploadMultipleToSupabase([mainSliderImageFile], 'homepage');
