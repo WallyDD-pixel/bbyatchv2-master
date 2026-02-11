@@ -8,6 +8,11 @@ import fs from "fs";
 // Timeout plus long pour les uploads d'images/vidéos
 export const maxDuration = 60;
 
+// En Node.js le global File n'est pas toujours défini (bundling) ; détecter un objet type fichier sans instanceof File
+function isFileLike(value: unknown): value is File {
+  return typeof value === 'object' && value !== null && typeof (value as any).arrayBuffer === 'function' && typeof (value as any).name === 'string';
+}
+
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
   const guard = await ensureAdmin();
@@ -30,10 +35,11 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   } else if (ct.includes('multipart/form-data')) {
     const fd = await req.formData();
     fd.forEach((value, key) => {
-      if (key === 'imageFiles' && value instanceof File) newFiles.push(value);
-      if (key === 'videoFiles' && value instanceof File) videoFiles.push(value);
+      if (key === 'imageFiles' && isFileLike(value)) newFiles.push(value);
+      if (key === 'videoFiles' && isFileLike(value)) videoFiles.push(value);
     });
-    singleFile = (fd.get('imageFile') as File) || null;
+    const imageFile = fd.get('imageFile');
+    singleFile = isFileLike(imageFile) ? imageFile : null;
     replaceImageUrl = (fd.get('replaceImageUrl') as string) || null;
     body = Object.fromEntries(fd.entries());
   } else if (ct.includes('application/x-www-form-urlencoded')) {

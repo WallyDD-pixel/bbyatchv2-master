@@ -6,6 +6,11 @@ import { createRedirectUrl } from "@/lib/redirect";
 
 export const maxDuration = 60;
 
+// En Node.js le global File n'est pas toujours défini ; détecter un objet type fichier sans instanceof File
+function isFileLike(value: unknown): value is File {
+  return typeof value === 'object' && value !== null && typeof (value as any).arrayBuffer === 'function' && typeof (value as any).name === 'string';
+}
+
 export async function POST(req: Request) {
   const session = (await getServerSession()) as any;
   if (!session?.user || (session.user as any)?.role !== "admin") {
@@ -21,13 +26,12 @@ export async function POST(req: Request) {
     payload = await req.json().catch(() => null);
   } else if (ct.includes("multipart/form-data") || ct.includes("application/x-www-form-urlencoded")) {
     const fd = await req.formData();
-    // Récupération fichiers multiples (name = imageFiles)
     fd.forEach((value, key) => {
-      if (key === 'imageFiles' && value instanceof File) multiImageFiles.push(value);
-      if (key === 'videoFiles' && value instanceof File) videoFiles.push(value);
+      if (key === 'imageFiles' && isFileLike(value)) multiImageFiles.push(value);
+      if (key === 'videoFiles' && isFileLike(value)) videoFiles.push(value);
     });
-    // Ancienne compat: imageFile (simple)
-    singleImageFile = (fd.get('imageFile') as File) || null;
+    const imageFile = fd.get('imageFile');
+    singleImageFile = isFileLike(imageFile) ? imageFile : null;
     payload = Object.fromEntries(fd.entries());
   }
   if (!payload) return NextResponse.json({ error: "bad_request" }, { status: 400 });
