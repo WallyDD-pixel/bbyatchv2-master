@@ -81,7 +81,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       where: { id }, 
       include: { 
         boat: { include: { options: true } }, 
-        user: { select: { id: true, email: true, role: true } }
+        user: { select: { id: true, email: true, role: true, name: true, firstName: true, lastName: true, phone: true, address: true, city: true, zip: true, country: true } }
       } 
     });
     if(!reservation) return NextResponse.json({ error: 'not_found' }, { status: 404 });

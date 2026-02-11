@@ -71,7 +71,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       where: { id }, 
       include:{ 
         boat: { include: { options: true } }, 
-        user: { select: { id: true, email: true, role: true } }
+        user: { select: { id: true, email: true, role: true, name: true, firstName: true, lastName: true, phone: true, address: true, city: true, zip: true, country: true } }
       } 
     });
     if(!reservation) return NextResponse.json({ error: 'not_found' }, { status: 404 });
@@ -85,16 +85,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const baseTotal = reservation.totalPrice || 0;
     const reservationData = reservation as any;
     const finalFuelAmount = reservationData.finalFuelAmount || 0; // Montant final du carburant
-    
-    // IMPORTANT: Pour les agences, le skipper est inclus dans la facture. Pour les clients directs, le skipper et le carburant sont payés sur place.
-    // Pour les agences : le skipper est inclus dans baseTotal, donc total = baseTotal + carburant
-    // Pour les clients directs : le skipper est payé sur place, donc total = baseTotal + skipper + carburant
-    const total = isAgencyReservation 
-      ? baseTotal + finalFuelAmount  // Skipper déjà inclus dans baseTotal
-      : baseTotal + skipperTotal + finalFuelAmount; // Ajouter skipper pour clients directs
-    const deposit = reservation.depositAmount || 0;
-    // Le solde payé = total (puisque completed)
-    const totalPaid = total;
     
     // Parser metadata
     const meta = (()=>{ try { return reservation.metadata? JSON.parse(reservation.metadata): null; } catch { return null; } })();
@@ -122,6 +112,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       ? (agencyWantsSkipper ? 1 : 0)  // Agences : 1 jour si besoin skipper, sinon 0
       : ((part==='FULL' || part==='SUNSET') ? Math.max(nbJours, 1) : 1);
     const skipperTotal = (isAgencyReservation && !agencyWantsSkipper) ? 0 : (boatData?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0);
+    
+    // IMPORTANT: Pour les agences, le skipper est inclus dans la facture. Pour les clients directs, le skipper et le carburant sont payés sur place.
+    const total = isAgencyReservation 
+      ? baseTotal + finalFuelAmount  // Skipper déjà inclus dans baseTotal
+      : baseTotal + skipperTotal + finalFuelAmount; // Ajouter skipper pour clients directs
+    const deposit = reservation.depositAmount || 0;
+    const totalPaid = total;
     
     // Calculer le prix de base pour l'acompte
     // Pour les agences : le skipper est inclus dans baseTotal, donc basePrice = baseTotal
