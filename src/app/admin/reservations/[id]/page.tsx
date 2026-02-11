@@ -50,6 +50,7 @@ interface ReservationDetail {
     city: string | null;
     zip: string | null;
     country: string | null;
+    role: string | null;
   };
   boat: {
     id: number;
