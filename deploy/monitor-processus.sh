@@ -44,6 +44,10 @@ WHITELIST=(
     "gssproxy"
     "python3.*fail2ban"
     "python3.*firewalld"
+    "journalctl"
+    "systemctl"
+    "systemd-analyze"
+    "systemd-cgtop"
 )
 
 # Chemins suspects (processus depuis ces chemins = très suspect)
@@ -63,9 +67,20 @@ SUSPICIOUS_NAMES=(
 LOG_FILE="${HOME}/bbyatchv2-master/logs/monitor-processus.log"
 mkdir -p "$(dirname "$LOG_FILE")"
 
-# Fonction de logging
+# Fonction de logging (sans codes ANSI pour les logs)
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+    # Supprimer les codes ANSI pour les logs
+    local message=$(echo "$1" | sed 's/\x1b\[[0-9;]*m//g')
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $message" | tee -a "$LOG_FILE"
+}
+
+# Fonction de logging avec couleur pour la console uniquement
+log_color() {
+    local color="$1"
+    shift
+    local message="$@"
+    echo -e "${color}${message}${NC}"
+    log "$message"
 }
 
 # Fonction pour vérifier si un processus est dans la whitelist
@@ -73,9 +88,9 @@ is_whitelisted() {
     local cmd="$1"
     local path="$2"
     
-    # Vérifier la whitelist
+    # Vérifier la whitelist dans la commande ET le chemin
     for pattern in "${WHITELIST[@]}"; do
-        if echo "$cmd" | grep -qiE "$pattern"; then
+        if echo "$cmd" | grep -qiE "$pattern" || echo "$path" | grep -qiE "$pattern"; then
             return 0  # Trouvé dans whitelist
         fi
     done
@@ -200,7 +215,7 @@ monitor_processes() {
             # Vérifier la durée d'exécution
             runtime=$(ps -o etime= -p "$pid" 2>/dev/null | xargs)
             
-            log "${RED}⚠️  PROCESSUS SUSPECT DÉTECTÉ${NC}"
+            log_color "$RED" "⚠️  PROCESSUS SUSPECT DÉTECTÉ"
             log "PID: $pid"
             log "CPU: ${cpu}%"
             log "Mémoire: ${mem}% (${mem_mb} MB)"
@@ -224,7 +239,7 @@ monitor_processes() {
             # Tuer immédiatement si très suspect (chemin /tmp avec nom aléatoire)
             if echo "$exe_path" | grep -qiE "^/tmp/[a-zA-Z0-9]{8,}$"; then
                 should_kill=true
-                log "${RED}🔴 CHEMIN TRÈS SUSPECT (/tmp avec nom aléatoire) - Tuer immédiatement${NC}"
+                log_color "$RED" "🔴 CHEMIN TRÈS SUSPECT (/tmp avec nom aléatoire) - Tuer immédiatement"
             fi
             
             # Tuer si CPU > 90% pendant plus de 2 minutes
@@ -232,21 +247,21 @@ monitor_processes() {
                 runtime_sec=$(echo "$runtime" | awk -F: '{if(NF==2) print $1*60+$2; else if(NF==3) print $1*3600+$2*60+$3; else print 0}')
                 if [ "$runtime_sec" -ge 120 ]; then
                     should_kill=true
-                    log "${RED}🔴 CPU > 90% pendant > 2 min - Tuer${NC}"
+                    log_color "$RED" "🔴 CPU > 90% pendant > 2 min - Tuer"
                 fi
             fi
             
             if [ "$should_kill" = true ]; then
-                log "${RED}🔴 TUER LE PROCESSUS $pid${NC}"
+                log_color "$RED" "🔴 TUER LE PROCESSUS $pid"
                 kill -9 "$pid" 2>/dev/null
                 sleep 1
                 
                 # Vérifier qu'il est bien mort
                 if ps -p "$pid" > /dev/null 2>&1; then
-                    log "${RED}❌ Échec - processus toujours actif, tentative supplémentaire${NC}"
+                    log_color "$RED" "❌ Échec - processus toujours actif, tentative supplémentaire"
                     killall -9 "$(basename "$exe_path")" 2>/dev/null
                 else
-                    log "${GREEN}✓ Processus $pid tué avec succès${NC}"
+                    log_color "$GREEN" "✓ Processus $pid tué avec succès"
                     
                     # Essayer de supprimer le fichier s'il existe
                     if [ -f "$exe_path" ] && [ "$exe_path" != "deleted" ]; then
@@ -254,7 +269,7 @@ monitor_processes() {
                     fi
                 fi
             else
-                log "${YELLOW}⚠️  Processus suspect mais pas encore tué (surveillance continue)${NC}"
+                log_color "$YELLOW" "⚠️  Processus suspect mais pas encore tué (surveillance continue)"
             fi
         fi
     done
