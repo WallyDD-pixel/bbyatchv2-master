@@ -69,9 +69,21 @@ export async function compressImageServer(
     // Convertir Buffer en Uint8Array pour compatibilité avec Blob
     const uint8Array = new Uint8Array(finalBuffer);
     const blob = new Blob([uint8Array], { type: 'image/jpeg' });
-    return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
-      type: 'image/jpeg',
+    
+    // Polyfill pour File dans Node.js 18 (File n'est disponible qu'en Node.js 20+)
+    // Créer un objet File-like compatible avec FormData
+    const fileName = file.name.replace(/\.[^.]+$/, '.jpg');
+    const fileLike = Object.assign(blob, {
+      name: fileName,
+      lastModified: Date.now(),
     });
+    
+    // Ajouter la méthode arrayBuffer si elle n'existe pas déjà
+    if (!fileLike.arrayBuffer) {
+      fileLike.arrayBuffer = () => blob.arrayBuffer();
+    }
+    
+    return fileLike as File;
   } catch (error) {
     // Sharp n'est pas disponible, retourner le fichier tel quel
     // La validation côté client devrait avoir déjà compressé
