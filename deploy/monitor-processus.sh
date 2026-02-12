@@ -65,7 +65,11 @@ SUSPICIOUS_NAMES=(
 )
 
 LOG_FILE="${HOME}/bbyatchv2-master/logs/monitor-processus.log"
+HISTORY_DIR="${HOME}/bbyatchv2-master/logs/monitor-history"
+HISTORY_FILE="${HISTORY_DIR}/history-$(date +%Y-%m-%d).json"
+STATS_FILE="${HISTORY_DIR}/stats.json"
 mkdir -p "$(dirname "$LOG_FILE")"
+mkdir -p "$HISTORY_DIR"
 
 # Fonction de logging (sans codes ANSI pour les logs)
 log() {
@@ -81,6 +85,91 @@ log_color() {
     local message="$@"
     echo -e "${color}${message}${NC}"
     log "$message"
+}
+
+# Fonction pour échapper les chaînes JSON (sans jq)
+json_escape() {
+    echo "$1" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/\$/\\$/g' | sed ':a;N;$!ba;s/\n/\\n/g'
+}
+
+# Fonction pour enregistrer dans l'historique JSON
+save_to_history() {
+    local event_type="$1"
+    local pid="$2"
+    local cpu="$3"
+    local mem="$4"
+    local mem_mb="$5"
+    local cmd="$6"
+    local path="$7"
+    local score="$8"
+    local runtime="$9"
+    local action="${10}"  # "detected", "killed", "monitored"
+    
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local cmd_escaped=$(json_escape "$cmd")
+    local path_escaped=$(json_escape "$path")
+    local runtime_escaped=$(json_escape "$runtime")
+    
+    local entry=$(cat <<EOF
+{
+  "timestamp": "$timestamp",
+  "event_type": "$event_type",
+  "pid": $pid,
+  "cpu_percent": $cpu,
+  "memory_percent": $mem,
+  "memory_mb": $mem_mb,
+  "command": "$cmd_escaped",
+  "path": "$path_escaped",
+  "suspicion_score": $score,
+  "runtime": "$runtime_escaped",
+  "action": "$action"
+}
+EOF
+)
+    
+    # Ajouter à l'historique du jour (format JSON lines)
+    echo "$entry" >> "$HISTORY_FILE"
+    
+    # Mettre à jour les statistiques
+    update_stats "$event_type" "$action"
+}
+
+# Fonction pour mettre à jour les statistiques (sans jq)
+update_stats() {
+    local event_type="$1"
+    local action="$2"
+    
+    # Initialiser le fichier de stats s'il n'existe pas
+    if [ ! -f "$STATS_FILE" ]; then
+        echo '{"total_checks": 0, "detections": 0, "killed": 0, "monitored": 0, "last_update": ""}' > "$STATS_FILE"
+    fi
+    
+    # Lire les stats actuelles (méthode simple sans jq)
+    local total_checks=$(grep -o '"total_checks": [0-9]*' "$STATS_FILE" | grep -o '[0-9]*' || echo "0")
+    local detections=$(grep -o '"detections": [0-9]*' "$STATS_FILE" | grep -o '[0-9]*' || echo "0")
+    local killed=$(grep -o '"killed": [0-9]*' "$STATS_FILE" | grep -o '[0-9]*' || echo "0")
+    local monitored=$(grep -o '"monitored": [0-9]*' "$STATS_FILE" | grep -o '[0-9]*' || echo "0")
+    
+    # Mettre à jour selon l'action
+    if [ "$action" = "killed" ]; then
+        killed=$((killed + 1))
+        detections=$((detections + 1))
+    elif [ "$action" = "monitored" ]; then
+        monitored=$((monitored + 1))
+        detections=$((detections + 1))
+    fi
+    
+    # Écrire les nouvelles stats (format JSON simple)
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    cat > "$STATS_FILE" <<EOF
+{
+  "total_checks": $total_checks,
+  "detections": $detections,
+  "killed": $killed,
+  "monitored": $monitored,
+  "last_update": "$timestamp"
+}
+EOF
 }
 
 # Fonction pour vérifier si un processus est dans la whitelist
@@ -181,6 +270,25 @@ calculate_suspicion_score() {
 monitor_processes() {
     log "=== Début du monitoring ==="
     
+    # Mettre à jour le compteur de vérifications
+    if [ -f "$STATS_FILE" ]; then
+        local total_checks=$(grep -o '"total_checks": [0-9]*' "$STATS_FILE" | grep -o '[0-9]*' || echo "0")
+        total_checks=$((total_checks + 1))
+        local detections=$(grep -o '"detections": [0-9]*' "$STATS_FILE" | grep -o '[0-9]*' || echo "0")
+        local killed=$(grep -o '"killed": [0-9]*' "$STATS_FILE" | grep -o '[0-9]*' || echo "0")
+        local monitored=$(grep -o '"monitored": [0-9]*' "$STATS_FILE" | grep -o '[0-9]*' || echo "0")
+        local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        cat > "$STATS_FILE" <<EOF
+{
+  "total_checks": $total_checks,
+  "detections": $detections,
+  "killed": $killed,
+  "monitored": $monitored,
+  "last_update": "$timestamp"
+}
+EOF
+    fi
+    
     # Obtenir tous les processus
     ps aux --sort=-%cpu | tail -n +2 | while read -r line; do
         pid=$(echo "$line" | awk '{print $2}')
@@ -224,6 +332,9 @@ monitor_processes() {
             log "Score de suspicion: $score/100"
             log "Durée: $runtime"
             
+            # Enregistrer dans l'historique (action initiale: détecté)
+            save_to_history "suspicious_process" "$pid" "$cpu" "$mem" "$mem_mb" "$cmd" "$exe_path" "$score" "$runtime" "detected"
+            
             # Décision de tuer le processus
             should_kill=false
             
@@ -263,6 +374,9 @@ monitor_processes() {
                 else
                     log_color "$GREEN" "✓ Processus $pid tué avec succès"
                     
+                    # Enregistrer dans l'historique (action: tué)
+                    save_to_history "process_killed" "$pid" "$cpu" "$mem" "$mem_mb" "$cmd" "$exe_path" "$score" "$runtime" "killed"
+                    
                     # Essayer de supprimer le fichier s'il existe
                     if [ -f "$exe_path" ] && [ "$exe_path" != "deleted" ]; then
                         rm -f "$exe_path" 2>/dev/null && log "✓ Fichier $exe_path supprimé" || log "⚠️  Impossible de supprimer $exe_path"
@@ -270,6 +384,9 @@ monitor_processes() {
                 fi
             else
                 log_color "$YELLOW" "⚠️  Processus suspect mais pas encore tué (surveillance continue)"
+                
+                # Enregistrer dans l'historique (action: surveillé mais pas tué)
+                save_to_history "process_monitored" "$pid" "$cpu" "$mem" "$mem_mb" "$cmd" "$exe_path" "$score" "$runtime" "monitored"
             fi
         fi
     done
