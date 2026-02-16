@@ -33,7 +33,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!buffer) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
     const invoiceNumber = `AC-${new Date().getFullYear()}-${id.slice(-6)}`;
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
