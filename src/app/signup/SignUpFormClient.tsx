@@ -1,12 +1,11 @@
 "use client";
 import { useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 
 export default function SignUpFormClient() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const redirectUrl = searchParams.get("redirect") || "/dashboard";
+  const redirectUrl = searchParams.get("redirect") || searchParams.get("callbackUrl") || "/dashboard";
   
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -135,19 +134,19 @@ export default function SignUpFormClient() {
             console.error("Erreur lors de la connexion automatique:", signInError);
             // Si la connexion automatique échoue, rediriger vers la page de connexion avec callbackUrl
             setTimeout(() => {
-              router.push(`/signin?callbackUrl=${encodeURIComponent(redirectUrl)}`);
+              window.location.href = `/signin?callbackUrl=${encodeURIComponent(redirectUrl)}`;
             }, 1500);
           } else {
-            // Connexion réussie, rediriger vers la page de retour
+            // Connexion réussie, rediriger vers la page de retour (panier / checkout)
             setTimeout(() => {
-              router.push(redirectUrl);
+              window.location.href = redirectUrl;
             }, 500);
           }
         } catch (connectErr) {
           console.error("Erreur lors de la connexion automatique:", connectErr);
           // En cas d'erreur, rediriger vers la page de connexion
           setTimeout(() => {
-            router.push(`/signin?callbackUrl=${encodeURIComponent(redirectUrl)}`);
+            window.location.href = `/signin?callbackUrl=${encodeURIComponent(redirectUrl)}`;
           }, 1500);
         }
       } else {

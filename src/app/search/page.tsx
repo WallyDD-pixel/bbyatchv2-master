@@ -146,7 +146,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
               available: true,
               id: { in: slotBoatIds.length > 0 ? slotBoatIds : [] }
             }, 
-            select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true, enginePower:true, lengthM:true, cityId:true } 
+            select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true, enginePower:true, year:true, lengthM:true, cityId:true } 
           });
           console.log('[search] FULL - Found boats with slots:', allBoats.length);
           if (allBoats.length > 0) {
@@ -346,7 +346,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
             available: true,
             id: { in: slotBoatIds.length > 0 ? slotBoatIds : [] }
           }, 
-          select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, enginePower:true, lengthM:true, cityId:true } 
+          select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, enginePower:true, year:true, lengthM:true, cityId:true } 
         });
         console.log('[search] AM/PM - Found boats:', allBoats.length, 'slots:', slots.length);
         if (allBoats.length > 0) {
@@ -508,7 +508,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
             
             const specs: string[] = [];
             if (b.capacity) specs.push(`${locale === 'fr' ? 'Places max' : 'Max places'}: ${b.capacity}`);
-            if (b.enginePower) specs.push(`${locale === 'fr' ? 'Puissance' : 'Power'}: ${b.enginePower} cv`);
+            if ((b as any).year) specs.push(`${locale === 'fr' ? 'Année' : 'Year'}: ${(b as any).year}`);
             if (b.lengthM) specs.push(`${locale === 'fr' ? 'Taille' : 'Length'}: ${b.lengthM} m`);
             
             // Déterminer le meilleur créneau disponible pour ce bateau

@@ -157,8 +157,9 @@ export async function POST(req: Request) {
       testHtml = result.html;
       testSubject = result.subject;
     } else if (emailType === 'welcome') {
+      // Prévisualisation : envoyée à l'admin pour vérifier le design. En production, cet email est envoyé à l'utilisateur qui s'inscrit.
       const testData = {
-        email: notificationEmail,
+        email: 'utilisateur@exemple.com',
         name: 'Jean Dupont',
         firstName: 'Jean',
         lastName: 'Dupont',
@@ -167,7 +168,7 @@ export async function POST(req: Request) {
       };
       const result = welcomeEmail(testData, 'fr', logoUrl);
       testHtml = result.html;
-      testSubject = result.subject;
+      testSubject = `[Prévisualisation admin] ${result.subject}`;
     } else {
       // Email de test basique
       testHtml = `
@@ -414,14 +415,18 @@ export async function POST(req: Request) {
       testSubject = 'Test de notification - BB YACHTS';
     }
 
+    // Tous les tests sont envoyés à l'admin pour prévisualisation. Pour "welcome", en production l'email de bienvenue va à l'utilisateur qui s'inscrit.
     const success = await sendEmail({
       to: notificationEmail,
       subject: testSubject,
       html: testHtml,
     });
 
+    const welcomeNote = emailType === 'welcome'
+      ? ' Prévisualisation envoyée ici ; lors d\'une inscription réelle, l\'email de bienvenue est envoyé à l\'utilisateur qui s\'inscrit.'
+      : '';
     if (success) {
-      return NextResponse.json({ success: true, message: 'Email de test envoyé avec succès' });
+      return NextResponse.json({ success: true, message: `Email de test envoyé avec succès.${welcomeNote}` });
     } else {
       return NextResponse.json({ error: 'email_send_failed' }, { status: 500 });
     }

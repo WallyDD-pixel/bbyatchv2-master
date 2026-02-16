@@ -113,7 +113,8 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
           { id: 1, labelFr: 'Bateaux disponibles', labelEn: 'Available boats', href: `/?lang=${locale}#fleet`, icon: '⛵', target: '_self' },
           { id: 2, labelFr: 'Nos expériences', labelEn: 'Our experiences', href: `/?lang=${locale}#experiences`, icon: '🌊', target: '_self' },
           { id: 3, labelFr: 'Vente d\'occasion', labelEn: 'Used sale', href: `/used-sale?lang=${locale}`, icon: '💼', target: '_self' },
-          { id: 4, labelFr: 'À propos', labelEn: 'About', href: `/about${locale === 'en' ? '?lang=en' : ''}`, icon: 'ℹ️', target: '_self' }
+          { id: 4, labelFr: 'A propos', labelEn: 'About', href: `/about${locale === 'en' ? '?lang=en' : ''}`, icon: 'ℹ️', target: '_self' },
+          { id: 5, labelFr: 'Contactez-nous', labelEn: 'Contact us', href: `/contact${locale === 'en' ? '?lang=en' : ''}`, icon: '✉️', target: '_self' }
         ]);
       }
     }
@@ -227,7 +228,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
             {/* Bouton de connexion premium */}
             {!isCheckingSession && !session && (
               <a
-                href="/signin"
+                href={pathname === '/signin' || pathname === '/signup' ? '/signin' : `/signin?callbackUrl=${encodeURIComponent(pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ''))}`}
                 className="group relative rounded-2xl px-6 h-11 flex items-center text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 transition-all duration-300 shadow-lg hover:shadow-xl overflow-hidden"
                 style={{ backgroundColor: '#2563eb' }}
               >
@@ -395,7 +396,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
               )}
               {!isCheckingSession && !session && (
                 <a
-                  href="/signin"
+                  href={pathname === '/signin' || pathname === '/signup' ? '/signin' : `/signin?callbackUrl=${encodeURIComponent(pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ''))}`}
                   className="w-full rounded-2xl px-6 py-4 min-h-[56px] flex items-center justify-center gap-2 text-base font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98]"
                   onClick={() => setOpen(false)}
                   style={{ backgroundColor: '#2563eb' }}

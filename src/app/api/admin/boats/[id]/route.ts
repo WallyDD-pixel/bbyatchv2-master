@@ -50,7 +50,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     body = await req.json().catch(()=>({}));
   }
 
-  const { slug, name, city, capacity, speedKn, fuel, enginePower, lengthM, pricePerDay, priceAm, pricePm, priceSunset, priceAgencyPerDay, priceAgencyAm, priceAgencyPm, priceAgencySunset, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice } = body || {};
+  const { slug, name, city, capacity, speedKn, fuel, enginePower, year, lengthM, pricePerDay, priceAm, pricePm, priceSunset, priceAgencyPerDay, priceAgencyAm, priceAgencyPm, priceAgencySunset, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice } = body || {};
   const optionsPayload = body.options; // tableau attendu {id?, label, price|null}
   const experiencesPayload = body.experiences; // [{experienceId, price|null}]
   // Dérivation éventuelle prix AM/PM si uniquement day fourni
@@ -226,14 +226,13 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   if (uploaded.length) finalImageUrl = uploaded[0];
 
   // Fusion photoUrls existants + nouveaux uploads
-  // IMPORTANT: photoUrls du body contient la liste complète des photos existantes
-  // On ajoute seulement les nouvelles uploadées, en évitant les doublons
+  // IMPORTANT: photoUrls du body est la liste complète voulue par le client (y compris après suppressions).
+  // Quand il n'y a pas de nouveaux uploads, on utilise strictement cette liste.
   const listPhotos = toList(photoUrls);
   const existingPhotos = Array.isArray(listPhotos) ? listPhotos : [];
   
-  // Débogage
-  console.log('📸 Photos existantes reçues:', existingPhotos.length);
-  console.log('📸 Photos uploadées:', uploaded.length);
+  console.log('📸 Photos reçues du client (liste voulue):', existingPhotos.length);
+  console.log('📸 Photos uploadées (nouvelles):', uploaded.length);
   
   let mergedPhotos = existingPhotos;
   
@@ -305,6 +304,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         speedKn: speedKn != null && speedKn !== '' ? Number(speedKn) : undefined,
         fuel: fuel != null && fuel !== '' ? Number(fuel) : undefined,
         enginePower: enginePower != null && enginePower !== '' ? Number(enginePower) : undefined,
+        year: year != null && year !== '' ? Number(year) : undefined,
         lengthM: lengthM != null && lengthM !== '' ? Number(lengthM) : undefined,
         pricePerDay: derivedPricePerDay != null && derivedPricePerDay !== '' ? Number(derivedPricePerDay) : undefined,
         priceAm: derivedPriceAm != null && derivedPriceAm !== '' ? Number(derivedPriceAm) : undefined,

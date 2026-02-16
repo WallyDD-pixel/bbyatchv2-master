@@ -9,7 +9,7 @@ export const messages: Record<Locale, Record<string, string>> = {
     nav_experiences: "Nos expériences",
     nav_available: "Bateaux disponibles",
     nav_used_sale: "Vente d'occasion",
-    nav_about: "À propos",
+    nav_about: "A propos",
     auth_signin: "Mon espace pro",
     cta_reserve: "Réserver",
     hero_title:
@@ -120,7 +120,7 @@ export const messages: Record<Locale, Record<string, string>> = {
     checkout_success_pending_title: "Paiement en attente",
     checkout_success_pending_desc: "Nous n'avons pas encore la confirmation. Cette page se mettra à jour une fois le paiement validé (quelques secondes).",
     checkout_success_reference: "Référence",
-    checkout_success_boat: "Embarcation",
+    checkout_success_boat: "Bateau",
     checkout_success_dates: "Dates",
     checkout_success_part: "Créneau",
     checkout_success_deposit_paid: "Acompte réglé",

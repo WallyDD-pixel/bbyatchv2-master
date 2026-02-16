@@ -19,7 +19,7 @@ export default async function AboutPage({ searchParams }: { searchParams?: Promi
         {/* Hero Section */}
         <div className="text-center mb-12 md:mb-16">
           <h1 className="text-4xl md:text-5xl font-extrabold text-black/90 mb-4">
-            {locale === 'fr' ? 'À propos de BB SERVICES CHARTER' : 'About BB SERVICES CHARTER'}
+            {locale === 'fr' ? 'A propos de BB SERVICES CHARTER' : 'About BB SERVICES CHARTER'}
           </h1>
           <p className="text-lg md:text-xl text-black/70 max-w-3xl mx-auto">
             {locale === 'fr' 

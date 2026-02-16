@@ -112,7 +112,8 @@ export default async function CheckoutSuccessPage({ searchParams }: Props){
             try {
               const emailResult = await newReservationEmail(reservationData, locale, logoUrl);
               if (emailResult && emailResult.subject && emailResult.html) {
-                await sendEmail({ to: notificationEmail, subject: emailResult.subject, html: emailResult.html });
+                const sent = await sendEmail({ to: notificationEmail, subject: emailResult.subject, html: emailResult.html });
+                if (!sent) console.warn('[success] Reservation notification was not sent.');
               } else {
                 console.error('❌ newReservationEmail returned invalid data:', emailResult);
               }
@@ -120,17 +121,41 @@ export default async function CheckoutSuccessPage({ searchParams }: Props){
               console.error('❌ Error generating reservation email template:', emailTemplateErr);
             }
           }
-          
+
           if (await isNotificationEnabled('paymentReceived') && reservation.depositAmount) {
             try {
               const emailResult = paymentReceivedEmail(reservationData, reservation.depositAmount, locale);
               if (emailResult && emailResult.subject && emailResult.html) {
-                await sendEmail({ to: notificationEmail, subject: emailResult.subject, html: emailResult.html });
+                const sent = await sendEmail({ to: notificationEmail, subject: emailResult.subject, html: emailResult.html });
+                if (!sent) console.warn('[success] Payment received notification was not sent.');
               } else {
                 console.error('❌ paymentReceivedEmail returned invalid data:', emailResult);
               }
             } catch (emailTemplateErr) {
               console.error('❌ Error generating payment email template:', emailTemplateErr);
+            }
+          }
+
+          // Email de confirmation au client (comme dans le webhook)
+          const clientEmail = reservation.user?.email?.trim();
+          if (clientEmail) {
+            try {
+              const { generateInvoicePDF } = await import('@/lib/generate-invoice-pdf');
+              const emailResult = await newReservationEmail(reservationData, locale, logoUrl);
+              if (emailResult?.subject && emailResult?.html) {
+                const invoicePDF = await generateInvoicePDF(reservation.id);
+                const attachments = invoicePDF ? [{ filename: `Facture_${reservation.reference || reservation.id}.pdf`, content: invoicePDF, contentType: 'application/pdf' as const }] : undefined;
+                const sentClient = await sendEmail({
+                  to: clientEmail,
+                  subject: locale === 'fr' ? `Confirmation de votre réservation - ${reservationData.boatName}` : `Your booking confirmation - ${reservationData.boatName}`,
+                  html: emailResult.html,
+                  attachments,
+                });
+                if (sentClient) console.log('[success] Client confirmation email sent to:', clientEmail);
+                else console.warn('[success] Client confirmation email was not sent.');
+              }
+            } catch (clientEmailErr) {
+              console.error('[success] Error sending client confirmation email:', clientEmailErr);
             }
           }
         }
@@ -150,7 +175,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props){
   const end = reservation.endDate.toISOString().slice(0,10);
   const isMulti = end!==start;
   const part = reservation.part || 'FULL';
-  const partLabel = part==='FULL'? (locale==='fr'? 'Journée entière':'Full day') : part==='AM'? (locale==='fr'? 'Matin':'Morning') : (locale==='fr'? 'Après-midi':'Afternoon');
+  const partLabel = part==='FULL'? (locale==='fr'? 'Journée entière':'Full day') : (locale==='fr'? 'Demi-journée':'Half-day');
   const ref = reservation.reference || reservation.id.slice(0,8).toUpperCase();
   const deposit = reservation.depositAmount ?? 0;
   const remaining = reservation.remainingAmount ?? 0;

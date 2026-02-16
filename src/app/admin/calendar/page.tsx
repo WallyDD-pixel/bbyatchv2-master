@@ -42,7 +42,7 @@ export default async function CalendarPage({ searchParams }: { searchParams?: Pr
               },
               {
                 title: locale==='fr'?'Code couleur':'Color code',
-                description: locale==='fr'?'Bleu = Journée complète, Vert = Demi-journée, Orange = Sunset, Violet = Expériences, Rouge = Réservations':'Blue = Full day, Green = Half-day, Orange = Sunset, Purple = Experiences, Red = Reservations'
+                description: locale==='fr'?'Bleu = Journée complète, Vert = Demi-journée, Violet = Sunset, Orange = Réservations agence, Rouge = Réservations':'Blue = Full day, Green = Half-day, Violet = Sunset, Orange = Agency requests, Red = Reservations'
               }
             ]}
           />

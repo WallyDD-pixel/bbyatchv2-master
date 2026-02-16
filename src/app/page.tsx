@@ -8,11 +8,11 @@ import Footer from "@/components/Footer";
 import { prisma } from '@/lib/prisma';
 
 // Lazy loading des sections pour améliorer le temps de chargement initial
-const ExperiencesSection = dynamic(() => import("@/components/ExperiencesSection"), {
-  loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
-});
 const BoatsSection = dynamic(() => import("@/components/BoatsSection"), {
   loading: () => <div className="h-96 animate-pulse bg-gray-100 rounded-2xl" />,
+});
+const ExperiencesSection = dynamic(() => import("@/components/ExperiencesSection"), {
+  loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
 });
 const GallerySection = dynamic(() => import("@/components/GallerySection"), {
   loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
@@ -22,9 +22,6 @@ const AboutUsSection = dynamic(() => import("@/components/AboutUsSection"), {
 });
 const InfoCardsSection = dynamic(() => import("@/components/InfoCardsSection"), {
   loading: () => <div className="h-48 animate-pulse bg-gray-100 rounded-2xl" />,
-});
-const ExperienceBoatsSection = dynamic(() => import("@/components/ExperienceBoatsSection"), {
-  loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
 });
 
 // ISR: Revalider la page toutes les 60 secondes (1 minute)
@@ -95,12 +92,10 @@ export default async function Home({
 
   {/* Section "Qui sommes-nous" dynamique supprimée, affichage AboutUsSection uniquement */}
 
-        {/* Sections réordonnées: Bateaux d'abord, puis avantages, puis expériences */}
+        {/* Sections: Bateaux, avantages, expériences (bloc "Profitez de nos expériences" / prochains événements retiré) */}
         <BoatsSection locale={locale} t={t} />
         <InfoCardsSection locale={locale} />
         <ExperiencesSection locale={locale} t={t} />
-        <ExperienceBoatsSection locale={locale} />
-  {/* Section "Pourquoi choisir BB Service" retirée */}
   <AboutUsSection settings={settings} locale={locale} />
         <GallerySection locale={locale} t={t} />
       </main>

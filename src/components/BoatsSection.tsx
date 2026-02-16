@@ -11,6 +11,7 @@ type Boat = {
   city?: string | null;
   capacity: number;
   enginePower?: number | null;
+  year?: number | null;
   lengthM?: number | null;
   pricePerDay: number;
   priceAm?: number | null;
@@ -63,7 +64,7 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
     where, 
     orderBy: { id: "asc" }, 
     select: { 
-      id:true, slug:true, name:true, city:true, capacity:true, enginePower:true, lengthM:true, 
+      id:true, slug:true, name:true, city:true, capacity:true, enginePower:true, year:true, lengthM:true, 
       pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true,
       priceAgencyPerDay:true, priceAgencyAm:true, priceAgencyPm:true, priceAgencySunset:true,
       skipperRequired:true,
@@ -168,11 +169,11 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
                   <div className="uppercase tracking-wide text-[10px] text-black/60">{locale === 'fr' ? 'Places max' : 'Max places'}</div>
                   <div className="text-sm font-semibold text-black mt-0.5">{b.capacity}</div>
                 </div>
-                {b.enginePower && (
+                {b.year && (
                   <div>
-                    <div className="text-2xl mb-1">⚙️</div>
-                    <div className="uppercase tracking-wide text-[10px] text-black/60">{locale === 'fr' ? 'Puissance' : 'Power'}</div>
-                    <div className="text-sm font-semibold text-black mt-0.5">{b.enginePower} cv</div>
+                    <div className="text-2xl mb-1">📅</div>
+                    <div className="uppercase tracking-wide text-[10px] text-black/60">{locale === 'fr' ? 'Année' : 'Year'}</div>
+                    <div className="text-sm font-semibold text-black mt-0.5">{b.year}</div>
                   </div>
                 )}
                 {b.lengthM && (

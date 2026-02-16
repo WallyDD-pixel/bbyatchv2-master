@@ -169,8 +169,8 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           start: start.toISOString(),
           end: end.toISOString(),
           allDay: false,
-          backgroundColor: s.part === 'FULL' ? '#3b82f6' : s.part === 'AM' || s.part === 'PM' ? '#10b981' : '#f59e0b',
-          borderColor: s.part === 'FULL' ? '#2563eb' : s.part === 'AM' || s.part === 'PM' ? '#059669' : '#d97706',
+          backgroundColor: s.part === 'FULL' ? '#3b82f6' : s.part === 'AM' || s.part === 'PM' ? '#10b981' : '#8b5cf6',
+          borderColor: s.part === 'FULL' ? '#2563eb' : s.part === 'AM' || s.part === 'PM' ? '#059669' : '#7c3aed',
           extendedProps: { type: 'slot', slotData: s }
         });
       });
@@ -279,8 +279,8 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           start: start.toISOString(),
           end: end.toISOString(),
           allDay: false,
-          backgroundColor: s.part === 'FULL' ? '#3b82f6' : s.part === 'AM' || s.part === 'PM' ? '#10b981' : '#f59e0b',
-          borderColor: s.part === 'FULL' ? '#2563eb' : s.part === 'AM' || s.part === 'PM' ? '#059669' : '#d97706',
+          backgroundColor: s.part === 'FULL' ? '#3b82f6' : s.part === 'AM' || s.part === 'PM' ? '#10b981' : '#8b5cf6',
+          borderColor: s.part === 'FULL' ? '#2563eb' : s.part === 'AM' || s.part === 'PM' ? '#059669' : '#7c3aed',
           extendedProps: { type: 'slot', slotData: s }
         });
       });
@@ -661,12 +661,16 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
               <span className="text-gray-700 font-medium">{locale==='fr'?'Vert : Demi-journée (4h)':'Green: Half-day (4h)'}</span>
             </li>
             <li className='flex items-center gap-3 p-2 rounded-lg hover:bg-white/50 transition-colors'>
-              <span style={{display:'inline-block',width:20,height:20,borderRadius:4,background:'#f59e0b',border:'2px solid #d97706'}}></span> 
-              <span className="text-gray-700 font-medium">{locale==='fr'?'Orange : Sunset (2h)':'Orange: Sunset (2h)'}</span>
+              <span style={{display:'inline-block',width:20,height:20,borderRadius:4,background:'#8b5cf6',border:'2px solid #7c3aed'}}></span> 
+              <span className="text-gray-700 font-medium">{locale==='fr'?'Violet : Sunset (2h)':'Violet: Sunset (2h)'}</span>
             </li>
             <li className='flex items-center gap-3 p-2 rounded-lg hover:bg-white/50 transition-colors'>
               <span style={{display:'inline-block',width:20,height:20,borderRadius:4,background:'#a855f7',border:'2px solid #9333ea'}}></span> 
-              <span className="text-gray-700 font-medium">{locale==='fr'?'Violet : Événements/Expériences':'Purple: Events/Experiences'}</span>
+              <span className="text-gray-700 font-medium">{locale==='fr'?'Violet clair : Événements/Expériences':'Light purple: Events/Experiences'}</span>
+            </li>
+            <li className='flex items-center gap-3 p-2 rounded-lg hover:bg-white/50 transition-colors'>
+              <span style={{display:'inline-block',width:20,height:20,borderRadius:4,background:'#f59e0b',border:'2px solid #d97706'}}></span> 
+              <span className="text-gray-700 font-medium">{locale==='fr'?'Orange : Réservations agence':'Orange: Agency requests'}</span>
             </li>
             <li className='flex items-center gap-3 p-2 rounded-lg hover:bg-white/50 transition-colors'>
               <span style={{display:'inline-block',width:20,height:20,borderRadius:4,background:'#ef4444',border:'2px solid #dc2626'}}></span> 
@@ -1386,10 +1390,10 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                               </ul>
                             </div>
                           )}
-                          {parsedMetadata.departurePort && (
+                          {parsedMetadata.departurePort && String(parsedMetadata.departurePort).trim() !== '' && String(parsedMetadata.departurePort).trim() !== 'Port à définir' && (
                             <div className="bg-white p-2 rounded border border-blue-100">
                               <span className="font-semibold text-gray-600">{locale==='fr'?'Port de départ':'Departure port'}: </span>
-                              <span>{parsedMetadata.departurePort === 'Port à définir' ? (locale==='fr'?'À définir':'To be determined') : parsedMetadata.departurePort}</span>
+                              <span>{String(parsedMetadata.departurePort).trim()}</span>
                             </div>
                           )}
                           {(parsedMetadata.needsSkipper || parsedMetadata.skipperRequired) && (

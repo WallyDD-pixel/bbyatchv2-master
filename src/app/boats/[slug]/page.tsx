@@ -37,6 +37,7 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
     priceAgencyPm: number | null;
     capacity: number;
     enginePower: number | null;
+    year: number | null;
     lengthM: number | null;
     avantagesFr: string | null;
     avantagesEn: string | null;
@@ -118,7 +119,7 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
   if (part) backQuery.set('part', part);
   const backHref = `/search?${backQuery.toString()}`;
   // Libellé total
-  const totalLabel = part==='FULL' ? (nbJours>1 ? `${nbJours} jours` : '1 jour') : (part==='AM' ? (locale==='fr'? 'Matin' : 'Morning') : (locale==='fr'? 'Après‑midi' : 'Afternoon'));
+  const totalLabel = part==='FULL' ? (nbJours>1 ? `${nbJours} jours` : '1 jour') : (locale==='fr' ? 'Demi-journée' : 'Half-day');
   const needDates = !start; // si aucune date passée
 
   // --- Validation anti-manipulation URL ---
@@ -232,7 +233,7 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
           <h1 className='text-3xl sm:text-4xl font-extrabold tracking-tight'>{boat.name}</h1>
           <div className='flex gap-3 text-sm'>
             <div className='px-3 py-1 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] font-medium'>{locale === 'fr' ? 'Places max' : 'Max places'} {boat.capacity}</div>
-            {(boat as any).enginePower && <div className='px-3 py-1 rounded-full bg-black/5 text-black/70 font-medium'>{(boat as any).enginePower} cv</div>}
+            {(boat as any).year && <div className='px-3 py-1 rounded-full bg-black/5 text-black/70 font-medium'>{(boat as any).year}</div>}
             {(boat as any).lengthM && <div className='px-3 py-1 rounded-full bg-black/5 text-black/70 font-medium'>{(boat as any).lengthM} m</div>}
             {boat.city && <div className='px-3 py-1 rounded-full bg-black/5 text-black/70 font-medium'>{boat.city}</div>}
           </div>
@@ -276,10 +277,10 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
                     <span className='font-semibold'>{(boat as any).lengthM} m</span>
                   </div>
                 )}
-                {(boat as any).enginePower != null && (
+                {(boat as any).year != null && (
                   <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'>
-                    <span className='text-black/60'>{t.boat_field_engine}</span>
-                    <span className='font-semibold'>{(boat as any).enginePower} cv</span>
+                    <span className='text-black/60'>{locale === 'fr' ? 'Année' : 'Year'}</span>
+                    <span className='font-semibold'>{(boat as any).year}</span>
                   </div>
                 )}
                 <div className='flex items-start justify-between bg-black/5 rounded-lg px-3 py-2'>

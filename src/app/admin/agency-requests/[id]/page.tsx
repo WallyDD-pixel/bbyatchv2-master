@@ -317,11 +317,11 @@ export default async function AgencyRequestDetailPage(
                     </div>
                   )}
                   
-                  {/* Port de départ */}
-                  {metadataObj.departurePort && (
+                  {/* Port de départ : affiché seulement si défini (pas "Port à définir") */}
+                  {metadataObj.departurePort && String(metadataObj.departurePort).trim() !== '' && String(metadataObj.departurePort).trim() !== 'Port à définir' && (
                     <div>
                       <span className='font-semibold text-black/70'>{locale==='fr'? 'Port de départ':'Departure port'}: </span>
-                      <span>{metadataObj.departurePort === 'Port à définir' ? (locale==='fr'? 'À définir':'To be determined') : metadataObj.departurePort}</span>
+                      <span>{String(metadataObj.departurePort).trim()}</span>
                     </div>
                   )}
                   

@@ -36,7 +36,7 @@ export async function initializeDefaultNavbar() {
           target: '_self'
         },
         {
-          labelFr: 'À propos',
+          labelFr: 'A propos',
           labelEn: 'About',
           href: '/about',
           icon: 'ℹ️',

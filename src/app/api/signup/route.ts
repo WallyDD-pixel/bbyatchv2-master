@@ -209,37 +209,41 @@ export async function POST(req: Request) {
     const settings = await prisma.settings.findFirst({ select: { logoUrl: true } });
     const logoUrl = (settings as any)?.logoUrl || null;
     
+    // Email de l'utilisateur qui vient de s'inscrire (toujours utilisé pour l'email de bienvenue)
+    const userEmail = (createdUser?.email ?? normalizedEmail).trim();
     const accountData = {
-      email: createdUser.email || email,
+      email: userEmail,
       name: createdUser.name || name,
       firstName: createdUser.firstName || firstName || null,
       lastName: createdUser.lastName || lastName || null,
       phone: createdUser.phone || body?.phone || null,
       createdAt: createdUser.createdAt || now,
     };
-    
-    // Email de notification à l'admin
+
+    // 1) Notification admin : envoyée à l'email destinataire (ex. melissa@outlook.com)
     if (await isNotificationEnabled('accountCreated')) {
       const notificationEmail = await getNotificationEmail();
       const { subject, html } = newUserAccountEmail(accountData, 'fr', logoUrl);
-      
-      await sendEmail({
-        to: notificationEmail,
-        subject,
-        html,
-      });
+      await sendEmail({ to: notificationEmail, subject, html });
     }
-    
-    // Email de bienvenue à l'utilisateur
-    try {
-      const { subject: welcomeSubject, html: welcomeHtml } = welcomeEmail(accountData, 'fr', logoUrl);
-      await sendEmail({
-        to: accountData.email,
-        subject: welcomeSubject,
-        html: welcomeHtml,
-      });
-    } catch (welcomeErr) {
-      console.error('Error sending welcome email:', welcomeErr);
+
+    // 2) Email de bienvenue : envoyé uniquement à l'utilisateur qui s'inscrit (pas à l'admin)
+    if (userEmail) {
+      try {
+        const { subject: welcomeSubject, html: welcomeHtml } = welcomeEmail(accountData, 'fr', logoUrl);
+        const sent = await sendEmail({
+          to: userEmail,
+          subject: welcomeSubject,
+          html: welcomeHtml,
+        });
+        if (sent) {
+          console.log('📧 Welcome email sent to user:', userEmail);
+        } else {
+          console.warn('📧 Welcome email was not sent to user:', userEmail);
+        }
+      } catch (welcomeErr) {
+        console.error('Error sending welcome email to user:', userEmail, welcomeErr);
+      }
     }
   } catch (emailErr) {
     // Ne pas bloquer la création de compte si l'email échoue

@@ -495,12 +495,14 @@ Détails complets disponibles dans le tableau de bord admin.
           };
           
           const { subject, html } = newAgencyRequestEmail(emailData, locale as 'fr' | 'en');
-          
-          await sendEmail({
-            to: 'charter@bb-yachts.com',
+          const notificationEmail = await getNotificationEmail();
+
+          const sent = await sendEmail({
+            to: notificationEmail,
             subject,
             html,
           });
+          if (!sent) console.warn('[deposit] Notification email for agency request was not sent (check SMTP and notification settings).');
         }
       } catch (emailErr) {
         console.error('Error sending notification email for agency request:', emailErr);
@@ -554,6 +556,7 @@ Détails complets disponibles dans le tableau de bord admin.
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'payment',
       locale: locale==='fr' ? 'fr' : 'en',
+      customer_email: session?.user?.email || undefined, // Pré-remplit l'email sur le formulaire Stripe
       line_items: [
         { price_data: { currency, unit_amount: deposit * 100, product_data: { name: lineName } }, quantity: 1 }
       ],

@@ -307,10 +307,10 @@ export default function AdminAboutSettingsPage() {
       </Link>
       
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-4">Paramètres de la page "À propos"</h1>
+        <h1 className="text-2xl font-bold mb-4">Paramètres de la page "A propos"</h1>
         <AdminInstructions
           locale="fr"
-          title="Comment modifier la page À propos"
+          title="Comment modifier la page A propos"
           instructions={[
             {
               title: "Galerie d'images",

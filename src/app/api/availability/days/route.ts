@@ -80,12 +80,7 @@ export async function GET(req: Request) {
       (byBoat[s.boatId][key] as any)[s.part] = true;
     }
     
-    // Créer un Set des dates réservées (tous bateaux confondus) pour l'affichage dans le calendrier
-    const allReservedDates = new Set<string>();
-    for (const boatId in reservedDatesByBoat) {
-      reservedDatesByBoat[boatId].forEach(date => allReservedDates.add(date));
-    }
-    // Agrégation par date
+    // Agrégation par date : nombre de bateaux disponibles (avec au moins un slot libre) par jour
     const dateStats: Record<string, { any:Set<number>; full:Set<number>; amOnly:Set<number>; pmOnly:Set<number> }> = {};
     for (const boatIdStr of Object.keys(byBoat)) {
       const boatId = Number(boatIdStr);
@@ -106,6 +101,8 @@ export async function GET(req: Request) {
         }
       }
     }
+    // Une date est "reserved" (indisponible) seulement quand AUCUN bateau n'est dispo ce jour.
+    // Si au moins un bateau a un slot libre, la date reste disponible pour la recherche.
     const days = Object.entries(dateStats).map(([date, s]) => ({
       date,
       any: s.any.size,
@@ -113,7 +110,7 @@ export async function GET(req: Request) {
       amOnly: s.amOnly.size,
       pmOnly: s.pmOnly.size,
       boats: s.any.size, // compat ancien champ
-      reserved: allReservedDates.has(date), // Indique si la date est réservée (au moins un bateau)
+      reserved: s.any.size === 0, // Indispo seulement quand 0 bateau dispo (pas "dès qu'un bateau est réservé")
     })).sort((a,b)=>a.date.localeCompare(b.date));
     return NextResponse.json({ days });
   } catch (e) {

@@ -69,8 +69,8 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
                 <input name="speedKn" type="number" min="0" required defaultValue="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
               </label>
               <label className="grid gap-1 text-sm">
-                <span>{locale === "fr" ? "Puissance (cv)" : "Power (hp)"}</span>
-                <input name="enginePower" type="number" min="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
+                <span>{locale === "fr" ? "Année" : "Year"}</span>
+                <input name="year" type="number" min={1900} max={2100} placeholder={locale === "fr" ? "ex. 2022" : "e.g. 2022"} className="h-11 rounded-lg border border-black/15 px-3 w-full" />
               </label>
               <label className="grid gap-1 text-sm">
                 <span>{locale === "fr" ? "Taille (m)" : "Length (m)"}</span>

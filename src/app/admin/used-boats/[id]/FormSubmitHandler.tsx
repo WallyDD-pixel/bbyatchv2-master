@@ -20,16 +20,15 @@ export default function FormSubmitHandler({ newImageFiles }: FormSubmitHandlerPr
 
       const form = e.target as HTMLFormElement;
       
-      // Attendre un tick pour s'assurer que React a mis à jour les champs cachés
+      // Laisser React flusher les mises à jour d'état (ex: après suppression d'image)
       await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => requestAnimationFrame(resolve));
       
-      // Forcer la mise à jour des champs cachés avant de créer FormData
-      // Les champs cachés sont mis à jour par React, mais on doit s'assurer qu'ils sont à jour
       const keepPhotosInput = form.querySelector('input[name="keepPhotos"]') as HTMLInputElement;
       const mainImageInput = form.querySelector('input[name="mainImageChoice"]') as HTMLInputElement;
       
       if (keepPhotosInput) {
-        console.log('📤 keepPhotos avant soumission:', keepPhotosInput.value);
+        console.log('📤 keepPhotos avant soumission:', keepPhotosInput.value?.substring(0, 80) + (keepPhotosInput.value && keepPhotosInput.value.length > 80 ? '...' : ''));
       }
       if (mainImageInput) {
         console.log('📤 mainImageChoice avant soumission:', mainImageInput.value || '(vide)');

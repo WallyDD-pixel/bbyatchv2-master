@@ -161,6 +161,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     capacity?: number;
     speedKn?: number;
     enginePower?: number;
+    year?: number;
     fuel?: number;
     available?: boolean;
     imageUrl?: string;
@@ -198,6 +199,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       if (form.capacity != null) fd.append('capacity', String(form.capacity));
       if (form.speedKn != null) fd.append('speedKn', String(form.speedKn));
       if (form.enginePower != null) fd.append('enginePower', String(form.enginePower));
+      if (form.year != null) fd.append('year', String(form.year));
       if (form.fuel != null) fd.append('fuel', String(form.fuel));
       if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
       if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
@@ -683,8 +685,8 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
           <input name="lengthM" type="number" step="0.1" value={form.lengthM ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
         </label>
         <label className="grid gap-1 text-sm">
-          <span>{locale === "fr" ? "Puissance (cv)" : "Power (hp)"}</span>
-          <input name="enginePower" type="number" value={form.enginePower ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
+          <span>{locale === "fr" ? "Année" : "Year"}</span>
+          <input name="year" type="number" min={1900} max={2100} placeholder={locale === "fr" ? "ex. 2022" : "e.g. 2022"} value={form.year ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
         </label>
         <label className="grid gap-1 text-sm">
           <span>{locale === "fr" ? "Capacité (places max)" : "Capacity (max places)"}</span>

@@ -215,14 +215,15 @@ export async function POST(req: Request) {
               contentType: 'application/pdf',
             }] : undefined;
             
-            await sendEmail({ 
-              to: notificationEmail, 
-              subject, 
+            const sentResa = await sendEmail({
+              to: notificationEmail,
+              subject,
               html,
               attachments,
             });
+            if (!sentResa) console.warn('[webhook] Notification "reservation" was not sent.');
           }
-          
+
           // Notification paiement reçu avec facture en pièce jointe
           if (await isNotificationEnabled('paymentReceived') && reservation.depositAmount) {
             // paymentReceivedEmail n'a pas besoin de logo pour l'instant, mais on pourrait l'ajouter
@@ -238,14 +239,15 @@ export async function POST(req: Request) {
               contentType: 'application/pdf',
             }] : undefined;
             
-            await sendEmail({ 
-              to: notificationEmail, 
-              subject, 
+            const sentPayment = await sendEmail({
+              to: notificationEmail,
+              subject,
               html,
               attachments,
             });
+            if (!sentPayment) console.warn('[webhook] Notification "paymentReceived" was not sent.');
           }
-          
+
           // Envoyer aussi un email au client avec la facture
           if (user.email) {
             const { subject: clientSubject, html: clientHtml } = await newReservationEmail(reservationData, locale, logoUrl);
@@ -258,14 +260,15 @@ export async function POST(req: Request) {
               contentType: 'application/pdf',
             }] : undefined;
             
-            await sendEmail({ 
-              to: user.email, 
-              subject: locale === 'fr' 
+            const sentClient = await sendEmail({
+              to: user.email,
+              subject: locale === 'fr'
                 ? `Confirmation de votre réservation - ${reservationData.boatName}`
                 : `Your booking confirmation - ${reservationData.boatName}`,
               html: clientHtml,
               attachments,
             });
+            if (!sentClient) console.warn('[webhook] Client confirmation email was not sent.');
           }
         }
       } catch (emailErr) {

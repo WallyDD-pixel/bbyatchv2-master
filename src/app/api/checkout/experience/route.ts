@@ -141,6 +141,7 @@ export async function POST(req: Request) {
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'payment',
       locale: locale === 'fr' ? 'fr' : 'en',
+      customer_email: session?.user?.email || undefined, // Pré-remplit l'email sur le formulaire Stripe
       line_items: [{
         price_data: { currency, unit_amount: deposit * 100, product_data: { name: lineName } },
         quantity: 1
@@ -188,12 +189,17 @@ export async function POST(req: Request) {
         const logoUrl = (settings as any)?.logoUrl || null;
         const { subject, html } = await newReservationEmail(emailData, locale as 'fr' | 'en', logoUrl);
         const notificationEmail = await getNotificationEmail();
-        
-        await sendEmail({
-          to: notificationEmail,
-          subject,
-          html,
-        });
+        const sent = await sendEmail({ to: notificationEmail, subject, html });
+        if (!sent) console.warn('[checkout/experience] Reservation notification email was not sent.');
+
+        // Email de confirmation au client (expérience)
+        const clientEmail = userData?.email?.trim();
+        if (clientEmail) {
+          const clientSubject = locale === 'fr' ? `Confirmation de votre réservation - ${boat.name}` : `Your booking confirmation - ${boat.name}`;
+          const sentClient = await sendEmail({ to: clientEmail, subject: clientSubject, html });
+          if (sentClient) console.log('[checkout/experience] Client confirmation email sent to:', clientEmail);
+          else console.warn('[checkout/experience] Client confirmation email was not sent.');
+        }
       }
     } catch (emailErr) {
       console.error('Error sending experience reservation notification email:', emailErr);

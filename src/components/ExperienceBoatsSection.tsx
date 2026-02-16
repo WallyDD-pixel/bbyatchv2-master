@@ -139,12 +139,12 @@ export default async function ExperienceBoatsSection({ locale }: { locale: Local
     <section className="w-full max-w-6xl mx-auto mt-12 sm:mt-16 px-2 sm:px-0">
       <div className="text-center mb-6 sm:mb-8">
         <h2 className="text-2xl sm:text-4xl font-display font-extrabold text-black/90">
-          {locale === 'fr' ? 'Profitez de nos expériences' : 'Enjoy our experiences'}
+          {locale === 'fr' ? 'Profiter de la French riviera' : 'Enjoy the French Riviera'}
         </h2>
         <p className="mt-2 sm:mt-3 text-lg sm:text-xl text-black/70">
-          {locale === 'fr' 
-            ? 'Découvrez nos prochaines disponibilités' 
-            : 'Discover our upcoming availability'}
+          {locale === 'fr'
+            ? 'Découvrez nos destinations'
+            : 'Discover our destinations'}
         </p>
       </div>
 
@@ -206,14 +206,7 @@ export default async function ExperienceBoatsSection({ locale }: { locale: Local
                     {item.experienceDesc}
                   </p>
                 )}
-                
-                {/* Texte principal */}
-                <p className="text-base sm:text-lg font-extrabold tracking-tight text-black/90 mb-4">
-                  {locale === 'fr' 
-                    ? `Profitez d'un événement exclusif` 
-                    : `Enjoy an exclusive event`}
-                </p>
-                
+
                 {/* Bouton de réservation */}
                 <Link 
                   href={experienceUrl}

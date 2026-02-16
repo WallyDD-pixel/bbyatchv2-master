@@ -13,17 +13,23 @@ interface EmailOptions {
   }>;
 }
 
+const DEFAULT_NOTIFICATION_EMAIL = 'charter@bb-yachts.com';
+
 /**
- * Crée un transporteur SMTP configuré depuis les settings
+ * Crée un transporteur SMTP configuré depuis les settings.
+ * Si pas de settings ou SMTP non configuré, retourne un transport "console" (jsonTransport).
  */
-async function createTransporter() {
+async function createTransporter(): Promise<{ transporter: nodemailer.Transporter; isJsonTransport: boolean }> {
   const settings = await prisma.settings.findFirst();
-  
+
   if (!settings) {
-    throw new Error('Settings not found');
+    console.warn('⚠️ Settings not found. Emails will be logged to console only.');
+    return {
+      transporter: nodemailer.createTransport({ jsonTransport: true }),
+      isJsonTransport: true,
+    };
   }
 
-  // Si pas de configuration SMTP, utiliser un transporteur de test (console)
   if (!settings.smtpHost || !settings.smtpUser || !settings.smtpPassword) {
     console.warn('⚠️ SMTP not configured. Emails will be logged to console only.');
     console.warn('📋 SMTP Configuration status:', {
@@ -32,20 +38,24 @@ async function createTransporter() {
       smtpPassword: settings.smtpPassword ? '✅ Set' : '❌ Missing',
       smtpPort: settings.smtpPort || 'Using default (587)',
     });
-    return nodemailer.createTransport({
-      jsonTransport: true, // Log emails to console
-    });
+    return {
+      transporter: nodemailer.createTransport({ jsonTransport: true }),
+      isJsonTransport: true,
+    };
   }
 
-  return nodemailer.createTransport({
-    host: settings.smtpHost,
-    port: settings.smtpPort || 587,
-    secure: settings.smtpPort === 465, // true pour 465, false pour autres ports
-    auth: {
-      user: settings.smtpUser,
-      pass: settings.smtpPassword,
-    },
-  });
+  return {
+    transporter: nodemailer.createTransport({
+      host: settings.smtpHost,
+      port: settings.smtpPort || 587,
+      secure: settings.smtpPort === 465,
+      auth: {
+        user: settings.smtpUser,
+        pass: settings.smtpPassword,
+      },
+    }),
+    isJsonTransport: false,
+  };
 }
 
 /**
@@ -54,17 +64,22 @@ async function createTransporter() {
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
     const settings = await prisma.settings.findFirst();
-    
+
     if (!settings?.notificationEmailEnabled) {
-      console.log('📧 Email notifications are disabled');
+      console.log('📧 Email notifications are disabled (notificationEmailEnabled=false)');
       return false;
     }
 
-    const transporter = await createTransporter();
+    const { transporter, isJsonTransport } = await createTransporter();
     const fromEmail = settings.smtpFromEmail || 'noreply@bb-yachts.com';
     const fromName = settings.smtpFromName || 'BB YACHTS';
 
-    // Validation des paramètres requis
+    const toAddress = Array.isArray(options.to) ? options.to.join(', ') : (options.to || '').trim();
+    if (!toAddress) {
+      console.error('❌ Error sending email: recipient (to) is missing or empty');
+      return false;
+    }
+
     if (!options.html) {
       console.error('❌ Error sending email: html content is missing');
       return false;
@@ -72,13 +87,12 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 
     const mailOptions: any = {
       from: `"${fromName}" <${fromEmail}>`,
-      to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+      to: toAddress,
       subject: options.subject || 'Notification',
       text: options.text || (options.html ? options.html.replace(/<[^>]*>/g, '') : ''),
       html: options.html,
     };
 
-    // Ajouter les pièces jointes si présentes
     if (options.attachments && options.attachments.length > 0) {
       mailOptions.attachments = options.attachments.map(att => ({
         filename: att.filename,
@@ -88,12 +102,11 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     }
 
     const info = await transporter.sendMail(mailOptions);
-    
-    // Si c'est un transporteur de test, log l'email
-    if (transporter.transporter.name === 'JSONTransport') {
-      console.log('📧 Email (logged to console):', JSON.stringify(mailOptions, null, 2));
+
+    if (isJsonTransport) {
+      console.log('📧 Email (logged to console, SMTP not configured):', JSON.stringify({ to: mailOptions.to, subject: mailOptions.subject }, null, 2));
     } else {
-      console.log('📧 Email sent:', info.messageId);
+      console.log('📧 Email sent:', info?.messageId ?? 'ok');
     }
 
     return true;
@@ -104,11 +117,12 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 }
 
 /**
- * Récupère l'email destinataire des notifications
+ * Récupère l'email destinataire des notifications (jamais vide)
  */
 export async function getNotificationEmail(): Promise<string> {
   const settings = await prisma.settings.findFirst();
-  return settings?.notificationEmailTo || 'charter@bb-yachts.com';
+  const to = (settings?.notificationEmailTo || '').trim();
+  return to || DEFAULT_NOTIFICATION_EMAIL;
 }
 
 /**

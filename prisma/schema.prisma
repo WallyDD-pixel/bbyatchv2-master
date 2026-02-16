@@ -161,7 +161,8 @@ model Boat {
   capacity          Int // places
   speedKn           Int // vitesse en noeuds
   fuel              Int? // carburant (ex: conso ou réservoir)
-  enginePower       Int? // moteur (cv)
+  enginePower       Int? // moteur (cv) - conservé pour compatibilité, non affiché
+  year              Int? // année du bateau (affiché sur la fiche location)
   lengthM           Float? // taille en mètres
   pricePerDay       Int // prix en €
   priceAm           Int? // prix matin (AM)

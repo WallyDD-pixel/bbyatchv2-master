@@ -116,7 +116,7 @@ export default function AdminNavbarPage() {
         { labelFr: 'Bateaux disponibles', labelEn: 'Available boats', href: '/?lang=fr#fleet', icon: '⛵', visible: true, target: '_self' },
         { labelFr: 'Nos expériences', labelEn: 'Our experiences', href: '/?lang=fr#experiences', icon: '🌊', visible: true, target: '_self' },
         { labelFr: 'Vente d\'occasion', labelEn: 'Used sale', href: '/used-sale?lang=fr', icon: '💼', visible: true, target: '_self' },
-        { labelFr: 'À propos', labelEn: 'About', href: '/about', icon: 'ℹ️', visible: true, target: '_self' }
+        { labelFr: 'A propos', labelEn: 'About', href: '/about', icon: 'ℹ️', visible: true, target: '_self' }
       ];
 
       // Supprimer tous les éléments existants

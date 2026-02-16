@@ -159,31 +159,10 @@ export async function POST(req: Request){
       }
     });
     
-    // Si keepPhotos était vide ([]) mais qu'il y a des photos existantes,
-    // on doit vérifier si ces photos existantes doivent être conservées
-    // Si l'utilisateur a ajouté de nouvelles images, les photos existantes uploadées récemment doivent être conservées
-    if (kept !== null && kept.length === 0 && existingPhotos.length > 0) {
-      // Cas spécial : keepPhotos est [] mais il y a des photos existantes
-      // Si on a des nouvelles images à uploader, cela signifie que l'utilisateur ajoute des images
-      // Dans ce cas, on doit conserver les photos existantes qui viennent d'être uploadées
-      // (elles sont dans existingPhotos mais pas dans kept car elles viennent d'une soumission précédente)
-      if (newUrls.length > 0) {
-        // L'utilisateur ajoute de nouvelles images, donc on conserve TOUTES les photos existantes uploadées
-        // (car elles viennent probablement d'une soumission précédente où l'utilisateur a ajouté des images)
-        console.log('⚠️ keepPhotos est [] mais nouvelles images présentes, conservation de TOUTES les photos existantes uploadées');
-        existingPhotos.forEach(url => {
-          // Conserver toutes les photos existantes qui sont des URLs Supabase (uploadées)
-          // et qui ne sont pas déjà dans allPhotos et qui ne sont pas l'image principale
-          if (url && url.includes('supabase.co') && !allPhotos.includes(url) && url !== mainImage) {
-            console.log('📸 Conservation d\'une photo existante uploadée:', url.substring(url.length - 50));
-            allPhotos.push(url);
-          }
-        });
-      } else {
-        // Pas de nouvelles images, keepPhotos est [] signifie vraiment qu'il n'y a pas de photos secondaires
-        // On ne les ajoute pas dans ce cas
-        console.log('⚠️ keepPhotos est [] et pas de nouvelles images, suppression des photos secondaires');
-      }
+    // Si keepPhotos est [] (client a supprimé toutes les photos secondaires), ne jamais ré-ajouter les anciennes.
+    // allPhotos contient déjà basePhotos (éventuellement vide) + newUrls.
+    if (kept !== null && kept.length === 0 && existingPhotos.length > 0 && newUrls.length === 0) {
+      console.log('📸 keepPhotos est [], aucune nouvelle image : liste secondaire vide (suppressions respectées)');
     }
     
     const mergedPhotos = Array.from(new Set(allPhotos));

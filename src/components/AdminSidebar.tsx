@@ -50,7 +50,7 @@ export default function AdminSidebar({ locale: initialLocale, stats }: AdminSide
     { href: "/admin/agency-requests", labelFr: "Demandes agence", labelEn: "Agency Requests", icon: "🏢" },
     { href: "/admin/info-cards", labelFr: "Cartes d'info", labelEn: "Info Cards", icon: "ℹ️", badge: stats?.infoCards },
     { href: "/admin/homepage-settings", labelFr: "Page d'accueil", labelEn: "Homepage", icon: "🏠" },
-    { href: "/admin/about-settings", labelFr: "Page À propos", labelEn: "About Page", icon: "ℹ️" },
+    { href: "/admin/about-settings", labelFr: "Page A propos", labelEn: "About Page", icon: "ℹ️" },
     { href: "/admin/navbar", labelFr: "Navigation", labelEn: "Navigation", icon: "🧭" },
     { href: "/admin/legal-pages", labelFr: "Pages légales", labelEn: "Legal Pages", icon: "📄" },
     { href: "/admin/social-media", labelFr: "Réseaux sociaux", labelEn: "Social Media", icon: "📱" },
