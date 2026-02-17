@@ -169,13 +169,11 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
                   <div className="uppercase tracking-wide text-[10px] text-black/60">{locale === 'fr' ? 'Places max' : 'Max places'}</div>
                   <div className="text-sm font-semibold text-black mt-0.5">{b.capacity}</div>
                 </div>
-                {b.year && (
-                  <div>
-                    <div className="text-2xl mb-1">📅</div>
-                    <div className="uppercase tracking-wide text-[10px] text-black/60">{locale === 'fr' ? 'Année' : 'Year'}</div>
-                    <div className="text-sm font-semibold text-black mt-0.5">{b.year}</div>
-                  </div>
-                )}
+                <div>
+                  <div className="text-2xl mb-1">📅</div>
+                  <div className="uppercase tracking-wide text-[10px] text-black/60">{locale === 'fr' ? 'Année' : 'Year'}</div>
+                  <div className="text-sm font-semibold text-black mt-0.5">{b.year ?? '—'}</div>
+                </div>
                 {b.lengthM && (
                   <div>
                     <div className="text-2xl mb-1">📏</div>

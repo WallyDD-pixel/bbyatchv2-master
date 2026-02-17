@@ -50,8 +50,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
   
   // Utiliser le prix du bateau s'il existe, sinon le prix par défaut
   const effectiveSkipperPrice = boat?.skipperPrice ?? defaultSkipperPrice;
-  // Calculer le skipper si requis (même si le prix du bateau n'est pas défini, on utilise le prix par défaut)
-  const skipperTotal = boat?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0;
+  // Skipper obligatoire pour les clients directs uniquement. Pour les agences, le skipper n'est pas inclus dans le tarif (optionnel).
+  const skipperTotal = !isAgency && boat?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0;
   
   // Calcul du prix agence : prix public - 20% sur la coque nue (hors taxe)
   const calculateAgencyPrice = (publicPrice: number): number => {

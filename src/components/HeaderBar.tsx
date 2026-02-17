@@ -180,7 +180,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                 style={{ textDecoration: 'none' }}
               >
                 <span className="relative z-10 flex items-center gap-2">
-                  <span className="font-medium">{locale === 'fr' ? link.labelFr : link.labelEn}</span>
+                  <span className="font-medium">{locale === 'fr' ? (link.href?.includes('/about') ? 'A propos' : link.labelFr) : link.labelEn}</span>
                 </span>
                 {/* Légère ombre au survol, pas de fond transparent */}
                 <span className="absolute inset-0 bg-slate-100 dark:bg-white/10 rounded-2xl shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
@@ -350,7 +350,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
                     className="group px-5 py-4 rounded-2xl font-semibold flex items-center justify-between transition-all duration-200 relative bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:bg-blue-100 dark:active:bg-blue-900/40 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-700"
                   >
                     {/* labels: texte sombre en light, clair en dark */}
-                    <span className="text-slate-900 dark:text-slate-100 text-base font-semibold">{locale === 'fr' ? l.labelFr : l.labelEn}</span>
+                    <span className="text-slate-900 dark:text-slate-100 text-base font-semibold">{locale === 'fr' ? (l.href?.includes('/about') ? 'A propos' : l.labelFr) : l.labelEn}</span>
                     {/* Flèche indicateur */}
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all duration-200">
                       <path d="M5 12h14M12 5l7 7-7 7"/>
