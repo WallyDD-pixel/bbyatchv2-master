@@ -57,6 +57,7 @@ export default function AdminSidebar({ locale: initialLocale, stats }: AdminSide
     { href: "/admin/general-settings", labelFr: "Paramètres généraux", labelEn: "General Settings", icon: "⚙️" },
     { href: "/admin/notifications", labelFr: "Notifications", labelEn: "Notifications", icon: "📧" },
     { href: "/admin/stripe", labelFr: "Stripe", labelEn: "Stripe", icon: "💳" },
+    { href: "/admin/maintenance", labelFr: "Maintenance", labelEn: "Maintenance", icon: "🗑️" },
     { href: "/admin/seo-tracking", labelFr: "SEO & Tracking", labelEn: "SEO & Tracking", icon: "📊" },
     { href: "/admin/used-sale-settings", labelFr: "LP Occasions", labelEn: "Used Sale LP", icon: "📄" },
   ];

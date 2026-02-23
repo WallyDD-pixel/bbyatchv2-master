@@ -265,10 +265,9 @@ echo -e "   ${GREEN}✅ Service de protection automatique activé (vérification
 echo ""
 echo -e "${BLUE}7️⃣ Protection des fichiers critiques...${NC}"
 
-# Protéger les fichiers de configuration
-sudo chmod 644 /etc/crontab
-sudo chmod 644 /etc/cron.d/*
-sudo chmod 700 /etc/cron.d
+# Protéger les fichiers de configuration (si présents, ex. pas sur toutes les Amazon Linux)
+[ -f /etc/crontab ] && sudo chmod 644 /etc/crontab
+[ -d /etc/cron.d ] && sudo chmod 700 /etc/cron.d && sudo chmod 644 /etc/cron.d/* 2>/dev/null || true
 
 # Protéger les scripts dans le home
 if [ -d ~/bbyatchv2-master ]; then
@@ -310,9 +309,12 @@ echo -e "${BLUE}🔟 Configuration du monitoring quotidien...${NC}"
 
 MONITOR_SCRIPT="$HOME/bbyatchv2-master/monitor-malware.sh"
 if [ -f "$MONITOR_SCRIPT" ]; then
-    # Ajouter au crontab (remplacer toute entrée existante)
-    (crontab -l 2>/dev/null | grep -v "monitor-malware.sh"; echo "0 3 * * * $MONITOR_SCRIPT >> $HOME/malware-monitor.log 2>&1") | crontab -
-    echo -e "   ${GREEN}✅ Monitoring quotidien configuré (3h du matin)${NC}"
+    if command -v crontab &>/dev/null; then
+        (crontab -l 2>/dev/null | grep -v "monitor-malware.sh"; echo "0 3 * * * $MONITOR_SCRIPT >> $HOME/malware-monitor.log 2>&1") | crontab -
+        echo -e "   ${GREEN}✅ Monitoring quotidien configuré (3h du matin)${NC}"
+    else
+        echo -e "   ${YELLOW}   (crontab non disponible; le timer systemd assure la surveillance toutes les 5 min)${NC}"
+    fi
 else
     echo -e "   ${YELLOW}⚠️  Script de monitoring non trouvé${NC}"
 fi
