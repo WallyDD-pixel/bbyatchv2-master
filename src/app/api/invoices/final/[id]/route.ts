@@ -15,43 +15,62 @@ const BRAND = {
   currency: 'EUR'
 } as const;
 
+const CURRENCY_SUFFIX = ' EUR';
+
 function formatMoney(v: number){
   const raw = new Intl.NumberFormat('fr-FR',{ style:'currency', currency: BRAND.currency }).format(v||0);
   return raw.replace(/[\u202F\u00A0]/g,' ');
 }
+
+function formatMoneyNumber(v: number){
+  const n = Number(v) || 0;
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n).replace(/\u202F/g,' ');
+}
+
+function drawAmountAligned(
+  page: { drawText: (a: unknown) => void },
+  amount: number,
+  amountColRight: number,
+  fontSize: number,
+  font: { widthOfTextAtSize: (t: string, s: number) => number },
+  fontBold: { widthOfTextAtSize: (t: string, s: number) => number },
+  y: number,
+  color: ReturnType<typeof rgb>,
+  bold = false
+) {
+  const f = bold ? fontBold : font;
+  const num = Number(amount) || 0;
+  const numberStr = (num < 0 ? '-' : '') + formatMoneyNumber(Math.abs(num));
+  const suffixW = f.widthOfTextAtSize(CURRENCY_SUFFIX, fontSize);
+  const gap = 4;
+  const currencyX = amountColRight - suffixW;
+  const numberX = currencyX - gap - f.widthOfTextAtSize(numberStr, fontSize);
+  page.drawText(sanitize(numberStr), { x: numberX, y, size: fontSize, font: f, color });
+  page.drawText(sanitize(CURRENCY_SUFFIX), { x: currencyX, y, size: fontSize, font: f, color });
+}
 function sanitize(text: string){
   if (!text) return '';
-  
-  // Mapping des caractères spéciaux vers WinAnsi
   const charMap: Record<string, string> = {
-    '→': '->',
-    '–': '-',
-    '—': '-',
-    '…': '...',
-    '⚠': '[!]',
-    '€': 'EUR',
-    '\u2018': "'",
-    '\u2019': "'",
-    '\u201C': '"',
-    '\u201D': '"',
-    '\u00A0': ' ',
-    '\u202F': ' ',
+    '→': '->', '–': '-', '—': '-', '…': '...', '⚠': '[!]', '€': 'EUR',
+    '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"', '\u00A0': ' ', '\u202F': ' ',
+    '\u2713': '[OK]', '✓': '[OK]', '✔': '[OK]',
   };
-  
-  // Remplacer d'abord les caractères spéciaux connus
-  let result = text;
+  let result = String(text);
   for (const [char, replacement] of Object.entries(charMap)) {
-    result = result.replace(new RegExp(char, 'g'), replacement);
+    const escaped = char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result = result.replace(new RegExp(escaped, 'g'), replacement);
   }
-  
-  // Supprimer les caractères de contrôle invisibles
-  result = result.replace(/[\u200B-\u200D\uFEFF]/g, '');
-  
-  // Convertir les caractères accentués vers WinAnsi (les caractères français courants sont supportés)
-  // WinAnsi supporte: àáâãäåèéêëìíîïòóôõöùúûüýÿçñ
-  // On garde ces caractères tels quels car ils sont supportés par WinAnsi
-  
-  return result;
+  return result.replace(/[\u200B-\u200D\uFEFF]/g, '');
+}
+
+function formatDate(d: Date | string | null | undefined): string {
+  if (d == null) return '';
+  try {
+    const date = typeof d === 'string' ? new Date(d) : d;
+    return isNaN(date.getTime()) ? '' : date.toLocaleDateString('fr-FR');
+  } catch {
+    return '';
+  }
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -76,7 +95,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     });
     if(!reservation) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     if(reservation.user?.email !== sessionEmail && !isAdmin) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-    if(reservation.status !== 'completed') return NextResponse.json({ error: 'not_completed' }, { status: 409 });
+    if (reservation.status !== 'completed') {
+      return NextResponse.json(
+        { error: 'not_completed', message: 'La facture finale est disponible uniquement pour les réservations terminées.' },
+        { status: 409 }
+      );
+    }
 
     // Vérifier si c'est une réservation agence
     const isAgencyReservation = reservation.user?.role === 'agency';
@@ -171,53 +195,46 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       y = currentY;
     };
 
-    // Header + logo
-    let headerHeight = 110;
+    // Header + logo (compact pour tenir sur 1 page)
+    const leftMargin = 50;
+    let headerHeight = 70;
     try {
       const logoPath = path.join(process.cwd(),'public','cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png');
       const logoBytes = await fs.readFile(logoPath);
       const png = await pdfDoc.embedPng(logoBytes);
-      const logoDims = png.scale(0.8);
-      const logoX = 50;
-      const logoY = height - 40 - logoDims.height;
-      page.drawImage(png, { x: logoX, y: logoY, width: logoDims.width, height: logoDims.height });
-      headerHeight = logoDims.height + 50;
+      const logoDims = png.scale(0.68);
+      page.drawImage(png, { x: leftMargin, y: height - 28 - logoDims.height, width: logoDims.width, height: logoDims.height });
+      headerHeight = logoDims.height + 28;
     } catch {
-      page.drawText(BRAND.name, { x:50, y: height-60, size: 32, font: fontBold, color: primary });
+      page.drawText(BRAND.name, { x: leftMargin, y: height - 36, size: 18, font: fontBold, color: primary });
     }
-    page.drawLine({ start:{ x:40, y: height - headerHeight - 10 }, end:{ x: width-40, y: height - headerHeight -10 }, thickness: 1, color: primary });
+    page.drawLine({ start:{ x: 40, y: height - headerHeight - 6 }, end:{ x: width - 40, y: height - headerHeight - 6 }, thickness: 0.8, color: primary });
 
-    const infoX = width - 240;
-    page.drawText('Facture finale', { x: infoX, y: height - 60, size: 16, font: fontBold, color: primary });
-    page.drawText(`N° ${invoiceNumber}`, { x: infoX, y: height - 78, size: 10, font, color: textMuted });
-    page.drawText(`Date ${new Date().toLocaleDateString('fr-FR')}`, { x: infoX, y: height - 92, size: 10, font, color: textMuted });
+    const infoX = width - 200;
+    page.drawText('Facture finale', { x: infoX, y: height - 32, size: 12, font: fontBold, color: primary });
+    page.drawText(`N° ${invoiceNumber}`, { x: infoX, y: height - 44, size: 8, font, color: textMuted });
+    page.drawText(`Date ${new Date().toLocaleDateString('fr-FR')}`, { x: infoX, y: height - 54, size: 8, font, color: textMuted });
+    page.drawText(sanitize(BRAND.address), { x: leftMargin, y: height - headerHeight - 14, size: 7, font, color: textMuted });
+    page.drawText(sanitize(`${BRAND.email} | ${BRAND.phone}`), { x: leftMargin, y: height - headerHeight - 22, size: 7, font, color: textMuted });
 
-    const brandMeta = `${BRAND.address}\n${BRAND.email} | ${BRAND.phone}`;
-    brandMeta.split('\n').forEach((line,i)=>{
-      page.drawText(sanitize(line), { x: 50, y: height - headerHeight - 30 - (i*12), size: 9, font, color: textMuted });
-    });
-
-    const TOP_MARGIN = 100;
+    const TOP_MARGIN = 52;
     let y = height - headerHeight - TOP_MARGIN;
-    const leftMargin = 50;
 
-    const linesBox = (title:string, entries:string[], half=false) => {
+    const linesBox = (title: string, entries: string[], half = false) => {
       const boxTop = y;
-      const boxWidth = half? (width/2 - leftMargin) : (width - leftMargin*2);
+      const boxWidth = half ? (width/2 - leftMargin - 10) : (width - leftMargin*2);
       let tempY = y;
-      // simulate
-      tempY -= 12 + 4; // title
-      entries.forEach(()=> tempY -= 10 + 3);
+      tempY -= 10 + 3;
+      entries.forEach(() => tempY -= 8 + 3);
       const boxBottom = tempY;
-      page.drawRectangle({ x:leftMargin-10, y: boxBottom -10, width: boxWidth + 20, height: (boxTop-boxBottom)+20, color: half? lightGray: rgb(1,1,1), borderColor: borderGray, borderWidth: .6 });
-      // draw
-      page.drawText(title, { x:leftMargin, y: boxTop - 16, size:12, font: fontBold, color: primary });
-      let cursor = boxTop - 12 - 4;
+      page.drawRectangle({ x: leftMargin - 8, y: boxBottom - 8, width: boxWidth + 16, height: (boxTop - boxBottom) + 16, color: half ? lightGray : rgb(1,1,1), borderColor: borderGray, borderWidth: 0.5 });
+      page.drawText(title, { x: leftMargin, y: boxTop - 12, size: 10, font: fontBold, color: primary });
+      let cursor = boxTop - 10 - 3;
       entries.forEach(txt => {
-        page.drawText(sanitize(txt), { x:leftMargin, y: cursor - 10, size:10, font, color: textDark });
-        cursor -= 10 + 3;
+        page.drawText(sanitize(txt), { x: leftMargin, y: cursor - 8, size: 8, font, color: textDark });
+        cursor -= 8 + 3;
       });
-      y = boxBottom - 30; // update y
+      y = boxBottom - 24;
     };
 
     // Bloc client (moitié)
@@ -254,180 +271,104 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     ].filter(Boolean) as string[];
     linesBox('Détails de la réservation', resEntries);
 
-    // Tableau facture finale détaillé
-    page.drawText('Détail des prestations', { x:leftMargin, y: y-12, size:12, font: fontBold, color: primary });
-    y -= 24;
+    // Tableau facture
+    page.drawText('Détail des prestations', { x: leftMargin, y: y - 10, size: 10, font: fontBold, color: primary });
+    y -= 18;
     const tableX1 = leftMargin;
-    const tableXQty = width - 140;
-    const tableXAmt = width - 80;
-    page.drawLine({ start:{ x:tableX1, y:y }, end:{ x: width-leftMargin, y:y }, thickness:1, color: primary });
-    y -= 14;
-    page.drawText('Description', { x: tableX1, y: y, size:10, font: fontBold, color:textDark });
-    page.drawText('Qté', { x: tableXQty, y: y, size:10, font: fontBold, color:textDark });
-    page.drawText('Montant', { x: tableXAmt, y: y, size:10, font: fontBold, color:textDark });
+    const amountColRight = width - leftMargin;
+    const qtyColWidth = 42;
+    const gapQtyToAmount = 28;
+    const amountColWidth = 78;
+    const tableXQtyRight = amountColRight - amountColWidth - gapQtyToAmount;
+    const tableXQty = tableXQtyRight - qtyColWidth;
+    const montantHeaderX = amountColRight - fontBold.widthOfTextAtSize(' EUR', 9) - 4 - fontBold.widthOfTextAtSize('Montant', 9);
+    page.drawLine({ start: { x: tableX1, y }, end: { x: amountColRight, y }, thickness: 0.7, color: primary });
+    y -= 11;
+    page.drawText('Description', { x: tableX1, y: y, size: 9, font: fontBold, color: textDark });
+    const qteHeaderX = tableXQtyRight - fontBold.widthOfTextAtSize('Qté', 9);
+    page.drawText('Qté', { x: qteHeaderX, y: y, size: 9, font: fontBold, color: textDark });
+    page.drawText('Montant', { x: montantHeaderX, y: y, size: 9, font: fontBold, color: textDark });
     y -= 10;
-    page.drawLine({ start:{ x:tableX1, y:y+4 }, end:{ x: width-leftMargin, y:y+4 }, thickness:0.5, color: lightGray });
-    
-    // Ligne 1: Prix de base
-    page.drawText(sanitize(`Location bateau (${partLabel})`), { x: tableX1, y: y-2, size:10, font, color:textMuted });
-    page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
-    page.drawText(formatMoney(basePrice), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
-    y -= 16;
-    
-    // Lignes options
-    if(selectedOptions.length > 0){
-      selectedOptions.forEach((opt:any) => {
-        page.drawText(sanitize(`Option : ${opt.label}`), { x: tableX1, y: y-2, size:9, font, color:textMuted });
-        page.drawText('1', { x: tableXQty, y: y-2, size:9, font, color:textMuted });
-        page.drawText(formatMoney(opt.price || 0), { x: tableXAmt, y: y-2, size:9, font, color:textMuted });
-        y -= 14;
-      });
-    }
-    
-    // Ligne skipper
-    if(skipperTotal > 0){
-      page.drawText(sanitize(`Skipper obligatoire (${effectiveSkipperPrice}€ × ${skipperDays}j)`), { x: tableX1, y: y-2, size:10, font, color:textMuted });
-      page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
-      page.drawText(formatMoney(skipperTotal), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
-      y -= 16;
-    }
-    
-    // Ligne séparatrice
-    page.drawLine({ start:{ x:tableX1, y:y+2 }, end:{ x: width-leftMargin, y:y+2 }, thickness:0.5, color: lightGray });
+    page.drawLine({ start: { x: tableX1, y: y + 3 }, end: { x: amountColRight, y: y + 3 }, thickness: 0.5, color: lightGray });
+    const rowH = 12;
+    const drawRow = (desc: string, amt: number, sz = 9, bold = false) => {
+      const rowY = y - 2;
+      const qtyX = tableXQtyRight - (bold ? fontBold : font).widthOfTextAtSize('1', sz);
+      page.drawText(sanitize(desc), { x: tableX1, y: rowY, size: sz, font, color: textDark });
+      page.drawText('1', { x: qtyX, y: rowY, size: sz, font: bold ? fontBold : font, color: textDark });
+      drawAmountAligned(page, amt, amountColRight, sz, font, fontBold, rowY, textDark, bold);
+      y -= rowH;
+    };
+    drawRow(`Location bateau (${partLabel})`, basePrice);
+    selectedOptions.forEach((opt: any) => drawRow(`Option : ${opt.label}`, opt.price || 0, 8));
+    if (skipperTotal > 0) drawRow(`Skipper (${effectiveSkipperPrice} EUR x ${skipperDays}j)`, skipperTotal);
+    page.drawLine({ start: { x: tableX1, y: y + 3 }, end: { x: amountColRight, y: y + 3 }, thickness: 0.5, color: lightGray });
     y -= 8;
-    
-    // Total hors carburant
-    page.drawText('Total hors carburant', { x: tableX1, y: y-2, size:10, font: fontBold, color: textDark });
-    page.drawText('', { x: tableXQty, y: y-2, size:10, font, color: textDark });
-    page.drawText(formatMoney(baseTotal), { x: tableXAmt, y: y-2, size:10, font: fontBold, color: textDark });
-    y -= 16;
-    
-    // Ligne carburant (si défini)
-    if(finalFuelAmount > 0){
-      page.drawText('Carburant consommé', { x: tableX1, y: y-2, size:10, font, color:textMuted });
-      page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
-      page.drawText(formatMoney(finalFuelAmount), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
-      y -= 16;
-      page.drawLine({ start:{ x:tableX1, y:y+2 }, end:{ x: width-leftMargin, y:y+2 }, thickness:0.5, color: lightGray });
+    const totalRowY = y - 2;
+    page.drawText('Total hors carburant', { x: tableX1, y: totalRowY, size: 9, font: fontBold, color: textDark });
+    drawAmountAligned(page, baseTotal, amountColRight, 9, font, fontBold, totalRowY, textDark, true);
+    y -= rowH;
+    if (finalFuelAmount > 0) {
+      drawRow('Carburant consommé', finalFuelAmount);
+      page.drawLine({ start: { x: tableX1, y: y + 3 }, end: { x: amountColRight, y: y + 3 }, thickness: 0.5, color: lightGray });
       y -= 8;
     }
-    
-    // Total final
-    page.drawText('Total final', { x: tableX1, y: y-2, size:11, font: fontBold, color: primary });
-    page.drawText('', { x: tableXQty, y: y-2, size:11, font, color: primary });
-    page.drawText(formatMoney(total), { x: tableXAmt, y: y-2, size:11, font: fontBold, color: primary });
-    y -= 20;
-    
-    // Ligne acompte déjà payé
-    page.drawText('Acompte déjà payé (20% sur bateau + options)', { x: tableX1, y: y-2, size:10, font, color:textMuted });
-    page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
-    page.drawText('-'+formatMoney(deposit), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
-    y -= 16;
-    
-    // Ligne solde payé
-    // Pour les agences : solde = total - acompte (skipper inclus)
-    // Pour les clients directs : solde = bateau + options - acompte (skipper payé sur place)
+    const finalRowY = y - 2;
+    page.drawText('Total final', { x: tableX1, y: finalRowY, size: 10, font: fontBold, color: primary });
+    drawAmountAligned(page, total, amountColRight, 10, font, fontBold, finalRowY, primary, true);
+    y -= rowH + 10;
+    drawRow('Acompte déjà payé (20%)', -deposit);
     const remainingBoatOptions = Math.max(basePriceForDeposit - deposit, 0);
-    const soldeLabel = isAgencyReservation 
-      ? 'Solde payé (bateau + options + skipper)'
-      : 'Solde payé (bateau + options)';
-    page.drawText(soldeLabel, { x: tableX1, y: y-2, size:10, font, color:textMuted });
-    page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
-    page.drawText(formatMoney(remainingBoatOptions), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
-    y -= 16;
-    
-    // Ligne skipper (inclus pour agences, payé sur place pour clients directs)
-    if(skipperTotal > 0 && !isAgencyReservation){
-      page.drawText('Skipper (payé sur place)', { x: tableX1, y: y-2, size:10, font, color:textMuted });
-      page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
-      page.drawText(formatMoney(skipperTotal), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
-      y -= 16;
-    }
-    
-    // Ligne carburant payé sur place
-    if(finalFuelAmount > 0){
-      page.drawText('Carburant (payé sur place)', { x: tableX1, y: y-2, size:10, font, color:textMuted });
-      page.drawText('1', { x: tableXQty, y: y-2, size:10, font, color:textMuted });
-      page.drawText(formatMoney(finalFuelAmount), { x: tableXAmt, y: y-2, size:10, font, color:textMuted });
-    }
-    y -= 12;
-    page.drawLine({ start:{ x:tableX1, y:y }, end:{ x: width-leftMargin, y:y }, thickness:0.5, color: lightGray });
-    y -= 20;
+    const soldeLabel = isAgencyReservation ? 'Solde payé (bateau + options + skipper)' : 'Solde payé (bateau + options)';
+    drawRow(soldeLabel, remainingBoatOptions);
+    if (skipperTotal > 0 && !isAgencyReservation) drawRow('Skipper (payé sur place)', skipperTotal);
+    if (finalFuelAmount > 0) drawRow('Carburant (payé sur place)', finalFuelAmount);
+    y -= 4;
+    page.drawLine({ start: { x: tableX1, y: y }, end: { x: amountColRight, y: y }, thickness: 0.5, color: lightGray });
+    y -= 14;
 
-    // Récap
-    const recapX = width - 230;
-    const recapWidth = 180;
-    // Calculer la hauteur selon le nombre de lignes
-    let recapLinesCount = 3; // Total bateau + options, Total contrat, Acompte payé, Solde payé
-    if(skipperTotal > 0) recapLinesCount++;
-    if(finalFuelAmount > 0) recapLinesCount++;
-    const recapHeight = recapLinesCount * 14 + 20;
-    page.drawRectangle({ x: recapX-10, y: y-recapHeight, width: recapWidth, height: recapHeight, color: rgb(1,1,1), borderColor: borderGray, borderWidth: .6 });
-    let ry = y - 24;
-    const recapLine = (label:string, value:string, bold=false) => {
-      page.drawText(sanitize(label), { x:recapX, y: ry, size:9, font: bold? fontBold: font, color:textDark });
-      page.drawText(sanitize(value), { x: recapX + recapWidth - 85, y: ry, size:9, font: bold? fontBold: font, color:textDark });
-      ry -= 14;
+    // Récap (montants alignés : " EUR" à la même colonne)
+    const recapX = width - 200;
+    const recapWidth = 150;
+    const recapAmountColRight = recapX + recapWidth - 8;
+    let recapLinesCount = 3;
+    if (skipperTotal > 0) recapLinesCount++;
+    if (finalFuelAmount > 0) recapLinesCount++;
+    const recapHeight = recapLinesCount * 11 + 18;
+    page.drawRectangle({ x: recapX - 8, y: y - recapHeight, width: recapWidth, height: recapHeight, color: lightGray, borderColor: borderGray, borderWidth: 0.5 });
+    let ry = y - 14;
+    const recapLineAmount = (label: string, amount: number, bold = false) => {
+      page.drawText(sanitize(label), { x: recapX, y: ry, size: 8, font: bold ? fontBold : font, color: textDark });
+      drawAmountAligned(page, amount, recapAmountColRight, 8, font, fontBold, ry, textDark, bold);
+      ry -= 11;
     };
-    recapLine('Total bateau + options', formatMoney(basePriceForDeposit));
-    if(skipperTotal > 0){
-      recapLine(isAgencyReservation ? 'Skipper (inclus)' : 'Skipper (payé sur place)', formatMoney(skipperTotal));
-    }
-    if(finalFuelAmount > 0){
-      recapLine('Carburant (payé sur place)', formatMoney(finalFuelAmount));
-    }
-    recapLine('Total contrat', formatMoney(total), true);
-    recapLine('Acompte payé (20%)', formatMoney(deposit));
-    recapLine('Solde payé', formatMoney(totalPaid - deposit), true);
+    recapLineAmount('Total bateau + options', basePriceForDeposit);
+    if (skipperTotal > 0) recapLineAmount(isAgencyReservation ? 'Skipper (inclus)' : 'Skipper (sur place)', skipperTotal);
+    if (finalFuelAmount > 0) recapLineAmount('Carburant (payé sur place)', finalFuelAmount);
+    recapLineAmount('Total contrat', total, true);
+    recapLineAmount('Acompte payé (20%)', deposit);
+    recapLineAmount('Solde payé', totalPaid - deposit, true);
     y -= recapHeight + 20;
 
-    // ===== Informations de paiement =====
-    if (y < 180) {
-      page = pdfDoc.addPage();
-      y = height - 50;
-    }
-    
-    const paymentEntries = [
-      `Réservation créée le : ${reservation.createdAt.toLocaleDateString('fr-FR')}`,
-      ...(reservation.depositPaidAt ? [`Acompte payé le : ${reservation.depositPaidAt.toLocaleDateString('fr-FR')}`] : []),
-      ...(reservation.completedAt ? [`Prestation terminée le : ${reservation.completedAt.toLocaleDateString('fr-FR')}`] : []),
-      ...(reservation.stripePaymentIntentId ? [`Paiement par carte bancaire`] : []),
-      `Statut : Facture acquittée`
-    ];
-    linesBox('Informations de paiement', paymentEntries);
-
-    // ===== Mentions légales =====
-    // Vérifier qu'on a assez d'espace avant de dessiner
-    if (y < 120) {
-      page = pdfDoc.addPage();
-      y = height - 50;
-    }
-    
-    page.drawText('Conditions et mentions légales', { x:leftMargin, y: y-12, size:11, font: fontBold, color: primary });
-    y -= 24;
-    
-    drawWrapped('✓ Facture acquittée - Paiement total reçu. Merci pour votre confiance.', 9, rgb(0.0, 0.6, 0.0), leftMargin, width-leftMargin*2, true, 4);
-    
-    if(finalFuelAmount > 0){
-      drawWrapped("• Le montant du carburant a été ajusté selon la consommation réelle de la prestation.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
-    } else {
-      drawWrapped("• Le prix final a été ajusté en fonction du coût réel du carburant consommé pendant la prestation.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
-    }
-    
-    if(boatData?.skipperRequired) {
-      drawWrapped("• Prestation effectuée avec skipper professionnel conformément aux exigences de sécurité maritime.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
-    }
-    
-    drawWrapped("• Cette facture fait foi du paiement intégral de la prestation de location de bateau.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
-    drawWrapped("• Pour toute question ou réclamation, contactez-nous à charter@bb-yachts.com dans les 30 jours.", 8, textMuted, leftMargin, width-leftMargin*2, false, 3);
-    
-    y -= 10;
-    drawWrapped("Document généré automatiquement - valable sans signature.", 7, textMuted, leftMargin, width-leftMargin*2, false, 2);
+    // Pied de page
+    const paymentLine = [
+      `Créée le ${formatDate(reservation.createdAt)}`,
+      reservation.depositPaidAt ? `Acompte le ${formatDate(reservation.depositPaidAt)}` : '',
+      reservation.completedAt ? `Terminée le ${formatDate(reservation.completedAt)}` : '',
+      'Facture acquittée'
+    ].filter(Boolean).join('  ·  ');
+    page.drawText(sanitize(paymentLine), { x: leftMargin, y: y - 10, size: 7, font, color: textMuted });
+    y -= 18;
+    drawWrapped('[OK] Facture acquittée - Paiement total reçu. Merci pour votre confiance.', 8, rgb(0.0, 0.55, 0.0), leftMargin, width - leftMargin * 2, true, 4);
+    drawWrapped('Cette facture fait foi du paiement intégral. Questions : charter@bb-yachts.com sous 30 jours. Document valable sans signature.', 7, textMuted, leftMargin, width - leftMargin * 2, false, 3);
 
     const pdfBytes = await pdfDoc.save();
-    return new NextResponse(Buffer.from(pdfBytes), { status:200, headers:{ 'Content-Type':'application/pdf', 'Content-Disposition':`inline; filename="${invoiceNumber}.pdf"` }});
-  } catch(e:any){
-    console.error(e);
-    return NextResponse.json({ error:'server_error' }, { status:500 });
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/pdf');
+    headers.set('Content-Disposition', `inline; filename="${invoiceNumber}.pdf"`);
+    return new NextResponse(new Uint8Array(pdfBytes), { status: 200, headers });
+  } catch (e: any) {
+    console.error('Error generating final invoice PDF:', e);
+    return NextResponse.json({ error: 'server_error', message: e?.message }, { status: 500 });
   }
 }
