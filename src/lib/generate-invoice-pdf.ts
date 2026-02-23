@@ -11,13 +11,42 @@ const BRAND = {
   currency: 'EUR',
 } as const;
 
+const CURRENCY_SUFFIX = ' EUR';
+
 function formatMoney(v: number) {
   const raw = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: BRAND.currency }).format(v);
   return raw.replace(/[\u202F\u00A0]/g, ' ');
 }
 
+/** Nombre uniquement (fr-FR), pour aligner les montants avec " EUR" à droite. */
+function formatMoneyNumber(v: number) {
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v).replace(/\u202F/g, ' ');
+}
+
 function getRightAlignedX(text: string, fontSize: number, font: { widthOfTextAtSize: (t: string, s: number) => number }, maxX: number): number {
   return maxX - font.widthOfTextAtSize(text, fontSize);
+}
+
+/** Dessine un montant avec le nombre aligné à droite et " EUR" à position fixe (alignement vertical des EUR). */
+function drawAmount(
+  page: { drawText: (args: any) => void },
+  amount: number,
+  amountColRight: number,
+  fontSize: number,
+  font: { widthOfTextAtSize: (t: string, s: number) => number },
+  fontBold: { widthOfTextAtSize: (t: string, s: number) => number },
+  y: number,
+  color: ReturnType<typeof rgb>,
+  bold = false
+) {
+  const f = bold ? fontBold : font;
+  const numberStr = formatMoneyNumber(amount);
+  const suffixWidth = f.widthOfTextAtSize(CURRENCY_SUFFIX, fontSize);
+  const currencyX = amountColRight - suffixWidth;
+  const gap = 4;
+  const numberX = currencyX - gap - f.widthOfTextAtSize(numberStr, fontSize);
+  page.drawText(sanitize(numberStr), { x: numberX, y, size: fontSize, font: f, color });
+  page.drawText(sanitize(CURRENCY_SUFFIX), { x: currencyX, y, size: fontSize, font: f, color });
 }
 
 function sanitize(text: string) {
@@ -99,23 +128,26 @@ export async function generateInvoicePDF(reservationId: string): Promise<Buffer 
     const textDark = rgb(0.1, 0.1, 0.12);
     const textMuted = rgb(0.4, 0.42, 0.46);
 
+    const infoX = width - 200;
+    const headerTitleBaseline = height - 35;
+    const headerTitleSize = 14;
+    const headerTitleTop = headerTitleBaseline + headerTitleSize;
     let headerHeight = 80;
     try {
       const logoPath = path.join(process.cwd(), 'public', 'cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png');
       const logoBytes = await fs.readFile(logoPath);
       const png = await pdfDoc.embedPng(logoBytes);
       const logoDims = png.scale(0.6);
-      page.drawImage(png, { x: 50, y: height - 30 - logoDims.height, width: logoDims.width, height: logoDims.height });
-      headerHeight = logoDims.height + 30;
+      page.drawImage(png, { x: leftMargin, y: height - headerTitleTop - logoDims.height, width: logoDims.width, height: logoDims.height });
+      headerHeight = headerTitleTop + logoDims.height + 15;
     } catch {
-      page.drawText(sanitize(BRAND.name), { x: 50, y: height - 40, size: 24, font: fontBold, color: primary });
+      page.drawText(sanitize(BRAND.name), { x: leftMargin, y: height - 40, size: 24, font: fontBold, color: primary });
       headerHeight = 40;
     }
 
     page.drawLine({ start: { x: 40, y: height - headerHeight - 5 }, end: { x: width - 40, y: height - headerHeight - 5 }, thickness: 0.8, color: primary });
 
-    const infoX = width - 200;
-    page.drawText("Facture d'acompte", { x: infoX, y: height - 35, size: 14, font: fontBold, color: primary });
+    page.drawText("Facture d'acompte", { x: infoX, y: headerTitleBaseline, size: headerTitleSize, font: fontBold, color: primary });
     page.drawText(`N° ${invoiceNumber}`, { x: infoX, y: height - 50, size: 9, font, color: textMuted });
     page.drawText(`Date ${new Date().toLocaleDateString('fr-FR')}`, { x: infoX, y: height - 62, size: 9, font, color: textMuted });
 
@@ -260,45 +292,43 @@ export async function generateInvoicePDF(reservationId: string): Promise<Buffer 
     y -= 4;
     const tableX1 = leftMargin;
     const amountColRight = width - leftMargin;
-    const amountColLeft = width - 75;
     const tableXQty = width - 135;
     const montantLabelWidth = fontBold.widthOfTextAtSize('Montant', 9);
-    const tableXAmtCentered = (amountColLeft + amountColRight) / 2 - montantLabelWidth / 2;
-    page.drawLine({ start: { x: tableX1, y }, end: { x: width - leftMargin, y }, thickness: 0.8, color: primary });
+    const amountColStart = amountColRight - 75;
+    const tableXAmtCentered = amountColStart + (amountColRight - amountColStart) / 2 - montantLabelWidth / 2;
+    page.drawLine({ start: { x: tableX1, y }, end: { x: amountColRight, y }, thickness: 0.8, color: primary });
     y -= 12;
     page.drawText('Description', { x: tableX1, y, size: 9, font: fontBold, color: textDark });
     page.drawText('Qté', { x: tableXQty, y, size: 9, font: fontBold, color: textDark });
     page.drawText('Montant', { x: tableXAmtCentered, y, size: 9, font: fontBold, color: textDark });
     y -= 9;
-    page.drawLine({ start: { x: tableX1, y: y + 3 }, end: { x: width - leftMargin, y: y + 3 }, thickness: 0.4, color: lightGray });
+    page.drawLine({ start: { x: tableX1, y: y + 3 }, end: { x: amountColRight, y: y + 3 }, thickness: 0.4, color: lightGray });
 
-    const basePriceText = formatMoney(basePrice);
-    page.drawText(sanitize(`Location bateau (${partLabel})`), { x: tableX1, y: y - 1, size: 9, font, color: textMuted });
-    page.drawText('1', { x: tableXQty, y: y - 1, size: 9, font, color: textMuted });
-    page.drawText(basePriceText, { x: getRightAlignedX(basePriceText, 9, font, width - leftMargin), y: y - 1, size: 9, font, color: textMuted });
+    const rowY = (lineY: number) => lineY - 1;
+    page.drawText(sanitize(`Location bateau (${partLabel})`), { x: tableX1, y: rowY(y), size: 9, font, color: textMuted });
+    page.drawText('1', { x: tableXQty, y: rowY(y), size: 9, font, color: textMuted });
+    drawAmount(page, basePrice, amountColRight, 9, font, fontBold, rowY(y), textMuted);
     y -= 13;
 
     selectedOptions.forEach((opt: any) => {
-      const optPriceText = formatMoney(opt.price || 0);
-      page.drawText(sanitize(`Option : ${opt.label}`), { x: tableX1, y: y - 1, size: 8, font, color: textMuted });
-      page.drawText('1', { x: tableXQty, y: y - 1, size: 8, font, color: textMuted });
-      page.drawText(optPriceText, { x: getRightAlignedX(optPriceText, 8, font, width - leftMargin), y: y - 1, size: 8, font, color: textMuted });
+      page.drawText(sanitize(`Option : ${opt.label}`), { x: tableX1, y: rowY(y), size: 8, font, color: textMuted });
+      page.drawText('1', { x: tableXQty, y: rowY(y), size: 8, font, color: textMuted });
+      drawAmount(page, opt.price || 0, amountColRight, 8, font, fontBold, rowY(y), textMuted);
       y -= 12;
     });
 
     const actualSkipperTotal = (isAgencyReservation && boatData?.skipperRequired) ? effectiveSkipperPrice * 1 : skipperTotal;
     if (skipperTotal > 0 || (isAgencyReservation && boatData?.skipperRequired)) {
       const skipperLabel = isAgencyReservation
-        ? `Skipper (${effectiveSkipperPrice}EUR) - Inclus`
-        : `Skipper (${effectiveSkipperPrice}EUR x ${skipperDays}j) - Payé sur place`;
-      const skipperPriceText = formatMoney(actualSkipperTotal);
-      page.drawText(sanitize(skipperLabel), { x: tableX1, y: y - 1, size: 9, font, color: textMuted });
-      page.drawText('1', { x: tableXQty, y: y - 1, size: 9, font, color: textMuted });
-      page.drawText(skipperPriceText, { x: getRightAlignedX(skipperPriceText, 9, font, width - leftMargin), y: y - 1, size: 9, font, color: textMuted });
+        ? `Skipper (${effectiveSkipperPrice} EUR) - Inclus`
+        : `Skipper (${effectiveSkipperPrice} EUR x ${skipperDays}j) - Payé sur place`;
+      page.drawText(sanitize(skipperLabel), { x: tableX1, y: rowY(y), size: 9, font, color: textMuted });
+      page.drawText('1', { x: tableXQty, y: rowY(y), size: 9, font, color: textMuted });
+      drawAmount(page, actualSkipperTotal, amountColRight, 9, font, fontBold, rowY(y), textMuted);
       y -= 13;
     }
 
-    page.drawLine({ start: { x: tableX1, y: y + 2 }, end: { x: width - leftMargin, y: y + 2 }, thickness: 0.4, color: lightGray });
+    page.drawLine({ start: { x: tableX1, y: y + 2 }, end: { x: amountColRight, y: y + 2 }, thickness: 0.4, color: lightGray });
     y -= 6;
 
     const tvaRate = 0.2;
@@ -308,20 +338,17 @@ export async function generateInvoicePDF(reservationId: string): Promise<Buffer 
     const totalHT = basePrice;
     const totalTTC = totalHT + tvaAmount;
 
-    page.drawLine({ start: { x: tableX1, y: y + 2 }, end: { x: width - leftMargin, y: y + 2 }, thickness: 0.4, color: lightGray });
+    page.drawLine({ start: { x: tableX1, y: y + 2 }, end: { x: amountColRight, y: y + 2 }, thickness: 0.4, color: lightGray });
     y -= 6;
 
-    const totalHTText = formatMoney(totalHT);
-    page.drawText('Total HT', { x: tableX1, y: y - 1, size: 9, font: fontBold, color: textDark });
-    page.drawText(totalHTText, { x: getRightAlignedX(totalHTText, 9, fontBold, width - leftMargin), y: y - 1, size: 9, font: fontBold, color: textDark });
+    page.drawText('Total HT', { x: tableX1, y: rowY(y), size: 9, font: fontBold, color: textDark });
+    drawAmount(page, totalHT, amountColRight, 9, font, fontBold, rowY(y), textDark, true);
     y -= 13;
-    const tvaText = formatMoney(tvaAmount);
-    page.drawText('TVA (20% sur bateau + options)', { x: tableX1, y: y - 1, size: 8, font, color: textMuted });
-    page.drawText(tvaText, { x: getRightAlignedX(tvaText, 8, font, width - leftMargin), y: y - 1, size: 8, font, color: textMuted });
+    page.drawText('TVA (20% sur bateau + options)', { x: tableX1, y: rowY(y), size: 8, font, color: textMuted });
+    drawAmount(page, tvaAmount, amountColRight, 8, font, fontBold, rowY(y), textMuted);
     y -= 12;
-    const totalTTCText = formatMoney(totalTTC);
-    page.drawText('Total TTC hors carburant', { x: tableX1, y: y - 1, size: 9, font: fontBold, color: textDark });
-    page.drawText(totalTTCText, { x: getRightAlignedX(totalTTCText, 9, fontBold, width - leftMargin), y: y - 1, size: 9, font: fontBold, color: textDark });
+    page.drawText('Total TTC hors carburant', { x: tableX1, y: rowY(y), size: 9, font: fontBold, color: textDark });
+    drawAmount(page, totalTTC, amountColRight, 9, font, fontBold, rowY(y), textDark, true);
     y -= 15;
 
     const noteText = isAgencyReservation
@@ -332,6 +359,7 @@ export async function generateInvoicePDF(reservationId: string): Promise<Buffer 
 
     const recapX = width - 200;
     const recapWidth = 150;
+    const recapAmountColRight = recapX + recapWidth - 10;
     let recapLinesCount = 5;
     if (actualSkipperTotal > 0) recapLinesCount++;
     recapLinesCount++;
@@ -342,19 +370,21 @@ export async function generateInvoicePDF(reservationId: string): Promise<Buffer 
     }
     page.drawRectangle({ x: recapX - 8, y: y - recapHeight, width: recapWidth, height: recapHeight, color: rgb(1, 1, 1), borderColor: borderGray, borderWidth: 0.5 });
     let recapY = y - 12;
-    const writeRecap = (label: string, value: string, bold = false) => {
+    const writeRecapAmount = (label: string, amount: number, bold = false) => {
       page.drawText(sanitize(label), { x: recapX, y: recapY, size: 8, font: bold ? fontBold : font, color: textDark });
-      page.drawText(sanitize(value), { x: recapX + recapWidth - 70, y: recapY, size: 8, font: bold ? fontBold : font, color: textDark });
+      drawAmount(page, amount, recapAmountColRight, 8, font, fontBold, recapY, textDark, bold);
       recapY -= 11;
     };
-    writeRecap(isAgencyReservation ? 'Acompte' : 'Acompte (20%)', formatMoney(deposit), true);
-    writeRecap('Total HT', formatMoney(totalHT));
-    writeRecap('TVA (20%)', formatMoney(tvaAmount));
-    writeRecap('Total TTC', formatMoney(totalTTC), true);
-    writeRecap('Reste à payer', formatMoney(remaining), true);
+    writeRecapAmount(isAgencyReservation ? 'Acompte' : 'Acompte (20%)', deposit, true);
+    writeRecapAmount('Total HT', totalHT);
+    writeRecapAmount('TVA (20%)', tvaAmount);
+    writeRecapAmount('Total TTC', totalTTC, true);
+    writeRecapAmount('Reste à payer', remaining, true);
     recapY -= 4;
-    if (actualSkipperTotal > 0) writeRecap(isAgencyReservation ? 'Skipper (inclus, HT)' : 'Skipper (sur place)', formatMoney(actualSkipperTotal));
-    writeRecap('Carburant (sur place)', 'À définir');
+    if (actualSkipperTotal > 0) writeRecapAmount(isAgencyReservation ? 'Skipper (inclus, HT)' : 'Skipper (sur place)', actualSkipperTotal);
+    page.drawText(sanitize('Carburant (sur place)'), { x: recapX, y: recapY, size: 8, font, color: textDark });
+    page.drawText(sanitize('à définir'), { x: recapAmountColRight - font.widthOfTextAtSize('à définir', 8), y: recapY, size: 8, font, color: textDark });
+    recapY -= 11;
     y -= recapHeight + 15;
 
     if (y < 120) {
