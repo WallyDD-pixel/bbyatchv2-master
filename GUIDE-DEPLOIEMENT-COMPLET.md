@@ -786,6 +786,51 @@ pm2 logs bbyatch --lines 50
 pm2 restart bbyatch
 ```
 
+### Erreur "ChunkLoadError" / "400 Bad Request" sur /admin (fichiers _next/static en HTML)
+
+**Symptômes :** En allant sur `/admin`, le navigateur affiche une erreur du type :
+- `ChunkLoadError: Loading chunk XXX failed`
+- `Refused to execute script... MIME type ('text/html')`
+- Requête vers `/_next/static/chunks/...js` qui reçoit une réponse 400 ou du HTML au lieu du JS.
+
+**Causes possibles :**
+
+1. **Cache navigateur obsolète** après un nouveau déploiement : l’ancienne page HTML référence d’anciens noms de chunks qui n’existent plus.
+2. **Build incomplet ou déploiement partiel** : les fichiers dans `.next/static` sur le serveur ne correspondent pas au build actuel.
+3. **Nginx ou proxy** qui renvoie une page d’erreur (400/404) pour certaines URLs.
+
+**À faire :**
+
+1. **Côté navigateur (tout de suite)**  
+   - Rafraîchissement forcé : `Ctrl+Shift+R` (Windows/Linux) ou `Cmd+Shift+R` (Mac).  
+   - Ou vider le cache du site pour `preprod.bbservicescharter.com`.
+
+2. **Côté serveur (après chaque déploiement)**  
+   - Rebuild complet et redémarrage :
+   ```bash
+   cd ~/bbyatchv2-master
+   git pull
+   npm install --legacy-peer-deps
+   npm run build
+   pm2 restart bbyatch
+   ```
+   - Vérifier que les chunks existent :
+   ```bash
+   ls -la .next/static/chunks/app/admin/
+   ```
+   - Tester en local sur le serveur :
+   ```bash
+   curl -I http://localhost:3003/_next/static/chunks/app/admin/layout.js
+   ```
+   La réponse doit être `200` avec `Content-Type: application/javascript` (ou `text/javascript`), pas du HTML.
+
+3. **Nginx**  
+   - S’assurer que le bloc `location /_next/static` existe et proxy bien vers l’app (comme dans l’étape 8.2 du guide).  
+   - Redémarrer nginx après toute modif : `sudo systemctl reload nginx`.
+
+4. **Middleware**  
+   - Le middleware du projet ignore déjà `/_next/` pour ne pas renvoyer de HTML à la place des chunks. Après un `git pull`, refaire un build puis `pm2 restart bbyatch`.
+
 ### Nginx ne fonctionne pas
 
 ```bash

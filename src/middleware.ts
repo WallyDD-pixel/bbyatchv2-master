@@ -2,6 +2,13 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  // Ne jamais traiter les assets Next.js : éviter tout traitement qui pourrait
+  // faire retourner du HTML (erreur, redirect) au lieu du fichier JS/CSS.
+  const pathname = request.nextUrl.pathname;
+  if (pathname.startsWith('/_next/') || pathname.startsWith('/favicon') || pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico)$/)) {
+    return NextResponse.next();
+  }
+
   const response = NextResponse.next({
     request: {
       headers: request.headers,

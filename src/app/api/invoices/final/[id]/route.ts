@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -28,12 +28,12 @@ function formatMoneyNumber(v: number){
 }
 
 function drawAmountAligned(
-  page: { drawText: (a: unknown) => void },
+  page: PDFPage,
   amount: number,
   amountColRight: number,
   fontSize: number,
-  font: { widthOfTextAtSize: (t: string, s: number) => number },
-  fontBold: { widthOfTextAtSize: (t: string, s: number) => number },
+  font: PDFFont,
+  fontBold: PDFFont,
   y: number,
   color: ReturnType<typeof rgb>,
   bold = false
@@ -53,7 +53,7 @@ function sanitize(text: string){
   const charMap: Record<string, string> = {
     '→': '->', '–': '-', '—': '-', '…': '...', '⚠': '[!]', '€': 'EUR',
     '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"', '\u00A0': ' ', '\u202F': ' ',
-    '\u2713': '[OK]', '✓': '[OK]', '✔': '[OK]',
+    '\u2713': '[OK]', '\u2714': '[OK]', // ✓ U+2713, ✔ U+2714 (pas de littéraux pour éviter doublon)
   };
   let result = String(text);
   for (const [char, replacement] of Object.entries(charMap)) {

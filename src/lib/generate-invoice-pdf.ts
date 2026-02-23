@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -29,12 +29,12 @@ function getRightAlignedX(text: string, fontSize: number, font: { widthOfTextAtS
 
 /** Dessine un montant avec le nombre aligné à droite et " EUR" à position fixe (alignement vertical des EUR). */
 function drawAmount(
-  page: { drawText: (args: any) => void },
+  page: PDFPage,
   amount: number,
   amountColRight: number,
   fontSize: number,
-  font: { widthOfTextAtSize: (t: string, s: number) => number },
-  fontBold: { widthOfTextAtSize: (t: string, s: number) => number },
+  font: PDFFont,
+  fontBold: PDFFont,
   y: number,
   color: ReturnType<typeof rgb>,
   bold = false
@@ -53,8 +53,9 @@ function drawAmount(
 function sanitize(text: string) {
   if (!text) return '';
   const charMap: Record<string, string> = {
-    '→': '->', '–': '-', '—': '-', '…': '...', '⚠': '[!]', '€': 'EUR', '\u2713': '[OK]', '✓': '[OK]', '✔': '[OK]',
+    '→': '->', '–': '-', '—': '-', '…': '...', '⚠': '[!]', '€': 'EUR',
     '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"', '\u00A0': ' ', '\u202F': ' ',
+    '\u2713': '[OK]', '\u2714': '[OK]',
   };
   let result = text;
   for (const [char, replacement] of Object.entries(charMap)) {
