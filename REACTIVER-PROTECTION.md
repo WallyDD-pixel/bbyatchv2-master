@@ -2,6 +2,17 @@
 
 Si les scripts de protection ont été désactivés ou si le malware est revenu, suivez ces étapes **sur le serveur** (en SSH).
 
+## 0. Supprimer le service systemd malveillant (à faire une fois si moneroocean_miner.service apparaît encore)
+
+Si le script affiche encore « Service suspect détecté : moneroocean_miner.service », exécutez une fois :
+
+```bash
+sudo systemctl stop moneroocean_miner.service
+sudo systemctl disable moneroocean_miner.service
+sudo rm -f /etc/systemd/system/moneroocean_miner.service /usr/lib/systemd/system/moneroocean_miner.service
+sudo systemctl daemon-reload
+```
+
 ## 1. Nettoyer immédiatement
 
 ```bash

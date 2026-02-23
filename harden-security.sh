@@ -33,99 +33,88 @@ else
     sudo rm -rf /tmp/moneroocean /var/tmp/moneroocean 2>/dev/null || true
 fi
 
-# 2. Configurer le pare-feu UFW
+# 2. Configurer le pare-feu (UFW sur Debian/Ubuntu, skip sur Amazon Linux)
 echo ""
-echo -e "${BLUE}2️⃣ Configuration du pare-feu UFW...${NC}"
+echo -e "${BLUE}2️⃣ Configuration du pare-feu...${NC}"
 
-if ! command -v ufw &> /dev/null; then
-    echo "   Installation de UFW..."
-    sudo apt update -qq
-    sudo apt install -y ufw
-fi
-
-# Obtenir l'IP publique actuelle (si possible)
-CURRENT_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || echo "")
-
-echo "   Configuration des règles de pare-feu..."
-sudo ufw --force reset
-
-# Autoriser uniquement les connexions sortantes nécessaires
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-
-# Autoriser HTTP/HTTPS
-sudo ufw allow 80/tcp comment 'HTTP'
-sudo ufw allow 443/tcp comment 'HTTPS'
-
-# Demander l'IP pour SSH (ou utiliser l'IP actuelle)
-if [ -n "$CURRENT_IP" ]; then
-    echo -e "   ${YELLOW}Votre IP détectée: $CURRENT_IP${NC}"
-    read -p "   Autoriser uniquement cette IP pour SSH ? (o/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[OoYy]$ ]]; then
-        sudo ufw allow from $CURRENT_IP to any port 22 comment 'SSH from current IP'
-        echo -e "   ${GREEN}✅ SSH limité à $CURRENT_IP${NC}"
-    else
-        read -p "   Entrez l'IP à autoriser pour SSH (ou appuyez sur Entrée pour autoriser toutes): " ALLOWED_IP
-        if [ -n "$ALLOWED_IP" ]; then
-            sudo ufw allow from $ALLOWED_IP to any port 22 comment "SSH from $ALLOWED_IP"
-            echo -e "   ${GREEN}✅ SSH limité à $ALLOWED_IP${NC}"
+if command -v ufw &>/dev/null; then
+    CURRENT_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || echo "")
+    echo "   Configuration des règles UFW..."
+    sudo ufw --force reset
+    sudo ufw default deny incoming
+    sudo ufw default allow outgoing
+    sudo ufw allow 80/tcp comment 'HTTP'
+    sudo ufw allow 443/tcp comment 'HTTPS'
+    if [ -n "$CURRENT_IP" ]; then
+        echo -e "   ${YELLOW}Votre IP détectée: $CURRENT_IP${NC}"
+        read -p "   Autoriser uniquement cette IP pour SSH ? (o/n) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[OoYy]$ ]]; then
+            sudo ufw allow from $CURRENT_IP to any port 22 comment 'SSH from current IP'
+            echo -e "   ${GREEN}✅ SSH limité à $CURRENT_IP${NC}"
         else
-            sudo ufw allow 22/tcp comment 'SSH'
-            echo -e "   ${YELLOW}⚠️  SSH ouvert à toutes les IPs${NC}"
+            read -p "   Entrez l'IP à autoriser pour SSH (ou Entrée pour toutes): " ALLOWED_IP
+            if [ -n "$ALLOWED_IP" ]; then
+                sudo ufw allow from $ALLOWED_IP to any port 22 comment "SSH from $ALLOWED_IP"
+            else
+                sudo ufw allow 22/tcp comment 'SSH'
+            fi
         fi
-    fi
-else
-    read -p "   Entrez votre IP pour autoriser SSH (ou appuyez sur Entrée pour autoriser toutes): " ALLOWED_IP
-    if [ -n "$ALLOWED_IP" ]; then
-        sudo ufw allow from $ALLOWED_IP to any port 22 comment "SSH from $ALLOWED_IP"
     else
-        sudo ufw allow 22/tcp comment 'SSH'
-        echo -e "   ${YELLOW}⚠️  SSH ouvert à toutes les IPs${NC}"
+        read -p "   Entrez l'IP pour SSH (ou Entrée pour toutes): " ALLOWED_IP
+        [ -n "$ALLOWED_IP" ] && sudo ufw allow from $ALLOWED_IP to any port 22 || sudo ufw allow 22/tcp comment 'SSH'
     fi
+    sudo ufw --force enable
+    echo -e "   ${GREEN}✅ Pare-feu UFW activé${NC}"
+elif command -v firewall-cmd &>/dev/null; then
+    echo -e "   ${YELLOW}Firewalld détecté (Amazon Linux/RHEL). Utilisez les Security Groups EC2 pour le pare-feu.${NC}"
+    echo -e "   ${GREEN}✅ Pare-feu: géré par AWS Security Groups${NC}"
+else
+    echo -e "   ${YELLOW}UFW non disponible (système type Amazon Linux). Utilisez les Security Groups EC2.${NC}"
+    echo -e "   ${GREEN}✅ Pare-feu: configurez les Security Groups dans la console AWS${NC}"
 fi
 
-sudo ufw --force enable
-echo -e "   ${GREEN}✅ Pare-feu UFW activé${NC}"
-
-# 3. Installer et configurer fail2ban
+# 3. Installer et configurer fail2ban (Debian/Ubuntu: apt, Amazon Linux/RHEL: yum)
 echo ""
 echo -e "${BLUE}3️⃣ Installation et configuration de fail2ban...${NC}"
 
 if ! command -v fail2ban-client &> /dev/null; then
-    echo "   Installation de fail2ban..."
-    sudo apt install -y fail2ban
+    if command -v apt-get &>/dev/null; then
+        echo "   Installation de fail2ban (apt)..."
+        sudo apt-get update -qq && sudo apt-get install -y fail2ban
+    elif command -v yum &>/dev/null; then
+        echo "   Installation de fail2ban (yum)..."
+        sudo yum install -y fail2ban 2>/dev/null || echo -e "   ${YELLOW}   (fail2ban absent des dépôts, ignoré)${NC}"
+    elif command -v dnf &>/dev/null; then
+        echo "   Installation de fail2ban (dnf)..."
+        sudo dnf install -y fail2ban 2>/dev/null || echo -e "   ${YELLOW}   (fail2ban absent des dépôts, ignoré)${NC}"
+    fi
 fi
 
-# Créer une configuration fail2ban personnalisée
-sudo tee /etc/fail2ban/jail.local > /dev/null <<EOF
+if command -v fail2ban-client &>/dev/null; then
+    # Log SSH: auth.log (Debian/Ubuntu) ou secure (RHEL/Amazon Linux)
+    SSH_LOG="/var/log/auth.log"
+    [ -f /var/log/secure ] && SSH_LOG="/var/log/secure"
+    sudo tee /etc/fail2ban/jail.local > /dev/null <<EOF
 [DEFAULT]
 bantime = 3600
 findtime = 600
 maxretry = 3
-destemail = root@localhost
-sendername = Fail2Ban
-action = %(action_)s
 
 [sshd]
 enabled = true
 port = 22
 filter = sshd
-logpath = /var/log/auth.log
+logpath = $SSH_LOG
 maxretry = 3
 bantime = 86400
-
-[sshd-ddos]
-enabled = true
-port = 22
-filter = sshd-ddos
-logpath = /var/log/auth.log
-maxretry = 10
 EOF
-
-sudo systemctl enable fail2ban
-sudo systemctl restart fail2ban
-echo -e "   ${GREEN}✅ fail2ban configuré et activé${NC}"
+    sudo systemctl enable fail2ban 2>/dev/null || true
+    sudo systemctl restart fail2ban 2>/dev/null || true
+    echo -e "   ${GREEN}✅ fail2ban configuré et activé${NC}"
+else
+    echo -e "   ${YELLOW}   fail2ban non installé (optionnel)${NC}"
+fi
 
 # 4. Sécuriser SSH
 echo ""
