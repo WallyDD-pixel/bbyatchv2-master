@@ -231,9 +231,9 @@ export async function POST(req:Request, { params }: { params: Promise<{ id:strin
             for (const file of filesWithinLimit) {
               const mime = (file as any).type;
               if (allowedImages.includes(mime)) {
-                const validation = await validateImageFile(file);
+                const validation = await validateImageFile(file as File);
                 if (validation.valid) {
-                  validImageFiles.push(file);
+                  validImageFiles.push(file as File);
                 } else {
                   console.warn(`⚠️ Image file rejected: ${file.name} - ${validation.error}`);
                 }
