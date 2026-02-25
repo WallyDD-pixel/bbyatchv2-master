@@ -58,7 +58,7 @@ export default async function EditUsedBoatPage({ params, searchParams }: { param
           {/* Specs */}
           <div className='grid md:grid-cols-3 gap-5'>
             <label className='grid gap-1 text-sm'><span>Année *</span><input required name='year' type='number' defaultValue={boat.year} className='h-11 rounded-lg border border-black/15 px-3' /></label>
-            <label className='grid gap-1 text-sm'><span>Longueur (m) *</span><input required step='0.01' name='lengthM' type='number' defaultValue={boat.lengthM} className='h-11 rounded-lg border border-black/15 px-3' /></label>
+            <label className='grid gap-1 text-sm'><span>Longueur (m) *</span><input required step='any' min='0' name='lengthM' type='number' defaultValue={boat.lengthM != null ? Number(Number(boat.lengthM).toFixed(2)) : ''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='Ex: 11.6' /></label>
             <label className='grid gap-1 text-sm'>
               <span>Prix EUR (laisser vide pour "nous consulter")</span>
               <input name='priceEur' type='number' defaultValue={boat.priceEur || ''} className='h-11 rounded-lg border border-black/15 px-3' placeholder='Ex: 150000' />

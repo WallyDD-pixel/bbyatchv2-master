@@ -153,13 +153,19 @@ export async function POST(req:Request, { params }: { params: Promise<{ id:strin
       }
       
       // Gestion upload de nouvelles images
-      // Utiliser la même approche que la route des bateaux qui fonctionne
-      const imageFiles: File[] = [];
+      // Ne pas utiliser "value instanceof File" : en Node le global File peut être absent (ReferenceError: File is not defined)
+      const imageFiles: (File | Blob & { name?: string; size: number })[] = [];
       try {
         data.forEach((value, key) => {
-          if(key === 'imageFiles' && value instanceof File){
-            imageFiles.push(value);
-            console.log(`Found image file: ${value.name}, size: ${value.size} bytes, type: ${(value as any).type}`);
+          if (key !== 'imageFiles' || value == null) return;
+          const v = value as unknown;
+          const isFileLike = typeof v === 'object' && v !== null && 'size' in v && 'arrayBuffer' in v && typeof (v as any).arrayBuffer === 'function';
+          if (isFileLike) {
+            const fileLike = v as Blob & { name?: string; size: number };
+            if (fileLike.size > 0) {
+              imageFiles.push(fileLike as File);
+              console.log(`Found image file: ${(fileLike as any).name ?? 'unknown'}, size: ${fileLike.size} bytes`);
+            }
           }
         });
       } catch (forEachError: any) {

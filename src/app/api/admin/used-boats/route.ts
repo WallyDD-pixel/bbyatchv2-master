@@ -66,7 +66,7 @@ export async function POST(req: Request){
       titleFr: rawTitleFr,
       titleEn: String(data.get('titleEn')||data.get('titleFr')||'').trim(),
       year: parseInt(String(data.get('year')),10),
-      lengthM: parseFloat(String(data.get('lengthM'))),
+      lengthM: Math.round(parseFloat(String(data.get('lengthM') || 0)) * 100) / 100,
       priceEur: priceEur,
       engines: data.get('engines')? String(data.get('engines')).trim(): null,
       engineHours: data.get('engineHours')? parseInt(String(data.get('engineHours')),10): null,

@@ -1,5 +1,5 @@
 import Image from "next/image";
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import HeroSlider from "@/components/HeroSlider";
 import SearchBarClient from "@/components/SearchBarClient";
 import { messages, type Locale } from "@/i18n/messages";
@@ -8,25 +8,24 @@ import Footer from "@/components/Footer";
 import { prisma } from '@/lib/prisma';
 
 // Lazy loading des sections pour améliorer le temps de chargement initial
-const BoatsSection = dynamic(() => import("@/components/BoatsSection"), {
+const BoatsSection = nextDynamic(() => import("@/components/BoatsSection"), {
   loading: () => <div className="h-96 animate-pulse bg-gray-100 rounded-2xl" />,
 });
-const ExperiencesSection = dynamic(() => import("@/components/ExperiencesSection"), {
+const ExperiencesSection = nextDynamic(() => import("@/components/ExperiencesSection"), {
   loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
 });
-const GallerySection = dynamic(() => import("@/components/GallerySection"), {
+const GallerySection = nextDynamic(() => import("@/components/GallerySection"), {
   loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
 });
-const AboutUsSection = dynamic(() => import("@/components/AboutUsSection"), {
+const AboutUsSection = nextDynamic(() => import("@/components/AboutUsSection"), {
   loading: () => <div className="h-64 animate-pulse bg-gray-100 rounded-2xl" />,
 });
-const InfoCardsSection = dynamic(() => import("@/components/InfoCardsSection"), {
+const InfoCardsSection = nextDynamic(() => import("@/components/InfoCardsSection"), {
   loading: () => <div className="h-48 animate-pulse bg-gray-100 rounded-2xl" />,
 });
 
-// ISR: Revalider la page toutes les 60 secondes (1 minute)
-// Cela permet un bon équilibre entre performance et fraîcheur des données
-export const revalidate = 60;
+// Toujours régénérer la page pour que les prix "À partir de" des bateaux soient à jour
+export const dynamic = "force-dynamic";
 
 export default async function Home({
   searchParams,

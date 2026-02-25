@@ -475,35 +475,20 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
         )}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {boats.map((b) => {
-            // Calculer le prix à partir de
-            let priceFrom: number;
+            // Calculer le prix à partir de (uniquement le plus bas, pas de division/fallback)
             
+            let priceFrom: number | null;
             if (partSel === 'FULL') {
-              // Pour une journée complète, utiliser le prix/jour multiplié par le nombre de jours
-              priceFrom = b.pricePerDay * (nbJours > 0 ? nbJours : 1);
+              const p = b.pricePerDay != null && !isNaN(Number(b.pricePerDay)) && b.pricePerDay > 0 ? b.pricePerDay : null;
+              priceFrom = p != null ? p * (nbJours > 0 ? nbJours : 1) : null;
             } else {
-              // Pour AM/PM/Sunset, prendre le prix le plus bas disponible
+              // Un seul prix demi-journée (plus de AM/PM), puis minimum avec journée et sunset
+              const halfDay = (b.priceAm != null && !isNaN(Number(b.priceAm)) && b.priceAm > 0) ? b.priceAm : ((b.pricePm != null && !isNaN(Number(b.pricePm)) && b.pricePm > 0) ? b.pricePm : null);
               const availablePrices: number[] = [];
-              
-              // Ajouter uniquement les prix partiels explicitement définis
-              if (b.priceAm !== null && b.priceAm !== undefined && !isNaN(b.priceAm) && b.priceAm > 0) {
-                availablePrices.push(b.priceAm);
-              }
-              if (b.pricePm !== null && b.pricePm !== undefined && !isNaN(b.pricePm) && b.pricePm > 0) {
-                availablePrices.push(b.pricePm);
-              }
-              if (b.priceSunset !== null && b.priceSunset !== undefined && !isNaN(b.priceSunset) && b.priceSunset > 0) {
-                availablePrices.push(b.priceSunset);
-              }
-              
-              // Si aucun prix partiel n'est défini, utiliser la moitié du prix par jour comme fallback
-              if (availablePrices.length === 0) {
-                const halfDay = Math.round(b.pricePerDay / 2);
-                priceFrom = halfDay > 0 ? halfDay : b.pricePerDay;
-              } else {
-                // Prendre le prix le plus bas parmi les prix définis
-                priceFrom = Math.min(...availablePrices);
-              }
+              if (b.pricePerDay != null && !isNaN(Number(b.pricePerDay)) && b.pricePerDay > 0) availablePrices.push(b.pricePerDay);
+              if (halfDay != null) availablePrices.push(halfDay);
+              if (b.priceSunset != null && !isNaN(Number(b.priceSunset)) && b.priceSunset > 0) availablePrices.push(b.priceSunset);
+              priceFrom = availablePrices.length > 0 ? Math.min(...availablePrices) : null;
             }
             
             const specs: string[] = [];
@@ -562,7 +547,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
                 )}
                 <div className="absolute left-3 top-3 bg-[var(--primary)] text-white px-4 py-2 rounded-xl shadow font-extrabold text-lg flex flex-col items-start leading-tight">
                   <span className="text-xs font-medium opacity-90">{locale === 'fr' ? 'À partir de' : 'From'}</span>
-                  <span>{priceFrom.toLocaleString('fr-FR')} €</span>
+                  <span>{priceFrom != null ? `${priceFrom.toLocaleString('fr-FR')} €` : '—'}</span>
                 </div>
                 <div className="absolute left-3 bottom-3 text-white font-extrabold text-lg drop-shadow">
                   {b.name}

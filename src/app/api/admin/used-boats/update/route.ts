@@ -248,7 +248,7 @@ export async function POST(req: Request){
       titleFr: String(data.get('titleFr')).trim(),
       titleEn: (data.get('titleEn')? String(data.get('titleEn')): String(data.get('titleFr')||'')).trim(),
       year: parseInt(String(data.get('year')),10),
-      lengthM: parseFloat(String(data.get('lengthM'))),
+      lengthM: Math.round(parseFloat(String(data.get('lengthM') || 0)) * 100) / 100,
       priceEur: (() => {
         const priceRaw = String(data.get('priceEur') || '').trim();
         if (!priceRaw || priceRaw === '') return null;

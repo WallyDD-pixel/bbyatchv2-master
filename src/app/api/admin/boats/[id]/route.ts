@@ -53,13 +53,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   const { slug, name, city, capacity, speedKn, fuel, enginePower, year, lengthM, pricePerDay, priceAm, pricePm, priceSunset, priceAgencyPerDay, priceAgencyAm, priceAgencyPm, priceAgencySunset, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice } = body || {};
   const optionsPayload = body.options; // tableau attendu {id?, label, price|null}
   const experiencesPayload = body.experiences; // [{experienceId, price|null}]
-  // Dérivation éventuelle prix AM/PM si uniquement day fourni
-  // IMPORTANT: Ne pas modifier les prix explicitement entrés (comme priceSunset)
+  // Dérivation éventuelle prix AM/PM si uniquement day fourni (ne pas écraser les valeurs explicites)
   let derivedPricePerDay = pricePerDay;
   let derivedPriceAm = priceAm;
   let derivedPricePm = pricePm;
-  // Ne calculer automatiquement que si les prix AM/PM sont vides ET que priceSunset n'est pas fourni
-  // Si priceSunset est fourni, on ne touche pas aux prix AM/PM
   const hasExplicitSunset = priceSunset != null && priceSunset !== '';
   if (!hasExplicitSunset && derivedPricePerDay != null && derivedPricePerDay !== '' && (derivedPriceAm == null || derivedPriceAm === '') && (derivedPricePm == null || derivedPricePm === '')) {
     const dayNum = Number(derivedPricePerDay) || 0;
@@ -77,6 +74,18 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       derivedPricePm = String(Math.max(dayNum - amVal, 0));
     }
   }
+
+  // Normalisation des prix pour l'update : si la clé est présente dans body, on l'applique (nombre ou null), sinon on ne touche pas
+  const numOrNull = (v: unknown): number | null => (v != null && v !== '' && !isNaN(Number(v)) ? Number(v) : null);
+  const hasKey = (key: string) => Object.prototype.hasOwnProperty.call(body || {}, key);
+  const pricePerDayFinal = hasKey('pricePerDay') ? (numOrNull(pricePerDay) ?? 0) : undefined;
+  const priceAmFinal = hasKey('priceAm') ? numOrNull(derivedPriceAm) : undefined;
+  const pricePmFinal = hasKey('pricePm') ? numOrNull(derivedPricePm) : undefined;
+  const priceSunsetFinal = hasKey('priceSunset') ? numOrNull(priceSunset) : undefined;
+  const priceAgencyPerDayFinal = hasKey('priceAgencyPerDay') ? numOrNull(priceAgencyPerDay) : undefined;
+  const priceAgencyAmFinal = hasKey('priceAgencyAm') ? numOrNull(priceAgencyAm) : undefined;
+  const priceAgencyPmFinal = hasKey('priceAgencyPm') ? numOrNull(priceAgencyPm) : undefined;
+  const priceAgencySunsetFinal = hasKey('priceAgencySunset') ? numOrNull(priceAgencySunset) : undefined;
 
   const toList = (v: any) => {
     if (v === undefined) return undefined; // ne pas modifier
@@ -306,14 +315,14 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         enginePower: enginePower != null && enginePower !== '' ? Number(enginePower) : undefined,
         year: year != null && year !== '' ? Number(year) : undefined,
         lengthM: lengthM != null && lengthM !== '' ? Number(lengthM) : undefined,
-        pricePerDay: derivedPricePerDay != null && derivedPricePerDay !== '' ? Number(derivedPricePerDay) : undefined,
-        priceAm: derivedPriceAm != null && derivedPriceAm !== '' ? Number(derivedPriceAm) : undefined,
-        pricePm: derivedPricePm != null && derivedPricePm !== '' ? Number(derivedPricePm) : undefined,
-        priceSunset: priceSunset != null && priceSunset !== '' ? Number(priceSunset) : undefined,
-        priceAgencyPerDay: priceAgencyPerDay != null && priceAgencyPerDay !== '' ? Number(priceAgencyPerDay) : undefined,
-        priceAgencyAm: priceAgencyAm != null && priceAgencyAm !== '' ? Number(priceAgencyAm) : undefined,
-        priceAgencyPm: priceAgencyPm != null && priceAgencyPm !== '' ? Number(priceAgencyPm) : undefined,
-        priceAgencySunset: priceAgencySunset != null && priceAgencySunset !== '' ? Number(priceAgencySunset) : undefined,
+        ...(pricePerDayFinal !== undefined ? { pricePerDay: pricePerDayFinal } : {}),
+        ...(priceAmFinal !== undefined ? { priceAm: priceAmFinal } : {}),
+        ...(pricePmFinal !== undefined ? { pricePm: pricePmFinal } : {}),
+        ...(priceSunsetFinal !== undefined ? { priceSunset: priceSunsetFinal } : {}),
+        ...(priceAgencyPerDayFinal !== undefined ? { priceAgencyPerDay: priceAgencyPerDayFinal } : {}),
+        ...(priceAgencyAmFinal !== undefined ? { priceAgencyAm: priceAgencyAmFinal } : {}),
+        ...(priceAgencyPmFinal !== undefined ? { priceAgencyPm: priceAgencyPmFinal } : {}),
+        ...(priceAgencySunsetFinal !== undefined ? { priceAgencySunset: priceAgencySunsetFinal } : {}),
         imageUrl: finalImageUrl,
         available: available != null ? (typeof available === 'string' ? (available === 'true' || available === 'on') : Boolean(available)) : undefined,
         videoUrls: (() => { 

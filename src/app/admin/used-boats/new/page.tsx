@@ -33,7 +33,7 @@ export default async function AdminUsedBoatNewPage({ searchParams }: { searchPar
           <input type='hidden' name='titleEn' value='' />
           <div className='grid md:grid-cols-2 gap-5'>
             <label className='grid gap-1 text-sm'><span>Année *</span><input required name='year' type='number' className='h-11 rounded-lg border border-black/15 px-3' /></label>
-            <label className='grid gap-1 text-sm'><span>Longueur (m) *</span><input required step='0.01' name='lengthM' type='number' className='h-11 rounded-lg border border-black/15 px-3' /></label>
+            <label className='grid gap-1 text-sm'><span>Longueur (m) *</span><input required step='any' min='0' name='lengthM' type='number' className='h-11 rounded-lg border border-black/15 px-3' placeholder='Ex: 11.6' /></label>
             <label className='grid gap-1 text-sm'>
               <span>Prix EUR (laisser vide pour "nous consulter")</span>
               <input name='priceEur' type='number' className='h-11 rounded-lg border border-black/15 px-3' placeholder='Ex: 150000' />

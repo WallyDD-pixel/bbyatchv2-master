@@ -189,12 +189,10 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       fd.append('name', form.name || '');
       if (form.city) fd.append('city', form.city);
       if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
-      if (form.priceAm != null) fd.append('priceAm', String(form.priceAm));
-      if (form.pricePm != null) fd.append('pricePm', String(form.pricePm));
+      (() => { const h = form.priceAm ?? form.pricePm; if (h != null) { fd.append('priceAm', String(h)); fd.append('pricePm', String(h)); } })();
       if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
       if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
-      if (form.priceAgencyAm != null) fd.append('priceAgencyAm', String(form.priceAgencyAm));
-      if (form.priceAgencyPm != null) fd.append('priceAgencyPm', String(form.priceAgencyPm));
+      (() => { const h = form.priceAgencyAm ?? form.priceAgencyPm; if (h != null) { fd.append('priceAgencyAm', String(h)); fd.append('priceAgencyPm', String(h)); } })();
       if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
       if (form.capacity != null) fd.append('capacity', String(form.capacity));
       if (form.speedKn != null) fd.append('speedKn', String(form.speedKn));
@@ -237,12 +235,10 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       fd.append('name', form.name || '');
       if (form.city) fd.append('city', form.city);
       if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
-      if (form.priceAm != null) fd.append('priceAm', String(form.priceAm));
-      if (form.pricePm != null) fd.append('pricePm', String(form.pricePm));
+      (() => { const h = form.priceAm ?? form.pricePm; if (h != null) { fd.append('priceAm', String(h)); fd.append('pricePm', String(h)); } })();
       if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
       if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
-      if (form.priceAgencyAm != null) fd.append('priceAgencyAm', String(form.priceAgencyAm));
-      if (form.priceAgencyPm != null) fd.append('priceAgencyPm', String(form.priceAgencyPm));
+      (() => { const h = form.priceAgencyAm ?? form.priceAgencyPm; if (h != null) { fd.append('priceAgencyAm', String(h)); fd.append('priceAgencyPm', String(h)); } })();
       if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
       if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
       if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
@@ -301,6 +297,13 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     }
   };
 
+  // Helper pour envoyer un prix (évite que JSON.stringify omette des champs et que l'API garde l'ancienne valeur ex. 720)
+  const toPrice = (v: unknown): number | null => {
+    if (v == null || v === '') return null;
+    const n = Number(v);
+    return !isNaN(n) && n >= 0 ? n : null;
+  };
+
   // Sauvegarde ordre / meta (sans nouvel upload)
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -308,7 +311,23 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     try {
       const cleanedOptions = options.map(o=> ({ id: o.id, label: o.label, price: o.price }));
       const cleanedExperiences = boatExperiences.map(be=> ({ experienceId: be.experienceId, price: be.price===''? null: Number(be.price) }));
-      const payload = { ...form, videoUrls: videosList, photoUrls: photos, options: cleanedOptions, experiences: cleanedExperiences };
+      const halfDay = toPrice(form.priceAm) ?? toPrice(form.pricePm);
+      const agencyHalfDay = toPrice(form.priceAgencyAm) ?? toPrice(form.priceAgencyPm);
+      const payload = {
+        ...form,
+        videoUrls: videosList,
+        photoUrls: photos,
+        options: cleanedOptions,
+        experiences: cleanedExperiences,
+        pricePerDay: toPrice(form.pricePerDay) ?? (typeof form.pricePerDay === 'number' ? form.pricePerDay : Number(form.pricePerDay) || 0),
+        priceAm: halfDay ?? null,
+        pricePm: halfDay ?? null,
+        priceSunset: toPrice(form.priceSunset) ?? null,
+        priceAgencyPerDay: toPrice(form.priceAgencyPerDay) ?? null,
+        priceAgencyAm: agencyHalfDay ?? null,
+        priceAgencyPm: agencyHalfDay ?? null,
+        priceAgencySunset: toPrice(form.priceAgencySunset) ?? null,
+      };
       const res = await fetch(`/api/admin/boats/${boat.id}`, {
         method: "PUT",
         headers: { 
@@ -426,12 +445,10 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       fd.append('name', form.name || '');
       if (form.city) fd.append('city', form.city);
       if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
-      if (form.priceAm != null) fd.append('priceAm', String(form.priceAm));
-      if (form.pricePm != null) fd.append('pricePm', String(form.pricePm));
+      (() => { const h = form.priceAm ?? form.pricePm; if (h != null) { fd.append('priceAm', String(h)); fd.append('pricePm', String(h)); } })();
       if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
       if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
-      if (form.priceAgencyAm != null) fd.append('priceAgencyAm', String(form.priceAgencyAm));
-      if (form.priceAgencyPm != null) fd.append('priceAgencyPm', String(form.priceAgencyPm));
+      (() => { const h = form.priceAgencyAm ?? form.priceAgencyPm; if (h != null) { fd.append('priceAgencyAm', String(h)); fd.append('priceAgencyPm', String(h)); } })();
       if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
       if (videos.length) fd.append('videoUrls', JSON.stringify(videos));
       fd.append('imageFile', file);
@@ -485,12 +502,10 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       fd.append('name', form.name || '');
       if (form.city) fd.append('city', form.city);
       if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
-      if (form.priceAm != null) fd.append('priceAm', String(form.priceAm));
-      if (form.pricePm != null) fd.append('pricePm', String(form.pricePm));
+      (() => { const h = form.priceAm ?? form.pricePm; if (h != null) { fd.append('priceAm', String(h)); fd.append('pricePm', String(h)); } })();
       if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
       if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
-      if (form.priceAgencyAm != null) fd.append('priceAgencyAm', String(form.priceAgencyAm));
-      if (form.priceAgencyPm != null) fd.append('priceAgencyPm', String(form.priceAgencyPm));
+      (() => { const h = form.priceAgencyAm ?? form.priceAgencyPm; if (h != null) { fd.append('priceAgencyAm', String(h)); fd.append('priceAgencyPm', String(h)); } })();
       if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
       if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
       if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
@@ -541,12 +556,10 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       fd.append('name', form.name || '');
       if (form.city) fd.append('city', form.city);
       if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
-      if (form.priceAm != null) fd.append('priceAm', String(form.priceAm));
-      if (form.pricePm != null) fd.append('pricePm', String(form.pricePm));
+      (() => { const h = form.priceAm ?? form.pricePm; if (h != null) { fd.append('priceAm', String(h)); fd.append('pricePm', String(h)); } })();
       if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
       if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
-      if (form.priceAgencyAm != null) fd.append('priceAgencyAm', String(form.priceAgencyAm));
-      if (form.priceAgencyPm != null) fd.append('priceAgencyPm', String(form.priceAgencyPm));
+      (() => { const h = form.priceAgencyAm ?? form.priceAgencyPm; if (h != null) { fd.append('priceAgencyAm', String(h)); fd.append('priceAgencyPm', String(h)); } })();
       if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
       if (form.fuel != null) fd.append('fuel', String(form.fuel));
       if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
@@ -677,6 +690,33 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
             <input name="priceAgencySunset" type="number" value={form.priceAgencySunset ?? ''} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
           </label>
         </div>
+        {(() => {
+          const n = (v: any) => (v != null && v !== '' && !isNaN(Number(v)) && Number(v) > 0) ? Number(v) : null;
+          const day = n(form.pricePerDay) ?? 0;
+          const halfDay = n(form.priceAm) ?? n(form.pricePm);
+          const agencyHalfDay = n(form.priceAgencyAm) ?? n(form.priceAgencyPm);
+          const agencyDay = n(form.priceAgencyPerDay) ?? (day > 0 ? Math.round(day * 0.8) : 0);
+          const publicPrices = [n(form.pricePerDay), halfDay, n(form.priceSunset)].filter(Boolean) as number[];
+          const agencyPrices = [
+            agencyDay || n(form.priceAgencyPerDay),
+            agencyHalfDay ?? (halfDay ? Math.round(halfDay * 0.8) : null),
+            n(form.priceAgencySunset) ?? (n(form.priceSunset) ? Math.round((n(form.priceSunset) ?? 0) * 0.8) : null),
+          ].filter(Boolean) as number[];
+          const fromPublic = publicPrices.length ? Math.min(...publicPrices) : null;
+          const fromAgency = agencyPrices.length ? Math.min(...agencyPrices) : null;
+          return (
+            <div className="mt-4 p-4 rounded-xl bg-blue-50 border border-blue-200 text-sm">
+              <div className="font-semibold text-blue-900 mb-1">{locale === 'fr' ? 'Prix affiché sur le site' : 'Price displayed on site'}</div>
+              <div className="text-blue-800">
+                {locale === 'fr' ? 'Visiteurs publics (badge « À partir de ») :' : 'Public visitors ("From" badge):'} <strong>{fromPublic != null ? `${fromPublic} €` : '—'}</strong>
+              </div>
+              <div className="text-blue-800 mt-0.5">
+                {locale === 'fr' ? 'Visiteurs agence :' : 'Agency visitors:'} <strong>{fromAgency != null ? `${fromAgency} €` : '—'}</strong>
+              </div>
+              <p className="text-xs text-blue-600 mt-2 opacity-90">{locale === 'fr' ? 'C’est le minimum entre journée complète, demi-journée et sunset. Enregistrez pour appliquer.' : 'Minimum of full day, half-day and sunset. Save to apply.'}</p>
+            </div>
+          );
+        })()}
       </div>
       {/* Caractéristiques techniques */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
