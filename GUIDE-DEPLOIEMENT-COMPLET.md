@@ -157,7 +157,30 @@ npx prisma generate
 npx prisma migrate deploy
 ```
 
-### 6.3. Build l'application
+### 6.3. (Recommandé) Créer un swap pour éviter les déconnexions pendant le build
+
+Sur les petites instances (t2.micro, t2.small), le build Next.js peut consommer toute la RAM et faire couper la session SSH ou tuer le processus. Créer un fichier swap de 2 Go **avant** le premier build :
+
+```bash
+# Vérifier s'il y a déjà du swap
+free -h
+
+# Créer un fichier swap de 2 Go
+sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+
+# Rendre le swap permanent (après redémarrage)
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Vérifier
+free -h
+```
+
+Ensuite vous pouvez lancer le build sans risque de déconnexion.
+
+### 6.4. Build l'application
 
 ```bash
 npm run build
@@ -778,6 +801,16 @@ ssh -i "bbyatchv7.pem" ec2-user@16.16.233.211
 ```powershell
 Test-NetConnection -ComputerName 16.16.233.211 -Port 22
 ```
+
+### Le build déconnecte la session SSH (Connection closed by remote host)
+
+**Symptôme :** Pendant `npm run build`, la connexion SSH coupe tout seul (souvent après "Checking validity of types").
+
+**Cause :** Manque de RAM. Le build Next.js est très gourmand ; sur une petite instance (t2.micro, t2.small), le système peut tuer des processus ou couper la session.
+
+**Solution :** Créer un **swap** de 2 Go sur le serveur (voir **Étape 6.3**), puis relancer le build. Sinon, passer à une instance avec plus de RAM (ex. t2.medium ou t3.small minimum pour build sur le serveur).
+
+**Alternative :** Builder en local sur votre PC (`npm run build`), puis déployer le dossier `.next` et `node_modules` (ou utiliser CI/CD) pour ne pas builder sur l’EC2.
 
 ### L'application ne démarre pas
 

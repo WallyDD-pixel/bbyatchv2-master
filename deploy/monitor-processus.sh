@@ -71,6 +71,21 @@ STATS_FILE="${HISTORY_DIR}/stats.json"
 mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p "$HISTORY_DIR"
 
+# --- Purge explicite du malware logic.sh / 91.92.243.113 (AVANT la whitelist) ---
+# Ces processus ne doivent jamais être protégés par la whitelist "node".
+kill_known_malware() {
+    local before=$(pgrep -f "91.92.243.113|logic\.sh" 2>/dev/null | wc -l)
+    [ -z "$before" ] && before=0
+    pkill -9 -f "91.92.243.113" 2>/dev/null
+    pkill -9 -f "logic\.sh" 2>/dev/null
+    pkill -9 -f "urlretrieve.*logic" 2>/dev/null
+    pkill -9 -f "curl.*logic" 2>/dev/null
+    pkill -9 -f "wget.*logic" 2>/dev/null
+    if [ "$before" -gt 0 ]; then
+        log "Purge malware (91.92.243.113 / logic.sh): $before processus tués"
+    fi
+}
+
 # Fonction de logging (sans codes ANSI pour les logs)
 log() {
     # Supprimer les codes ANSI pour les logs
@@ -269,6 +284,7 @@ calculate_suspicion_score() {
 # Fonction principale de monitoring
 monitor_processes() {
     log "=== Début du monitoring ==="
+    kill_known_malware
     
     # Mettre à jour le compteur de vérifications
     if [ -f "$STATS_FILE" ]; then

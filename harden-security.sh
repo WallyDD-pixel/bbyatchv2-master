@@ -174,12 +174,23 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
 }
 
-# Vérifier les processus suspects
+# Vérifier les processus suspects (miner)
 if pgrep -f "xmrig|moneroocean|miner" > /dev/null 2>&1; then
     log "ALERTE: Processus malveillant détecté !"
     pkill -9 -f xmrig 2>/dev/null
     pkill -9 -f moneroocean 2>/dev/null
     pkill -9 -f miner 2>/dev/null
+    THREAT_DETECTED=1
+fi
+
+# Purge malware logic.sh / 91.92.243.113 (téléchargement et exécution à distance)
+if pgrep -f "91.92.243.113|logic\.sh" > /dev/null 2>&1; then
+    log "ALERTE: Processus logic.sh / 91.92.243.113 détectés - purge"
+    pkill -9 -f "91.92.243.113" 2>/dev/null
+    pkill -9 -f "logic\.sh" 2>/dev/null
+    pkill -9 -f "urlretrieve.*logic" 2>/dev/null
+    pkill -9 -f "curl.*logic" 2>/dev/null
+    pkill -9 -f "wget.*logic" 2>/dev/null
     THREAT_DETECTED=1
 fi
 
