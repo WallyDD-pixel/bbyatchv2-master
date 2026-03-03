@@ -17,6 +17,7 @@ async function ensureAdmin(){
 async function handleUpdate(req:Request, id:number, ctype:string){
   let slug:string|undefined, titleFr:string|undefined, titleEn:string|undefined, descFr:string|undefined, descEn:string|undefined, timeFr:string|undefined, timeEn:string|undefined, imageUrl:string|undefined;
   let fixedDepartureTime:string|undefined, fixedReturnTime:string|undefined, hasFixedTimes:boolean|undefined;
+  let additionalTextFr:string|undefined, additionalTextEn:string|undefined;
   if(ctype.includes('multipart/form-data')){
     const data = await req.formData();
     slug = String(data.get('slug')||'').trim();
@@ -30,6 +31,8 @@ async function handleUpdate(req:Request, id:number, ctype:string){
     fixedDepartureTime = String(data.get('fixedDepartureTime')||'').trim()||undefined;
     fixedReturnTime = String(data.get('fixedReturnTime')||'').trim()||undefined;
     hasFixedTimes = data.get('hasFixedTimes') === 'on' || data.get('hasFixedTimes') === 'true';
+    additionalTextFr = String(data.get('additionalTextFr')||'').trim()||undefined;
+    additionalTextEn = String(data.get('additionalTextEn')||'').trim()||undefined;
     const imageFile = data.get('imageFile') as File | null;
     if(imageFile && imageFile instanceof File && imageFile.size > 0){
       try {
@@ -43,7 +46,7 @@ async function handleUpdate(req:Request, id:number, ctype:string){
     }
   } else {
     const body = await req.json().catch(()=>null); if(!body) return { error:true, resp: NextResponse.json({ error:'bad_request' },{ status:400 }) };
-    ({ slug, titleFr, titleEn, descFr, descEn, timeFr, timeEn, imageUrl, fixedDepartureTime, fixedReturnTime, hasFixedTimes } = body);
+    ({ slug, titleFr, titleEn, descFr, descEn, timeFr, timeEn, imageUrl, fixedDepartureTime, fixedReturnTime, hasFixedTimes, additionalTextFr, additionalTextEn } = body);
   }
   if(!titleFr || !titleEn) return { error:true, resp: NextResponse.json({ error:'missing_fields' },{ status:400 }) };
   const existing = await (prisma as any).experience.findUnique({ where:{ id } });
@@ -64,6 +67,8 @@ async function handleUpdate(req:Request, id:number, ctype:string){
     fixedDepartureTime: fixedDepartureTime || null,
     fixedReturnTime: fixedReturnTime || null,
     hasFixedTimes: hasFixedTimes ?? false,
+    additionalTextFr: additionalTextFr ?? null,
+    additionalTextEn: additionalTextEn ?? null,
   };
   const updated = await (prisma as any).experience.update({ where:{ id }, data: updateData });
   return { error:false, updated };
@@ -133,6 +138,11 @@ export async function POST(req:Request, { params }: { params: Promise<{ id:strin
       let descEn = String(data.get('descEn')||'').trim();
       let timeFr = String(data.get('timeFr')||'').trim()||undefined;
       let timeEn = String(data.get('timeEn')||'').trim()||undefined;
+      const fixedDepartureTime = String(data.get('fixedDepartureTime')||'').trim()||undefined;
+      const fixedReturnTime = String(data.get('fixedReturnTime')||'').trim()||undefined;
+      const hasFixedTimes = data.get('hasFixedTimes') === 'on' || data.get('hasFixedTimes') === 'true';
+      const additionalTextFr = String(data.get('additionalTextFr')||'').trim()||undefined;
+      const additionalTextEn = String(data.get('additionalTextEn')||'').trim()||undefined;
       // Gestion des images multiples
       const imageUrlParam = data.get('imageUrl');
       let imageUrl: string | null | undefined;
@@ -341,7 +351,12 @@ export async function POST(req:Request, { params }: { params: Promise<{ id:strin
         descEn: descEn??'',
         timeFr: timeFr??null,
         timeEn: timeEn??null,
-        imageUrl: finalImageUrl
+        imageUrl: finalImageUrl,
+        fixedDepartureTime: fixedDepartureTime ?? null,
+        fixedReturnTime: fixedReturnTime ?? null,
+        hasFixedTimes: hasFixedTimes ?? false,
+        additionalTextFr: additionalTextFr ?? null,
+        additionalTextEn: additionalTextEn ?? null,
       };
       
       // Ajouter photoUrls si on a des photos ou si c'était dans le formData
