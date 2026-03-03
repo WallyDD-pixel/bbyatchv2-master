@@ -79,19 +79,41 @@ export default function BoatMediaCarousel({ images, videos = [] }: Props) {
   const autoRef = useRef<NodeJS.Timeout | null>(null);
 
   const go = useCallback((dir: number) => {
+    autoRef.current && clearInterval(autoRef.current);
+    autoRef.current = null;
     setIndex(i => ((i + dir + allMedia.length) % allMedia.length));
   }, [allMedia.length]);
 
+  const goToIndex = useCallback((i: number) => {
+    autoRef.current && clearInterval(autoRef.current);
+    autoRef.current = null;
+    setIndex(i);
+  }, []);
+
+  // Auto-advance uniquement sur les images (pas pendant une vidéo), et intervalle plus long pour éviter les sauts
+  const lengthRef = useRef(allMedia.length);
+  const indexRef = useRef(index);
+  lengthRef.current = allMedia.length;
+  indexRef.current = index;
+
   useEffect(() => {
     if (allMedia.length <= 1) return;
+    if (allMedia[index]?.type === 'video') {
+      autoRef.current && clearInterval(autoRef.current);
+      autoRef.current = null;
+      return;
+    }
     autoRef.current && clearInterval(autoRef.current);
     autoRef.current = setInterval(() => {
-      setIndex(i => ((i + 1) % allMedia.length));
-    }, 6000);
+      const len = lengthRef.current;
+      const i = indexRef.current;
+      const next = (i + 1) % len;
+      setIndex(next);
+    }, 8000);
     return () => {
       if (autoRef.current) clearInterval(autoRef.current);
     };
-  }, [allMedia.length]);
+  }, [allMedia.length, index, allMedia[index]?.type]);
 
   if (allMedia.length === 0) {
     return (
@@ -113,6 +135,7 @@ export default function BoatMediaCarousel({ images, videos = [] }: Props) {
               i === index ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
           >
+            {/* N'afficher la vidéo que sur le slide actif pour éviter son/saut et lecture en arrière-plan */}
             {media.type === 'image' ? (
               <Image
                 src={media.url}
@@ -129,8 +152,12 @@ export default function BoatMediaCarousel({ images, videos = [] }: Props) {
                   target.style.display = 'none';
                 }}
               />
+            ) : i !== index ? (
+              <div className="w-full h-full bg-black/10 flex items-center justify-center">
+                <span className="text-4xl text-white/50">▶</span>
+              </div>
             ) : media.embedUrl ? (
-              // Vidéo YouTube/Vimeo embed
+              // Vidéo YouTube/Vimeo embed (uniquement rendue quand slide actif)
               <div className="w-full h-full flex flex-col">
                 <iframe
                   src={media.embedUrl}
@@ -149,7 +176,7 @@ export default function BoatMediaCarousel({ images, videos = [] }: Props) {
                 </a>
               </div>
             ) : (
-              // Vidéo fichier direct
+              // Vidéo fichier direct (uniquement rendue quand slide actif)
               <video
                 key={media.url} // Force re-render si l'URL change
                 src={media.url}
@@ -221,7 +248,7 @@ export default function BoatMediaCarousel({ images, videos = [] }: Props) {
             {allMedia.map((_, i) => (
               <button
                 key={i}
-                onClick={() => setIndex(i)}
+                onClick={() => goToIndex(i)}
                 className={`h-2.5 w-2.5 rounded-full border border-white/70 transition ${
                   i === index
                     ? 'bg-white'
@@ -246,7 +273,7 @@ export default function BoatMediaCarousel({ images, videos = [] }: Props) {
           {allMedia.map((media, i) => (
             <button
               key={i}
-              onClick={() => setIndex(i)}
+              onClick={() => goToIndex(i)}
               className={`relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
                 i === index
                   ? 'border-[color:var(--primary)] scale-105'

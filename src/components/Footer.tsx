@@ -142,15 +142,16 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
       <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10 py-12">
         {/* Grille principale avec espacement uniforme */}
         <div className="grid gap-12 md:grid-cols-4 md:gap-6 lg:gap-8">
-          {/* Colonne 1: Logo et description */}
+          {/* Colonne 1: Logo et description (même logo que l’en-tête, depuis les paramètres) */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 mb-4">
               <Image 
-                src="/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png" 
+                src={(s as any)?.logoUrl && String((s as any).logoUrl).trim() ? String((s as any).logoUrl) : "/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png"} 
                 alt="BB SERVICES CHARTER" 
                 width={210} 
                 height={72} 
-                className="h-16 w-auto object-contain" 
+                className="h-16 w-auto object-contain"
+                unoptimized={typeof (s as any)?.logoUrl === 'string' && ((s as any).logoUrl as string).startsWith('http')}
               />
             </div>
             <p className="text-xs leading-relaxed text-[#666666] max-w-[240px]">
