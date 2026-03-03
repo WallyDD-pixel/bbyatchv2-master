@@ -831,6 +831,52 @@ pm2 restart bbyatch
 4. **Middleware**  
    - Le middleware du projet ignore déjà `/_next/` pour ne pas renvoyer de HTML à la place des chunks. Après un `git pull`, refaire un build puis `pm2 restart bbyatch`.
 
+### Page sans CSS après déploiement
+
+**Symptômes :** La page s’affiche en production sans aucun style (texte brut, pas de mise en forme).
+
+**Causes possibles :**
+
+1. **Build non exécuté ou incomplet** sur le serveur : le dossier `.next/static/css` est vide ou absent.
+2. **Nginx** ne proxy pas correctement les requêtes vers `/_next/static/` (CSS et JS doivent aller vers l’app Next sur le port 3003).
+3. **Cache navigateur** : l’ancienne page référence des fichiers CSS qui n’existent plus après un nouveau build.
+
+**À faire :**
+
+1. **Vérifier le build sur le serveur**
+   ```bash
+   cd ~/bbyatchv2-master
+   npm run build
+   ls -la .next/static/css/
+   ```
+   Il doit y avoir au moins un fichier `.css` dans ce dossier.
+
+2. **Tester que le CSS est bien servi par Next**
+   ```bash
+   curl -I http://localhost:3003/
+   ```
+   Puis dans la réponse, repérer une URL du type `/_next/static/css/...css` dans les en-têtes ou le corps, et tester :
+   ```bash
+   curl -I http://localhost:3003/_next/static/css/XXXXX.css
+   ```
+   La réponse doit être `200` avec `Content-Type: text/css`, pas du HTML.
+
+3. **Vérifier la config nginx**
+   - Le bloc `location /_next/static { ... proxy_pass http://localhost:3003; }` doit exister (étape 8.2).
+   - Recharger nginx : `sudo nginx -t && sudo systemctl reload nginx`.
+
+4. **Côté navigateur**
+   - Rafraîchissement forcé : `Ctrl+Shift+R` (ou `Cmd+Shift+R` sur Mac), ou vider le cache du site.
+
+5. **Redéploiement complet**
+   ```bash
+   cd ~/bbyatchv2-master
+   git pull
+   npm install --legacy-peer-deps
+   npm run build
+   pm2 restart bbyatch
+   ```
+
 ### Nginx ne fonctionne pas
 
 ```bash

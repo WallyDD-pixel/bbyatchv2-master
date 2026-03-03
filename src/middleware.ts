@@ -5,7 +5,11 @@ export async function middleware(request: NextRequest) {
   // Ne jamais traiter les assets Next.js : éviter tout traitement qui pourrait
   // faire retourner du HTML (erreur, redirect) au lieu du fichier JS/CSS.
   const pathname = request.nextUrl.pathname;
-  if (pathname.startsWith('/_next/') || pathname.startsWith('/favicon') || pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico)$/)) {
+  if (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/favicon') ||
+    pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|css|js|woff2?|ttf|eot)$/i)
+  ) {
     return NextResponse.next();
   }
 
@@ -59,12 +63,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
+     * Ne pas exécuter le middleware pour les assets (JS, CSS, fonts, images)
+     * pour éviter de renvoyer du HTML à la place des fichiers statiques.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff2?|ttf|eot)$).*)',
   ],
 };
