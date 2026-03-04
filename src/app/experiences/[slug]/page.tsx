@@ -171,6 +171,12 @@ export default async function ExperienceDetailPage({ params, searchParams }: { p
               <p className="text-sm sm:text-base leading-relaxed text-black/70 whitespace-pre-line mb-6">
                 {locale==='fr'? exp.descFr: exp.descEn}
               </p>
+              {/* Texte supplémentaire (affiché sur la page d'expérience) */}
+              {((locale==='fr' ? (exp as any).additionalTextFr : (exp as any).additionalTextEn)) && (
+                <p className="text-sm sm:text-base leading-relaxed text-black/70 whitespace-pre-line mb-6 pt-4 border-t border-black/10">
+                  {locale==='fr' ? (exp as any).additionalTextFr : (exp as any).additionalTextEn}
+                </p>
+              )}
               {(locale==='fr'? exp.timeFr: exp.timeEn) && (
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[color:var(--primary)]/10 border border-[color:var(--primary)]/20 text-[12px] font-semibold text-[color:var(--primary)]">
                   <span>⏱️</span>
