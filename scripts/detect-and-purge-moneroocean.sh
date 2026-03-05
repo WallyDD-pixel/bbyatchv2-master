@@ -87,7 +87,7 @@ purge_processes() {
         kill -9 "$pid" 2>/dev/null || true
         log "  -> processus PID $pid (moneroocean) tué"
       fi
-    done
+    fi
   done
 }
 
