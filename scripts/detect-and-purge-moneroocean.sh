@@ -67,14 +67,27 @@ check_locations() {
   fi
 }
 
-# Purge: tuer les processus
+# Purge: tuer les processus (sans tuer ce script: son nom contient "moneroocean")
 purge_processes() {
   log "Purge: arrêt des processus malveillants..."
-  for pattern in "moneroocean" "xmrig" "logic.sh" "system-check" "miner"; do
-    if pgrep -f "$pattern" >/dev/null 2>&1; then
-      pkill -9 -f "$pattern" 2>/dev/null || true
-      log "  -> processus -f $pattern tués"
-    fi
+  SELF_PID=$$
+  for pattern in "xmrig" "logic\.sh" "system-check" "miner" "/moneroocean/" "moneroocean/xmrig"; do
+    pgrep -f "$pattern" 2>/dev/null | while read -r pid; do
+      if [[ -n "$pid" && "$pid" != "$SELF_PID" ]]; then
+        kill -9 "$pid" 2>/dev/null || true
+        log "  -> processus PID $pid (-f $pattern) tué"
+      fi
+    done
+  done
+  # Tuer processus dont la ligne de commande contient moneroocean SAUF ce script
+  pgrep -f "moneroocean" 2>/dev/null | while read -r pid; do
+    if [[ -n "$pid" && "$pid" != "$SELF_PID" ]]; then
+      # Ne pas tuer si c'est notre script (detect-and-purge-moneroocean)
+      if ! grep -q "detect-and-purge-moneroocean" "/proc/$pid/cmdline" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+        log "  -> processus PID $pid (moneroocean) tué"
+      fi
+    done
   done
 }
 
