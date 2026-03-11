@@ -65,7 +65,7 @@ export default async function BoatsSection({ locale, t }: { locale: Locale; t: R
   if (paxFilter) where.capacity = { gte: paxFilter };
   const boats: Boat[] = await (prisma as any).boat.findMany({ 
     where, 
-    orderBy: [{ sort: "asc" }, { id: "asc" }], 
+    orderBy: { id: "asc" }, 
     select: { 
       id:true, slug:true, name:true, city:true, capacity:true, enginePower:true, year:true, lengthM:true, 
       pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true,

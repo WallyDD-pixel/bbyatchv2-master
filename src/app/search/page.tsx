@@ -146,7 +146,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
               available: true,
               id: { in: slotBoatIds.length > 0 ? slotBoatIds : [] }
             }, 
-            orderBy: [{ sort: 'asc' }, { id: 'asc' }],
+            orderBy: { id: 'asc' },
             select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true, enginePower:true, year:true, lengthM:true, cityId:true } 
           });
           console.log('[search] FULL - Found boats with slots:', allBoats.length);
@@ -347,7 +347,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
             available: true,
             id: { in: slotBoatIds.length > 0 ? slotBoatIds : [] }
           }, 
-          orderBy: [{ sort: 'asc' }, { id: 'asc' }],
+          orderBy: { id: 'asc' },
           select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true, priceAm:true, pricePm:true, enginePower:true, year:true, lengthM:true, cityId:true } 
         });
         console.log('[search] AM/PM - Found boats:', allBoats.length, 'slots:', slots.length);

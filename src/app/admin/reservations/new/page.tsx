@@ -33,7 +33,7 @@ export default async function AdminCreateReservationPage({ searchParams }: { sea
   try {
     boats = await (prisma as any).boat.findMany({
       where: { available: true },
-      orderBy: [{ sort: 'asc' }, { name: 'asc' }],
+      orderBy: { name: 'asc' },
       select: {
         id: true,
         name: true,

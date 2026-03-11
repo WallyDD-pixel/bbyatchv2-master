@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     const [boats, slots, reservations]: [Boat[], AvailabilitySlot[], any[]] = await Promise.all([
       (prisma as any).boat.findMany({
       where: { available: true },
-      orderBy: [{ sort: 'asc' }, { id: 'asc' }],
+      orderBy: { id: 'asc' },
       select: { id:true, name:true, slug:true, imageUrl:true, capacity:true, pricePerDay:true }
       }),
       (prisma as any).availabilitySlot.findMany({
