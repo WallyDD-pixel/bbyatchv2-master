@@ -466,6 +466,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                 part: data.part,
                 note: data.note || null,
                 experiencePrice: data.experiencePrice || null,
+                addOnly: true,
               }),
             });
           } else {
@@ -477,17 +478,22 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                 date: dateStr,
                 part: data.part,
                 note: data.note || null,
+                addOnly: true,
               }),
             });
           }
           
           if (res.ok) {
-            successCount++;
+            const json = await res.json().catch(() => ({}));
+            if (json.toggled === 'added' || json.toggled === 'unchanged') successCount++;
+            else errorCount++;
           } else {
+            const errText = await res.text().catch(() => '');
+            console.error('Slot error for', dateStr, res.status, errText);
             errorCount++;
           }
         } catch (error) {
-          console.error('Error creating slot:', error);
+          console.error('Error creating slot for', dateStr, error);
           errorCount++;
         }
       }
@@ -496,7 +502,9 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
       await load(date);
       
       if (successCount > 0 && errorCount === 0) {
-        alert(locale === 'fr' ? 'Créneaux créés avec succès' : 'Slots created successfully');
+        alert(locale === 'fr' ? `${successCount} créneau(x) enregistré(s) avec succès` : `${successCount} slot(s) saved successfully`);
+      } else if (errorCount > 0) {
+        alert(locale === 'fr' ? `${successCount} créneau(x) créés, ${errorCount} erreur(s). Vérifiez la console.` : `${successCount} slot(s) created, ${errorCount} error(s). Check the console.`);
       }
     } catch (error) {
       console.error('Error in handleModalSave:', error);

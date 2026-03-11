@@ -589,7 +589,7 @@ export default function SearchBar({
           readOnly
           onClick={openPicker}
           onFocus={openPicker}
-          placeholder={needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part && !partFixed ? 'Choisir le créneau' : 'Sélectionner...')) : (!part && !partFixed ? 'Choisir le créneau' : 'Sélectionner...')}
+          placeholder={(!part && !partFixed) ? (currentLocale === 'fr' ? 'Choisir le créneau' : 'Choose slot') : (currentLocale === 'fr' ? 'Choisir la date' : 'Choose date')}
           className={baseInput + ' ' + ((needsCity && !values.city.trim()) || (!part && !partFixed) ? 'opacity-50 cursor-not-allowed':'cursor-pointer')}
           value={values.startDate}
           disabled={(needsCity && !values.city.trim()) || (!part && !partFixed)}
@@ -600,16 +600,13 @@ export default function SearchBar({
       <div>
         <label className="block text-xs font-medium mb-1 text-slate-800 dark:text-white/85 [.card-popover_&]:text-white">
           {labels.search_end_date}
-          {(part !== "FULL" && part !== "SUNSET") && (
-            <span className="text-[10px] font-normal text-black dark:text-white [.card-popover_&]:text-white/80">(= début)</span>
-          )}
         </label>
         <input
           type="text"
           readOnly
           onClick={()=> openPicker()}
           onFocus={()=> openPicker()}
-          placeholder={(part==='FULL' || part==='SUNSET' || !part)? (needsCity ? (!values.city.trim()? 'Choisir la ville' : (!part && !partFixed ? 'Choisir le créneau' : 'Sélectionner...')) : (!part && !partFixed ? 'Choisir le créneau' : 'Sélectionner...')) : (values.startDate? values.startDate : '')}
+          placeholder={(part==='FULL' || part==='SUNSET' || !part) ? ((!part && !partFixed) ? (currentLocale === 'fr' ? 'Choisir le créneau' : 'Choose slot') : (currentLocale === 'fr' ? 'Choisir la date' : 'Choose date')) : (values.startDate ? values.startDate : '')}
           className={baseInput + ' ' + ((needsCity && !values.city.trim()) || (!part && !partFixed) ? 'opacity-50 cursor-not-allowed': ((part !== "FULL" && part !== "SUNSET" && part) ? "opacity-60" : "cursor-pointer"))}
           value={values.endDate}
           disabled={!!((needsCity && !values.city.trim()) || (!part && !partFixed) || (part && part !== "FULL" && part !== "SUNSET"))}

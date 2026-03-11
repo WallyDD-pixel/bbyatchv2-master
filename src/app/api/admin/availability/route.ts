@@ -130,18 +130,18 @@ export async function PATCH(req: Request) {
   } catch { return NextResponse.json({ error: 'failed' }, { status: 500 }); }
 }
 
-// POST create/toggle { boatId, date: 'YYYY-MM-DD', part: 'AM'|'PM'|'FULL', note? }
+// POST create/toggle { boatId, date: 'YYYY-MM-DD', part: 'AM'|'PM'|'FULL', note?, addOnly?: boolean }
+// addOnly: true = ne jamais supprimer (ajout en masse), seulement créer si absent
 export async function POST(req: Request) {
   const guard = await ensureAdmin();
   if (guard) return guard;
   let body: any = {};
   try { body = await req.json(); } catch {}
-  const { boatId, date, part, note } = body || {};
+  const { boatId, date, part, note, addOnly } = body || {};
   if (!boatId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   if (!['AM','PM','FULL'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
   
   // Normaliser la date en UTC pour correspondre à la recherche
-  // Parser la date depuis la chaîne YYYY-MM-DD
   const dateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!dateMatch) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
   const [, yearStr, monthStr, dayStr] = dateMatch;
@@ -149,25 +149,27 @@ export async function POST(req: Request) {
   const month = parseInt(monthStr, 10);
   const dayNum = parseInt(dayStr, 10);
   
-  // Créer la date en UTC à minuit pour correspondre au format de recherche
   const day = new Date(Date.UTC(year, month - 1, dayNum, 0, 0, 0, 0));
   if (isNaN(day.getTime())) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
   
-  console.log(`[availability] Creating slot: boatId=${boatId}, date=${date} -> UTC: ${day.toISOString()}`);
+  console.log(`[availability] ${addOnly ? 'Add only' : 'Toggle'}: boatId=${boatId}, date=${date} -> UTC: ${day.toISOString()}`);
 
   try {
-    // toggle logic: if exists -> delete; else create
     const existing = await (prisma as any).availabilitySlot.findUnique({ where: { boatId_date_part: { boatId: Number(boatId), date: day, part } } });
     if (existing) {
+      if (addOnly) {
+        return NextResponse.json({ toggled: 'unchanged', id: existing.id });
+      }
       await (prisma as any).availabilitySlot.delete({ where: { id: existing.id } });
       return NextResponse.json({ toggled: 'removed', id: existing.id });
     }
-    // If creating FULL remove AM/PM for that day for this boat
-    if (part === 'FULL') {
-      await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: { in: ['AM','PM'] } } });
-    } else {
-      // If creating AM or PM and FULL exists, delete FULL
-      await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: 'FULL' } });
+    // If creating FULL remove AM/PM for that day for this boat (sauf en addOnly pour ne pas casser des créneaux existants)
+    if (!addOnly) {
+      if (part === 'FULL') {
+        await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: { in: ['AM','PM'] } } });
+      } else {
+        await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: 'FULL' } });
+      }
     }
     const created = await (prisma as any).availabilitySlot.create({ data: { boatId: Number(boatId), date: day, part, status: 'available', note: note || null } });
     return NextResponse.json({ toggled: 'added', slot: created });

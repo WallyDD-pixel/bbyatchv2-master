@@ -53,26 +53,26 @@ export async function PATCH(req: Request) {
 export async function POST(req: Request) {
   if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   let body: any = {}; try { body = await req.json(); } catch {}
-  const { experienceId, boatId, date, part, note, experiencePrice } = body || {};
+  const { experienceId, boatId, date, part, note, experiencePrice, addOnly } = body || {};
   if (!experienceId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   if (!['AM','PM','FULL','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
-  const day = new Date(date + 'T00:00:00');
+  const dateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!dateMatch) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
+  const [, y, m, d] = dateMatch.map(Number);
+  const day = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
   if (isNaN(day.getTime())) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
   const expId = Number(experienceId);
   const bId = boatId ? Number(boatId) : null;
   const price = experiencePrice != null && experiencePrice !== '' ? Number(experiencePrice) : null;
   
   try {
-    // Vérifier si un créneau existe déjà (avec ou sans boatId selon le cas)
     let existing = null;
     try {
       if (bId !== null) {
-        // Chercher avec boatId spécifique
         existing = await (prisma as any).experienceAvailabilitySlot.findFirst({ 
           where: { experienceId: expId, boatId: bId, date: day, part } 
         });
       } else {
-        // Si pas de boatId, chercher un créneau sans boatId pour cette expérience
         existing = await (prisma as any).experienceAvailabilitySlot.findFirst({ 
           where: { experienceId: expId, boatId: null, date: day, part } 
         });
@@ -82,27 +82,28 @@ export async function POST(req: Request) {
     }
     
     if (existing) { 
+      if (addOnly) return NextResponse.json({ toggled:'unchanged', id: existing.id }); 
       await (prisma as any).experienceAvailabilitySlot.delete({ where: { id: existing.id } }); 
       return NextResponse.json({ toggled:'removed', id: existing.id }); 
     }
     
-    // Supprimer les créneaux incompatibles (même logique que pour les bateaux)
-    const deleteWhere: any = { experienceId: expId, date: day };
-    if (bId !== null) {
-      deleteWhere.boatId = bId;
-    } else {
-      deleteWhere.boatId = null;
-    }
-    
-    if (part==='FULL') {
-      deleteWhere.part = { in:['AM','PM','SUNSET'] };
-      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
-    } else if (part==='SUNSET') {
-      deleteWhere.part = { in:['FULL','AM','PM'] };
-      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
-    } else {
-      deleteWhere.part = { in:['FULL','SUNSET'] };
-      await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
+    if (!addOnly) {
+      const deleteWhere: any = { experienceId: expId, date: day };
+      if (bId !== null) {
+        deleteWhere.boatId = bId;
+      } else {
+        deleteWhere.boatId = null;
+      }
+      if (part==='FULL') {
+        deleteWhere.part = { in:['AM','PM','SUNSET'] };
+        await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
+      } else if (part==='SUNSET') {
+        deleteWhere.part = { in:['FULL','AM','PM'] };
+        await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
+      } else {
+        deleteWhere.part = { in:['FULL','SUNSET'] };
+        await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
+      }
     }
     
     const created = await (prisma as any).experienceAvailabilitySlot.create({ 

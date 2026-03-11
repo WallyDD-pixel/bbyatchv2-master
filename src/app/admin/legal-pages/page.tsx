@@ -5,16 +5,11 @@ import Link from 'next/link';
 import { messages, type Locale } from '@/i18n/messages';
 import AdminInstructions from "@/components/AdminInstructions";
 
-// Définir les slugs des pages légales standard correspondant aux liens du footer
+// Les 3 pages légales affichées dans le footer (modifiables ici)
 const LEGAL_PAGES = [
-  // Section "Légal"
-  { slug: 'conditions-paiement', titleFr: 'Conditions & Paiement', titleEn: 'Charter & Payment Terms' },
-  { slug: 'cgu-mentions', titleFr: 'CGU / Mentions', titleEn: 'Terms & Notices' },
-  { slug: 'confidentialite', titleFr: 'Confidentialité', titleEn: 'Privacy' },
-  // Section "Réservations"
-  { slug: 'politique-annulation', titleFr: 'Politique d\'annulation', titleEn: 'Cancellation Policy' },
-  { slug: 'modalites-paiement', titleFr: 'Modalités de paiement', titleEn: 'Payment Modalities' },
-  { slug: 'carburant-depot', titleFr: 'Carburant & dépôt', titleEn: 'Fuel & Security Deposit' },
+  { slug: 'conditions-paiement', titleFr: 'CGV', titleEn: 'Charter & Payment Terms' },
+  { slug: 'cgu-mentions', titleFr: 'Mentions légales', titleEn: 'Terms & Notices' },
+  { slug: 'confidentialite', titleFr: 'Données personnelles', titleEn: 'Privacy' },
 ];
 
 export default async function AdminLegalPages({ searchParams }: { searchParams?: Promise<{ lang?: string }> }){
@@ -45,23 +40,15 @@ export default async function AdminLegalPages({ searchParams }: { searchParams?:
         </div>
         <AdminInstructions
           locale={locale}
-          title={locale==='fr'?'Comment gérer les pages légales':'How to manage legal pages'}
+          title={locale==='fr'?'Pages légales du footer':'Footer legal pages'}
           instructions={[
             {
-              title: locale==='fr'?'Créer ou modifier une page':'Create or edit a page',
-              description: locale==='fr'?'Cliquez sur une carte de page légale pour la créer (si elle n\'existe pas) ou la modifier (si elle existe déjà). Les pages avec un badge vert "Existe" sont déjà créées.':'Click on a legal page card to create it (if it doesn\'t exist) or edit it (if it already exists). Pages with a green "Exists" badge are already created.'
-            },
-            {
-              title: locale==='fr'?'Pages standard':'Standard pages',
-              description: locale==='fr'?'Les pages légales standard (CGU, Confidentialité, Conditions de paiement, etc.) sont pré-configurées. Il suffit de cliquer dessus pour les créer ou les modifier.':'Standard legal pages (Terms, Privacy, Payment Terms, etc.) are pre-configured. Just click on them to create or edit.'
+              title: locale==='fr'?'Modifier le contenu':'Edit content',
+              description: locale==='fr'?'Les trois liens en bas du site (CGV, Mentions légales, Données personnelles) pointent vers ces pages. Cliquez sur une carte pour créer la page (si elle n\'existe pas) ou la modifier.':'The three links at the bottom of the site (Charter & Payment Terms, Terms & Notices, Privacy) point to these pages. Click a card to create the page (if it doesn\'t exist) or edit it.'
             },
             {
               title: locale==='fr'?'Contenu bilingue':'Bilingual content',
-              description: locale==='fr'?'Chaque page doit avoir un contenu en français et en anglais. Utilisez les onglets pour basculer entre les deux langues lors de l\'édition.':'Each page must have content in French and English. Use tabs to switch between the two languages when editing.'
-            },
-            {
-              title: locale==='fr'?'Affichage sur le site':'Display on site',
-              description: locale==='fr'?'Les pages légales sont accessibles depuis le footer du site. Elles sont automatiquement liées aux pages correspondantes.':'Legal pages are accessible from the site footer. They are automatically linked to corresponding pages.'
+              description: locale==='fr'?'Chaque page peut avoir un contenu en français et en anglais. Remplissez les champs FR et EN lors de l\'édition.':'Each page can have content in French and English. Fill in the FR and EN fields when editing.'
             }
           ]}
         />

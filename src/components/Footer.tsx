@@ -75,14 +75,11 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
       select: { slug: true, titleFr: true, titleEn: true }
     });
     
-    // Mapping des slugs du footer vers les slugs réels des pages
+    // Les 3 liens légaux du footer : CGV, Mentions légales, Données personnelles
     const footerMappings = [
-      { footerSlug: 'conditions-paiement', searchTerms: ['conditions', 'paiement', 'payment'] },
+      { footerSlug: 'conditions-paiement', searchTerms: ['conditions', 'paiement', 'payment', 'cgu'] },
       { footerSlug: 'cgu-mentions', searchTerms: ['cgu', 'mentions', 'terms', 'notices'] },
-      { footerSlug: 'confidentialite', searchTerms: ['confidentialité', 'confidentialite', 'privacy'] },
-      { footerSlug: 'politique-annulation', searchTerms: ['annulation', 'cancellation'] },
-      { footerSlug: 'modalites-paiement', searchTerms: ['modalités', 'paiement', 'payment', 'modalities'] },
-      { footerSlug: 'carburant-depot', searchTerms: ['carburant', 'dépôt', 'depot', 'fuel', 'deposit'] },
+      { footerSlug: 'confidentialite', searchTerms: ['confidentialité', 'confidentialite', 'privacy', 'données', 'donnees'] },
     ];
     
     footerMappings.forEach(({ footerSlug, searchTerms }) => {
@@ -113,8 +110,7 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
     });
   } catch (e) {
     console.error('Erreur lors de la récupération des pages légales:', e);
-    // En cas d'erreur, utiliser les slugs par défaut
-    ['conditions-paiement', 'cgu-mentions', 'confidentialite', 'politique-annulation', 'modalites-paiement', 'carburant-depot'].forEach(slug => {
+    ['conditions-paiement', 'cgu-mentions', 'confidentialite'].forEach(slug => {
       footerPagesMap.set(slug, slug);
     });
   }
@@ -123,9 +119,6 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
   const conditionsSlug = footerPagesMap.get('conditions-paiement') || 'conditions-paiement';
   const cguSlug = footerPagesMap.get('cgu-mentions') || 'cgu-mentions';
   const privacySlug = footerPagesMap.get('confidentialite') || 'confidentialite';
-  const annulationSlug = footerPagesMap.get('politique-annulation') || 'politique-annulation';
-  const paiementSlug = footerPagesMap.get('modalites-paiement') || 'modalites-paiement';
-  const carburantSlug = footerPagesMap.get('carburant-depot') || 'carburant-depot';
   
   // URLs des réseaux sociaux depuis Settings
   const instagramUrl = (s as any)?.footerInstagram || null;
@@ -336,127 +329,32 @@ export default async function Footer({ locale, t }: { locale: Locale; t: Record<
           </div>
         </div>
 
-        {/* Section liens légaux avec alignement uniforme */}
-        <div className="mt-14 pt-8 border-t border-black/10 grid gap-8 sm:grid-cols-3 sm:gap-6 lg:gap-8">
-          <div>
-            <h4 className='text-sm font-semibold text-[#1a1a1a] mb-4 tracking-tight'>
-              {locale==='fr'? 'Légal':'Legal'}
-            </h4>
-            <ul className='space-y-3'>
-              <li>
-                <Link 
-                  href={`/legal/${conditionsSlug}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
-                >
-                  {locale==='fr'? 'Conditions & Paiement':'Charter & Payment Terms'}
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href={`/legal/${cguSlug}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
-                >
-                  {locale==='fr'? 'CGU / Mentions':'Terms & Notices'}
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href={`/legal/${privacySlug}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
-                >
-                  {locale==='fr'? 'Confidentialité':'Privacy'}
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className='text-sm font-semibold text-[#1a1a1a] mb-4 tracking-tight'>
-              {locale==='fr'? 'Réservations':'Bookings'}
-            </h4>
-            <ul className='space-y-3'>
-              <li>
-                <Link 
-                  href={`/legal/${annulationSlug}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
-                >
-                  {locale==='fr'? 'Politique d\'annulation':'Cancellation Policy'}
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href={`/legal/${paiementSlug}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
-                >
-                  {locale==='fr'? 'Modalités de paiement':'Payment Modalities'}
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href={`/legal/${carburantSlug}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
-                >
-                  {locale==='fr'? 'Carburant & dépôt':'Fuel & Security Deposit'}
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className='text-sm font-semibold text-[#1a1a1a] mb-4 tracking-tight'>
-              {locale==='fr'? 'Assistance':'Support'}
-            </h4>
-            <ul className='space-y-3'>
-              <li>
-                <Link 
-                  href={`/contact${locale === 'en' ? '?lang=en' : ''}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
-                >
-                  {locale==='fr'? 'Contact':'Contact'}
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href={`/faq${locale === 'en' ? '?lang=en' : ''}`} 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer inline-block'
-                >
-                  FAQ
-                </Link>
-              </li>
-              <li>
-                <a 
-                  href='mailto:charter@bb-yachts.com' 
-                  className='text-[13px] leading-relaxed text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200'
-                >
-                  {locale==='fr'? 'Email direct':'Direct email'}
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Footer bottom avec alignement centré */}
-        <div className="mt-12 pt-6 border-t border-black/10 text-xs sm:text-sm text-[#666666] flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-          <div className="text-center sm:text-left">
-            © {year} {t.app_name}. {t.footer_rights}
-          </div>
-          <div className="flex items-center justify-center sm:justify-end gap-6">
-            <Link 
-              href={`/legal/${cguSlug}`} 
-              className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer"
-            >
-              {locale === "fr" ? "Conditions" : "Terms"}
-            </Link>
-            <Link 
-              href={`/legal/${privacySlug}`} 
-              className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer"
-            >
-              {locale === "fr" ? "Confidentialité" : "Privacy"}
-            </Link>
-            <Link 
-              href={`/legal/${privacySlug}#cookies`} 
-              className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200 cursor-pointer"
-            >
-              {locale === "fr" ? "Cookies" : "Cookies"}
-            </Link>
+        {/* Section liens légaux : uniquement CGV / Mentions légales / Données personnelles */}
+        <div className="mt-14 pt-8 border-t border-black/10">
+          <div className="flex flex-wrap items-center justify-center sm:justify-between gap-4">
+            <div className="text-center sm:text-left text-xs sm:text-sm text-[#666666]">
+              © {year} {t.app_name}. {t.footer_rights}
+            </div>
+            <nav className="flex flex-wrap items-center justify-center gap-4 sm:gap-6" aria-label={locale === 'fr' ? 'Liens légaux' : 'Legal links'}>
+              <Link 
+                href={`/legal/${conditionsSlug}`} 
+                className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
+              >
+                {locale === 'fr' ? 'CGV' : 'Charter & Payment Terms'}
+              </Link>
+              <Link 
+                href={`/legal/${cguSlug}`} 
+                className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
+              >
+                {locale === 'fr' ? 'Mentions légales' : 'Terms & Notices'}
+              </Link>
+              <Link 
+                href={`/legal/${privacySlug}`} 
+                className="text-[13px] text-[#4a4a4a] hover:text-[color:var(--primary)] transition-colors duration-200"
+              >
+                {locale === 'fr' ? 'Données personnelles' : 'Privacy'}
+              </Link>
+            </nav>
           </div>
         </div>
       </div>

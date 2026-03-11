@@ -154,13 +154,8 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
   const hasSlot = (date: Date): { has: boolean; parts: string[] } => {
     const dateStr = normalizeDate(date);
     const slotsForDate = existingSlots.filter(s => {
-      // s.date peut être une string ou un objet Date
       const slotDateStr = normalizeDate(s.date);
-      const matches = slotDateStr === dateStr && s.status === 'available';
-      if (matches) {
-        console.log(`[AvailabilityModal] Slot found for ${dateStr}:`, { slotDateStr, part: s.part, boatId: s.boatId, selectedBoatId });
-      }
-      return matches;
+      return slotDateStr === dateStr && s.status === 'available';
     });
     return {
       has: slotsForDate.length > 0,

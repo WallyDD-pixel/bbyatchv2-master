@@ -4,9 +4,20 @@ export default function AboutUsSection({ settings, locale }: { settings: any, lo
   const { messages } = require("../i18n/messages.ts");
   const msg = messages[locale];
 
-  const aboutUsTitle = settings?.aboutUsTitle?.trim() ? settings.aboutUsTitle : msg.about_title;
-  const aboutUsSubtitle = settings?.aboutUsSubtitle?.trim() ? settings.aboutUsSubtitle : msg.about_subtitle;
-  const aboutUsText = settings?.aboutUsText?.trim() ? settings.aboutUsText : msg.about_body;
+  const aboutUsTitle =
+    locale === 'en'
+      ? msg.about_title
+      : (settings?.aboutUsTitle?.trim() ? settings.aboutUsTitle : msg.about_title);
+
+  const aboutUsSubtitle =
+    locale === 'en'
+      ? msg.about_subtitle
+      : (settings?.aboutUsSubtitle?.trim() ? settings.aboutUsSubtitle : msg.about_subtitle);
+
+  const aboutUsText =
+    locale === 'en'
+      ? msg.about_body
+      : (settings?.aboutUsText?.trim() ? settings.aboutUsText : msg.about_body);
 
   return (
     <section id="about" className="w-full max-w-6xl mt-20 px-2 sm:px-4 text-left">

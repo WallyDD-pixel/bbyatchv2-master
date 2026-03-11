@@ -42,6 +42,21 @@ export default async function Home({
     prisma.settings.findFirst(),
   ]);
 
+  const heroTitle =
+    locale === "en"
+      ? t.hero_title
+      : (settings as any)?.mainSliderTitle ?? undefined;
+
+  const heroSubtitle =
+    locale === "en"
+      ? "Live a unique experience at sea with BB YACHTS."
+      : (settings as any)?.mainSliderSubtitle ?? undefined;
+
+  const sliderText =
+    locale === "en"
+      ? "Discover our experiences and book your adventure on the French Riviera."
+      : (settings as any)?.mainSliderText ?? undefined;
+
   return (
     <div className="min-h-screen flex flex-col">
       <HeaderBar initialLocale={locale} />
@@ -64,8 +79,8 @@ export default async function Home({
                  } catch {}
                  return (
                    <HeroSlider
-                     title={settings?.mainSliderTitle ?? undefined}
-                     subtitle={settings?.mainSliderSubtitle ?? undefined}
+                     title={heroTitle}
+                     subtitle={heroSubtitle}
                      imageUrl={imageUrl}
                      images={images}
                    />
@@ -79,8 +94,8 @@ export default async function Home({
             {/* Bloc sous le slider : texte dynamique et searchbar mobile */}
             <div className="mt-6 md:mt-20 text-left">
               {/* Texte sous le slider principal */}
-              {settings?.mainSliderText && (
-                <p className="mt-4 text-lg text-black/70">{settings.mainSliderText}</p>
+              {sliderText && (
+                <p className="mt-4 text-lg text-black/70">{sliderText}</p>
               )}
             </div>
             <div className="mt-4 sm:mt-6 md:hidden">
