@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   }
   if (!payload) return NextResponse.json({ error: "bad_request" }, { status: 400 });
 
-  let { slug, name, city, capacity, speedKn, enginePower, year, lengthM, pricePerDay, priceAm, pricePm, priceSunset, priceAgencyPerDay, priceAgencyAm, priceAgencyPm, priceAgencySunset, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice } = payload || {};
+  let { slug, name, city, capacity, speedKn, enginePower, year, lengthM, pricePerDay, priceAm, pricePm, priceSunset, priceAgencyPerDay, priceAgencyAm, priceAgencyPm, priceAgencySunset, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice, sort } = payload || {};
   if (!name) return NextResponse.json({ error: "missing_fields" }, { status: 400 });
 
   const slugify = (str: string) => str.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-');
@@ -274,6 +274,7 @@ export async function POST(req: Request) {
         priceAgencySunset: priceAgencySunset != null && priceAgencySunset !== "" ? Number(priceAgencySunset) : null,
         skipperRequired: skipperRequired != null ? toBool(skipperRequired) : true, // Par défaut true
         skipperPrice: skipperPrice != null && skipperPrice !== "" ? Number(skipperPrice) : 350,
+        sort: sort != null && sort !== "" ? Number(sort) : 0,
         imageUrl: finalImageUrl,
         available: available != null ? toBool(available) : true,
         videoUrls: videoArray.length ? JSON.stringify(videoArray) : null,

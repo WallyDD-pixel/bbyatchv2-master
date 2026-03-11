@@ -184,6 +184,7 @@ model Boat {
   optionsInclusesEn String? // Options incluses dans le prix (EN)
   skipperRequired   Boolean  @default(false) // Skipper obligatoire
   skipperPrice      Int? // Prix du skipper (350€/jour par défaut)
+  sort              Int      @default(0) // Ordre d'affichage (liste bateaux, admin)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

@@ -150,6 +150,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     name?: string;
     slug?: string;
     city?: string;
+    sort?: number;
     pricePerDay?: number;
     priceAm?: number;
     pricePm?: number;
@@ -719,7 +720,12 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
         })()}
       </div>
       {/* Caractéristiques techniques */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <label className="grid gap-1 text-sm">
+          <span>{locale === "fr" ? "Ordre d'affichage" : "Display order"}</span>
+          <input name="sort" type="number" min={0} value={form.sort ?? 0} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />
+          <p className="text-xs text-black/50">{locale === "fr" ? "Plus le nombre est bas, plus le bateau apparaît en premier dans les listes." : "Lower number = shown first in lists."}</p>
+        </label>
         <label className="grid gap-1 text-sm">
           <span>{locale === "fr" ? "Taille (m)" : "Length (m)"}</span>
           <input name="lengthM" type="number" step="0.1" value={form.lengthM ?? ""} onChange={onChange} className="h-11 rounded-lg border border-black/15 px-3" />

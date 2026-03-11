@@ -59,7 +59,12 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
           {/* Caractéristiques techniques */}
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Caractéristiques techniques" : "Technical Specifications"}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+              <label className="grid gap-1 text-sm">
+                <span>{locale === "fr" ? "Ordre d'affichage" : "Display order"}</span>
+                <input name="sort" type="number" min="0" defaultValue="0" className="h-11 rounded-lg border border-black/15 px-3 w-full" />
+                <p className="text-xs text-black/50">{locale === "fr" ? "Plus bas = affiché en premier." : "Lower = shown first."}</p>
+              </label>
               <label className="grid gap-1 text-sm">
                 <span>{locale === "fr" ? "Places max" : "Max places"}</span>
                 <input name="capacity" type="number" min="0" required className="h-11 rounded-lg border border-black/15 px-3 w-full" />

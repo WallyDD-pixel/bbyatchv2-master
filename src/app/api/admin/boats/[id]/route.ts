@@ -50,7 +50,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     body = await req.json().catch(()=>({}));
   }
 
-  const { slug, name, city, capacity, speedKn, fuel, enginePower, year, lengthM, pricePerDay, priceAm, pricePm, priceSunset, priceAgencyPerDay, priceAgencyAm, priceAgencyPm, priceAgencySunset, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice } = body || {};
+  const { slug, name, city, capacity, speedKn, fuel, enginePower, year, lengthM, pricePerDay, priceAm, pricePm, priceSunset, priceAgencyPerDay, priceAgencyAm, priceAgencyPm, priceAgencySunset, imageUrl, available, videoUrls, photoUrls, avantagesFr, avantagesEn, optionsInclusesFr, optionsInclusesEn, skipperRequired, skipperPrice, sort } = body || {};
   const optionsPayload = body.options; // tableau attendu {id?, label, price|null}
   const experiencesPayload = body.experiences; // [{experienceId, price|null}]
   // Dérivation éventuelle prix AM/PM si uniquement day fourni (ne pas écraser les valeurs explicites)
@@ -352,6 +352,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         optionsInclusesEn: optionsInclusesEn != null ? String(optionsInclusesEn).trim() || null : undefined,
         skipperRequired: skipperRequired != null ? (typeof skipperRequired === 'string' ? (skipperRequired === 'true' || skipperRequired === 'on') : Boolean(skipperRequired)) : undefined,
         skipperPrice: skipperPrice != null && skipperPrice !== '' ? Number(skipperPrice) : undefined,
+        sort: sort != null && sort !== '' ? Number(sort) : undefined,
         ...(Array.isArray(optionsPayload) ? {
           options: {
             deleteMany: { boatId: id, NOT: optionsPayload.filter((o:any)=> o.id).map((o:any)=> ({ id: Number(o.id) })) },

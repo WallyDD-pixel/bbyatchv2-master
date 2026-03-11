@@ -143,56 +143,42 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
       }
     }
     // Vérifier existence d'un slot correspondant pour TOUS les jours de la plage
+    // Les slots sont stockés en UTC (minuit UTC par jour) : on utilise UTC pour la requête
     if (!invalidDates) {
-      const sD = new Date(start+'T00:00:00');
-      const eD = new Date((end||start)+'T00:00:00');
-      
-      // Pour FULL: vérifier tous les jours de la plage
-      // Pour AM/PM: vérifier uniquement le jour de départ
-      const checkEndDate = part === 'FULL' ? eD : sD;
-      
-      // Vérifier chaque jour individuellement pour éviter les problèmes de timezone
-      let currentDate = new Date(sD);
-      currentDate.setHours(0, 0, 0, 0);
-      const finalDate = new Date(checkEndDate);
-      finalDate.setHours(0, 0, 0, 0);
-      
-      while (currentDate <= finalDate) {
-        // Créer les dates de début et fin de journée pour ce jour précis
-        const dayStart = new Date(currentDate);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(currentDate);
-        dayEnd.setHours(23, 59, 59, 999);
-        
-        // Récupérer les slots pour ce jour précis
+      const [startY, startM, startD] = start.split('-').map(Number);
+      const endStr = end || start;
+      const [endY, endM, endD] = endStr.split('-').map(Number);
+      let dayStart = new Date(Date.UTC(startY, startM - 1, startD, 0, 0, 0, 0));
+      const checkEnd = part === 'FULL'
+        ? new Date(Date.UTC(endY, endM - 1, endD, 23, 59, 59, 999))
+        : new Date(Date.UTC(startY, startM - 1, startD, 23, 59, 59, 999));
+
+      while (dayStart <= checkEnd) {
+        const dayEnd = new Date(dayStart.getTime() + 86400000 - 1);
+
         const daySlots = await prisma.availabilitySlot.findMany({
-          where: { 
+          where: {
             boatId: boat.id,
-            date: { gte: dayStart, lte: dayEnd }, 
-            status: 'available' 
+            date: { gte: dayStart, lte: dayEnd },
+            status: 'available'
           },
           select: { part: true }
         });
-        
+
         const parts = new Set(daySlots.map(s => s.part));
-        
         let dayValid = false;
         if (part === 'FULL') {
-          // Pour FULL: besoin d'un slot FULL ou (AM + PM)
           dayValid = parts.has('FULL') || (parts.has('AM') && parts.has('PM'));
         } else if (part === 'AM') {
-          // Pour AM: besoin d'un slot AM ou FULL
           dayValid = parts.has('AM') || parts.has('FULL');
         } else if (part === 'PM') {
-          // Pour PM: besoin d'un slot PM ou FULL
           dayValid = parts.has('PM') || parts.has('FULL');
         } else if (part === 'SUNSET') {
-          // Pour SUNSET: besoin d'un slot SUNSET ou FULL
           dayValid = parts.has('SUNSET') || parts.has('FULL');
         }
-        
+
         if (!dayValid) {
-          const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+          const dateKey = `${dayStart.getUTCFullYear()}-${String(dayStart.getUTCMonth() + 1).padStart(2, '0')}-${String(dayStart.getUTCDate()).padStart(2, '0')}`;
           console.log(`[Boat ${boat.slug}] Day ${dateKey} is invalid:`, {
             requiredPart: part,
             availableParts: Array.from(parts),
@@ -200,11 +186,10 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
             daySlotsCount: daySlots.length
           });
           invalidSlot = true;
-          break; // Arrêter dès qu'un jour n'est pas disponible
+          break;
         }
-        
-        // Passer au jour suivant
-        currentDate = new Date(currentDate.getTime() + 86400000);
+
+        dayStart = new Date(dayStart.getTime() + 86400000);
       }
     }
   }

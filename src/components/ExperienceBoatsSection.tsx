@@ -64,6 +64,7 @@ export default async function ExperienceBoatsSection({ locale }: { locale: Local
       }),
       (prisma as any).boat.findMany({
         where: { id: { in: boatIds }, available: true },
+        orderBy: [{ sort: 'asc' }, { id: 'asc' }],
         select: { id: true, name: true, slug: true, imageUrl: true, capacity: true, speedKn: true }
       })
     ]);

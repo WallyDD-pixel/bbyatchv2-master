@@ -20,7 +20,7 @@ export default async function AdminBoatsPage({ searchParams }: { searchParams?: 
 
   let boats: any[] = [];
   try {
-    boats = await (prisma as any).boat.findMany({ orderBy: { createdAt: "desc" }, take: 50 });
+    boats = await (prisma as any).boat.findMany({ orderBy: [{ sort: "asc" }, { createdAt: "desc" }], take: 50 });
   } catch {}
 
   return (

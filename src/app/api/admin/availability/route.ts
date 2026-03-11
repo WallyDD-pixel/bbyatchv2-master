@@ -43,7 +43,7 @@ export async function GET(req: Request) {
           skipperPrice: true,
           skipperRequired: true
         },
-        orderBy: { name: 'asc' }
+        orderBy: [{ sort: 'asc' }, { name: 'asc' }]
       }),
       (prisma as any).availabilitySlot.findMany({
         where: { date: { gte: start, lte: end } },
