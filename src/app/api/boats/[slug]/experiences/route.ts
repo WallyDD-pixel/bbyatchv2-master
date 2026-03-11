@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 export async function GET(_req: Request, { params }: any) {
   try {
     const resolvedParams = params instanceof Promise ? await params : params;
-    const { slug } = resolvedParams;
+    const slug = typeof (resolvedParams as any)?.slug === 'string' ? (resolvedParams as any).slug.trim() : '';
 
     const boat = await prisma.boat.findUnique({
       where: { slug },

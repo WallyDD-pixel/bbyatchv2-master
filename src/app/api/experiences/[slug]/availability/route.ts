@@ -7,8 +7,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   try {
-    // Next.js 15: params is a Promise
-    const { slug } = await params;
+    // Next.js 15: params is a Promise — n'extraire que slug pour éviter de passer des clés (ex: sort) à Prisma
+    const resolved = await params;
+    const slug = typeof resolved?.slug === 'string' ? resolved.slug.trim() : '';
     const experience = await prisma.experience.findUnique({ where: { slug }, select: { id: true } });
     if(!experience) return NextResponse.json({ slots: [] });
     const where: any = { experienceId: experience.id, status: 'available' };

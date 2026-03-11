@@ -8,20 +8,24 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   
-  // Next.js 15: params is a Promise
+  // Next.js 15: params is a Promise — n'extraire que slug pour éviter de passer des clés (ex: sort) à Prisma
   const resolvedParams = await params;
+  const slug = typeof resolvedParams?.slug === 'string' ? resolvedParams.slug.trim() : '';
+  if (!slug) {
+    return NextResponse.json({ days: [] });
+  }
   
   try {
-    console.log(`[boat-availability] Request for boat: ${resolvedParams.slug}, from: ${from}, to: ${to}`);
+    console.log(`[boat-availability] Request for boat: ${slug}, from: ${from}, to: ${to}`);
     
-    // Récupérer le bateau par slug
+    // Récupérer le bateau par slug (uniquement where/select, pas d'autres arguments)
     const boat = await prisma.boat.findUnique({ 
-      where: { slug: resolvedParams.slug }, 
+      where: { slug }, 
       select: { id: true } 
     });
     
     if (!boat) {
-      console.log(`[boat-availability] Boat not found: ${resolvedParams.slug}`);
+      console.log(`[boat-availability] Boat not found: ${slug}`);
       return NextResponse.json({ days: [] });
     }
     
