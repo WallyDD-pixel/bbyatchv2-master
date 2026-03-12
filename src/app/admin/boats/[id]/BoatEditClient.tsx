@@ -748,14 +748,14 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
           <RichTextEditor
             label={locale === "fr" ? "Avantages (FR)" : "Advantages (FR)"}
             value={form.avantagesFr ?? ""}
-            onChange={(html) => setForm((prev) => ({ ...prev, avantagesFr: html }))}
+            onChange={(html) => setForm((prev: typeof form) => ({ ...prev, avantagesFr: html }))}
             placeholder={locale === "fr" ? "Équipements, confort, espace disponible, bain de soleil avant/arrière, cabine, douche, coin détente, etc." : "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc."}
             minHeight="120px"
           />
           <RichTextEditor
             label={locale === "fr" ? "Avantages (EN)" : "Advantages (EN)"}
             value={form.avantagesEn ?? ""}
-            onChange={(html) => setForm((prev) => ({ ...prev, avantagesEn: html }))}
+            onChange={(html) => setForm((prev: typeof form) => ({ ...prev, avantagesEn: html }))}
             placeholder={locale === "fr" ? "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc." : "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc."}
             minHeight="120px"
           />
@@ -769,14 +769,14 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
           <RichTextEditor
             label={locale === "fr" ? "Options incluses (FR)" : "Included Options (FR)"}
             value={form.optionsInclusesFr ?? ""}
-            onChange={(html) => setForm((prev) => ({ ...prev, optionsInclusesFr: html }))}
+            onChange={(html) => setForm((prev: typeof form) => ({ ...prev, optionsInclusesFr: html }))}
             placeholder={locale === "fr" ? "Prêt de serviettes, boissons non alcoolisées offertes, etc." : "Towel rental, non-alcoholic drinks included, etc."}
             minHeight="120px"
           />
           <RichTextEditor
             label={locale === "fr" ? "Options incluses (EN)" : "Included Options (EN)"}
             value={form.optionsInclusesEn ?? ""}
-            onChange={(html) => setForm((prev) => ({ ...prev, optionsInclusesEn: html }))}
+            onChange={(html) => setForm((prev: typeof form) => ({ ...prev, optionsInclusesEn: html }))}
             placeholder={locale === "fr" ? "Towel rental, non-alcoholic drinks included, etc." : "Towel rental, non-alcoholic drinks included, etc."}
             minHeight="120px"
           />
