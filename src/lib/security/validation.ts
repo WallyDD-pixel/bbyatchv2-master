@@ -102,7 +102,7 @@ export const passwordSchema = z
  */
 export function sanitizeHtml(html: string, maxLength?: number): string {
   let sanitized = sanitizeHtmlLib(html, {
-    allowedTags: ['b', 'i', 'em', 'strong', 'a', 'p', 'br'],
+    allowedTags: ['b', 'i', 'em', 'strong', 'u', 'a', 'p', 'br'],
     allowedAttributes: {
       a: ['href'],
     },

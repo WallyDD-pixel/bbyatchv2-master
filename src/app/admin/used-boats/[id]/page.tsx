@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import Link from 'next/link';
 import UsedBoatEditClient from './UsedBoatEditClient';
 import UsedBoatEditForm from './UsedBoatEditForm';
+import UsedBoatRichTextFields from '../UsedBoatRichTextFields';
 
 export default async function EditUsedBoatPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ lang?: string }> }){
   const session = await getServerSession() as any;
@@ -71,11 +72,8 @@ export default async function EditUsedBoatPage({ params, searchParams }: { param
           {/* Vidéos */}
           <UsedBoatEditClient boat={boat} locale={locale as any} />
 
-          {/* Résumé & Description */}
-          <label className='grid gap-1 text-sm'><span>Résumé</span><input name='summaryFr' defaultValue={boat.summaryFr||''} className='h-11 rounded-lg border border-black/15 px-3' /></label>
-          <input type='hidden' name='summaryEn' value='' />
-          <label className='grid gap-1 text-sm'><span>Description</span><textarea name='descriptionFr' rows={6} className='rounded-lg border border-black/15 px-3 py-2 resize-y' defaultValue={boat.descriptionFr||''} /></label>
-          <input type='hidden' name='descriptionEn' value='' />
+          {/* Résumé & Description (éditeur riche) */}
+          <UsedBoatRichTextFields locale={locale as any} summaryFr={boat.summaryFr || ''} descriptionFr={boat.descriptionFr || ''} />
 
           {/* Status & Sort */}
           <div className='grid md:grid-cols-2 gap-5'>

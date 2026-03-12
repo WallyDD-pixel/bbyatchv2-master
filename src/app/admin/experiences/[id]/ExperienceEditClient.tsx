@@ -2,6 +2,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import RichTextEditor from "@/components/RichTextEditor";
 
 export default function ExperienceEditClient({ 
   experience, 
@@ -72,7 +73,11 @@ export default function ExperienceEditClient({
   const [imageUrl, setImageUrl] = useState<string | null>(
     (expImageUrl && expImageUrl.length > 0) ? expImageUrl : (initialPhotos[0] || null)
   );
-  
+  const [descFr, setDescFr] = useState(experience.descFr || "");
+  const [descEn, setDescEn] = useState(experience.descEn || "");
+  const [additionalTextFr, setAdditionalTextFr] = useState((experience as any).additionalTextFr || "");
+  const [additionalTextEn, setAdditionalTextEn] = useState((experience as any).additionalTextEn || "");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -461,27 +466,43 @@ export default function ExperienceEditClient({
           <input required name='titleEn' defaultValue={experience.titleEn} className='h-11 rounded-lg border border-black/15 px-3' />
         </label>
       </div>
+      <input type="hidden" name="descFr" value={descFr} readOnly />
+      <input type="hidden" name="descEn" value={descEn} readOnly />
+      <input type="hidden" name="additionalTextFr" value={additionalTextFr} readOnly />
+      <input type="hidden" name="additionalTextEn" value={additionalTextEn} readOnly />
       <div className='grid sm:grid-cols-2 gap-4'>
-        <label className='grid gap-1 text-sm'>
-          <span>{locale === 'fr' ? 'Description (FR)' : 'Description (FR)'}</span>
-          <textarea name='descFr' rows={4} defaultValue={experience.descFr || ''} className='rounded-lg border border-black/15 px-3 py-2' />
-        </label>
-        <label className='grid gap-1 text-sm'>
-          <span>{locale === 'fr' ? 'Description (EN)' : 'Description (EN)'}</span>
-          <textarea name='descEn' rows={4} defaultValue={experience.descEn || ''} className='rounded-lg border border-black/15 px-3 py-2' />
-        </label>
+        <RichTextEditor
+          label={locale === 'fr' ? 'Description (FR)' : 'Description (FR)'}
+          value={descFr}
+          onChange={setDescFr}
+          placeholder={locale === 'fr' ? 'Description de l\'expérience…' : 'Experience description…'}
+          minHeight="100px"
+        />
+        <RichTextEditor
+          label={locale === 'fr' ? 'Description (EN)' : 'Description (EN)'}
+          value={descEn}
+          onChange={setDescEn}
+          placeholder={locale === 'fr' ? 'Experience description…' : 'Experience description…'}
+          minHeight="100px"
+        />
       </div>
       <div className='border-t border-black/10 pt-4 mt-2'>
         <h3 className='text-sm font-semibold mb-3'>{locale === 'fr' ? 'Texte supplémentaire (affiché sur la page d\'expérience)' : 'Additional text (displayed on experience page)'}</h3>
         <div className='grid sm:grid-cols-2 gap-4'>
-          <label className='grid gap-1 text-sm'>
-            <span>{locale === 'fr' ? 'Texte supplémentaire (FR)' : 'Additional text (FR)'}</span>
-            <textarea name='additionalTextFr' rows={6} defaultValue={(experience as any).additionalTextFr || ''} className='rounded-lg border border-black/15 px-3 py-2' placeholder={locale === 'fr' ? 'Texte affiché sous la description principale...' : 'Text displayed below main description...'} />
-          </label>
-          <label className='grid gap-1 text-sm'>
-            <span>{locale === 'fr' ? 'Texte supplémentaire (EN)' : 'Additional text (EN)'}</span>
-            <textarea name='additionalTextEn' rows={6} defaultValue={(experience as any).additionalTextEn || ''} className='rounded-lg border border-black/15 px-3 py-2' placeholder={locale === 'fr' ? 'Text displayed below main description...' : 'Text displayed below main description...'} />
-          </label>
+          <RichTextEditor
+            label={locale === 'fr' ? 'Texte supplémentaire (FR)' : 'Additional text (FR)'}
+            value={additionalTextFr}
+            onChange={setAdditionalTextFr}
+            placeholder={locale === 'fr' ? 'Texte affiché sous la description principale...' : 'Text displayed below main description...'}
+            minHeight="120px"
+          />
+          <RichTextEditor
+            label={locale === 'fr' ? 'Texte supplémentaire (EN)' : 'Additional text (EN)'}
+            value={additionalTextEn}
+            onChange={setAdditionalTextEn}
+            placeholder={locale === 'fr' ? 'Text displayed below main description...' : 'Text displayed below main description...'}
+            minHeight="120px"
+          />
         </div>
       </div>
       <div className='grid sm:grid-cols-2 gap-4'>

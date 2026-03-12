@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import Image from 'next/image';
+import RichTextViewer from '@/components/RichTextViewer';
 import { notFound } from 'next/navigation';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
@@ -156,7 +157,7 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
             <div className="space-y-7">
               <div className="space-y-4">
                 <h1 className="text-3xl sm:text-4xl font-bold leading-tight tracking-tight">{boat.titleFr}</h1>
-                {boat.summaryFr && <p className="text-sm sm:text-base text-black/60 leading-relaxed">{boat.summaryFr}</p>}
+                {boat.summaryFr && <RichTextViewer content={boat.summaryFr} className="text-sm sm:text-base text-black/60 leading-relaxed" />}
                 {/* Afficher le prix seulement s'il existe et est supérieur à 0, sinon afficher un message de contact */}
                 {boat.priceEur && boat.priceEur > 0 ? (
                   <p className="text-lg sm:text-xl font-semibold text-black/80">
@@ -202,9 +203,7 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
 
               {boat.descriptionFr && (
                 <article className="prose prose-sm sm:prose-base max-w-none">
-                  <div className="whitespace-pre-line text-black/80 leading-relaxed">
-                    {boat.descriptionFr}
-                  </div>
+                  <RichTextViewer content={boat.descriptionFr} className="text-black/80 leading-relaxed" />
                 </article>
               )}
             </div>

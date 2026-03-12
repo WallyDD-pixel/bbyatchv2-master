@@ -126,35 +126,31 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
     }
   };
 
-  // Fonction pour normaliser une date en string YYYY-MM-DD en UTC
-  // Les slots sont stockés en UTC, donc on doit normaliser en UTC aussi
-  const normalizeDate = (date: Date | string): string => {
-    if (typeof date === 'string') {
-      // Si c'est déjà une string, extraire juste la partie date
-      return date.split('T')[0];
-    }
-    // Utiliser UTC pour correspondre au format de stockage des slots
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  // Date du calendrier → YYYY-MM-DD en heure locale (pour cohérence avec l'affichage)
+  const toLocalDateString = (date: Date): string => format(date, 'yyyy-MM-dd');
+
+  // Date ISO ou string API → YYYY-MM-DD en heure locale (même fuseau que le calendrier)
+  const apiDateToLocalString = (date: Date | string): string => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return format(d, 'yyyy-MM-dd');
   };
 
   // Fonction pour vérifier si une date a une réservation
   const hasReservation = (date: Date): boolean => {
-    const dateStr = normalizeDate(date);
+    const dateStr = toLocalDateString(date);
     return existingReservations.some(r => {
-      const start = normalizeDate(r.startDate);
-      const end = normalizeDate(r.endDate);
-      return dateStr >= start && dateStr <= end && r.status !== 'cancelled' && r.status !== 'canceled';
+      if (r.status === 'cancelled' || r.status === 'canceled') return false;
+      const start = apiDateToLocalString(r.startDate);
+      const end = apiDateToLocalString(r.endDate);
+      return dateStr >= start && dateStr <= end;
     });
   };
 
   // Fonction pour vérifier si une date a un slot existant
   const hasSlot = (date: Date): { has: boolean; parts: string[] } => {
-    const dateStr = normalizeDate(date);
+    const dateStr = toLocalDateString(date);
     const slotsForDate = existingSlots.filter(s => {
-      const slotDateStr = normalizeDate(s.date);
+      const slotDateStr = apiDateToLocalString(s.date);
       return slotDateStr === dateStr && s.status === 'available';
     });
     return {

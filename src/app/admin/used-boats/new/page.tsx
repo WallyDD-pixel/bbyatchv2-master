@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
+import UsedBoatRichTextFields from '../UsedBoatRichTextFields';
 
 export default async function AdminUsedBoatNewPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }){
   const session = await getServerSession() as any;
@@ -45,10 +46,7 @@ export default async function AdminUsedBoatNewPage({ searchParams }: { searchPar
             <label className='grid gap-1 text-sm md:col-span-2'><span>Images (une ou plusieurs)</span><input name='images' type='file' multiple accept='image/*' className='h-11 rounded-lg border border-black/15 px-3 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:hover:bg-blue-700 file:text-white file:cursor-pointer' /></label>
             <div id='images-preview' className='md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-2'></div>
           </div>
-          <label className='grid gap-1 text-sm'><span>Résumé</span><input name='summaryFr' className='h-11 rounded-lg border border-black/15 px-3' /></label>
-          <input type='hidden' name='summaryEn' value='' />
-          <label className='grid gap-1 text-sm'><span>Description</span><textarea name='descriptionFr' rows={5} className='rounded-lg border border-black/15 px-3 py-2 resize-y' /></label>
-            <input type='hidden' name='descriptionEn' value='' />
+          <UsedBoatRichTextFields locale={locale} />
           <div className='grid md:grid-cols-2 gap-5'>
             <label className='grid gap-1 text-sm'><span>Status</span><select name='status' defaultValue='listed' className='h-11 rounded-lg border border-black/15 px-3 bg-white'><option value='listed'>listed</option><option value='sold'>sold</option><option value='hidden'>hidden</option></select></label>
             <label className='grid gap-1 text-sm'><span>Ordre (sort)</span><input name='sort' type='number' className='h-11 rounded-lg border border-black/15 px-3' defaultValue={0} /></label>

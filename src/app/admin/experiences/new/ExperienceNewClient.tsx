@@ -3,6 +3,7 @@ import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { submitForm } from "@/lib/form-utils";
 import Toast from "@/components/Toast";
+import RichTextEditor from "@/components/RichTextEditor";
 
 interface ExperienceNewClientProps {
   locale: "fr" | "en";
@@ -18,6 +19,8 @@ export default function ExperienceNewClient({ locale }: ExperienceNewClientProps
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [descFr, setDescFr] = useState("");
+  const [descEn, setDescEn] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -245,15 +248,23 @@ export default function ExperienceNewClient({ locale }: ExperienceNewClientProps
             <input required name='titleEn' className='h-11 rounded-lg border border-black/15 px-3' />
           </label>
         </div>
+        <input type="hidden" name="descFr" value={descFr} readOnly />
+        <input type="hidden" name="descEn" value={descEn} readOnly />
         <div className='grid sm:grid-cols-2 gap-4'>
-          <label className='grid gap-1 text-sm'>
-            <span>{locale === 'fr' ? 'Description (FR)' : 'Description (FR)'}</span>
-            <textarea name='descFr' rows={4} className='rounded-lg border border-black/15 px-3 py-2' />
-          </label>
-          <label className='grid gap-1 text-sm'>
-            <span>{locale === 'fr' ? 'Description (EN)' : 'Description (EN)'}</span>
-            <textarea name='descEn' rows={4} className='rounded-lg border border-black/15 px-3 py-2' />
-          </label>
+          <RichTextEditor
+            label={locale === 'fr' ? 'Description (FR)' : 'Description (FR)'}
+            value={descFr}
+            onChange={setDescFr}
+            placeholder={locale === 'fr' ? 'Description de l\'expérience…' : 'Experience description…'}
+            minHeight="100px"
+          />
+          <RichTextEditor
+            label={locale === 'fr' ? 'Description (EN)' : 'Description (EN)'}
+            value={descEn}
+            onChange={setDescEn}
+            placeholder={locale === 'fr' ? 'Experience description…' : 'Experience description…'}
+            minHeight="100px"
+          />
         </div>
 
         <div className='grid sm:grid-cols-2 gap-4'>

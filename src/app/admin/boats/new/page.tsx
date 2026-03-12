@@ -7,6 +7,7 @@ import Link from 'next/link';
 import BoatNewClient from './BoatNewClient';
 import BoatMediaUpload from './BoatMediaUpload';
 import BoatCreateForm from './BoatCreateForm';
+import BoatNewRichTextFields from './BoatNewRichTextFields';
 
 export default async function AdminBoatsNewPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = await getServerSession() as any;
@@ -128,47 +129,8 @@ export default async function AdminBoatsNewPage({ searchParams }: { searchParams
             </div>
           </div>
 
-          {/* Avantages du bateau */}
-          <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Avantages du bateau" : "Boat Advantages"}</h2>
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Avantages (FR)" : "Advantages (FR)"}</span>
-              <textarea 
-                name="avantagesFr" 
-                className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
-                placeholder={locale === "fr" ? "Équipements, confort, espace disponible, bain de soleil avant/arrière, cabine, douche, coin détente, etc." : "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc."}
-              />
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Avantages (EN)" : "Advantages (EN)"}</span>
-              <textarea 
-                name="avantagesEn" 
-                className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
-                placeholder={locale === "fr" ? "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc." : "Equipment, comfort, available space, front/rear sunbathing, cabin, shower, relaxation area, etc."}
-              />
-            </label>
-          </div>
-
-          {/* Options incluses */}
-          <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-black/70 border-b border-black/10 pb-2">{locale === "fr" ? "Options incluses" : "Included Options"}</h2>
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Options incluses (FR)" : "Included Options (FR)"}</span>
-              <textarea 
-                name="optionsInclusesFr" 
-                className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
-                placeholder={locale === "fr" ? "Prêt de serviettes, boissons non alcoolisées offertes, etc." : "Towel rental, non-alcoholic drinks included, etc."}
-              />
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span>{locale === "fr" ? "Options incluses (EN)" : "Included Options (EN)"}</span>
-              <textarea 
-                name="optionsInclusesEn" 
-                className="min-h-[120px] rounded-lg border border-black/15 px-3 py-2 text-sm"
-                placeholder={locale === "fr" ? "Towel rental, non-alcoholic drinks included, etc." : "Towel rental, non-alcoholic drinks included, etc."}
-              />
-            </label>
-          </div>
+          {/* Avantages du bateau + Options incluses (éditeur riche) */}
+          <BoatNewRichTextFields locale={locale} />
 
           {/* Skipper */}
           <div className="space-y-4">

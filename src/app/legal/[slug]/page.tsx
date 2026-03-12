@@ -111,31 +111,31 @@ export default async function LegalPage({ params, searchParams }: { params: Prom
       <main className='flex-1 max-w-3xl mx-auto px-4 py-10 w-full'>
         <h1 className='text-2xl font-bold'>{locale==='fr'? page.titleFr : page.titleEn}</h1>
         { (locale==='fr'? page.introFr: page.introEn) && (
-          <p className='mt-3 text-black/70'>{locale==='fr'? page.introFr: page.introEn}</p>
+          <p className='mt-3 text-black/70 whitespace-pre-wrap'>{locale==='fr'? page.introFr: page.introEn}</p>
         )}
         <article className='prose mt-6 max-w-none'>
           { (locale==='fr'? page.contentFr: page.contentEn) && (
             <section>
               <h2 className='text-xl font-semibold'>{locale==='fr'? 'Informations générales' : 'General information'}</h2>
-              <p>{locale==='fr'? page.contentFr: page.contentEn}</p>
+              <p className='whitespace-pre-wrap'>{locale==='fr'? page.contentFr: page.contentEn}</p>
             </section>
           )}
           {(page.cancellationFr||page.cancellationEn) && (
             <section id='annulation' className='mt-6'>
               <h2 className='text-xl font-semibold'>{locale==='fr'? 'Politique d\'annulation' : 'Cancellation policy'}</h2>
-              <p>{locale==='fr'? (page.cancellationFr||'') : (page.cancellationEn||'')}</p>
+              <p className='whitespace-pre-wrap'>{locale==='fr'? (page.cancellationFr||'') : (page.cancellationEn||'')}</p>
             </section>
           )}
           {(page.paymentFr||page.paymentEn) && (
             <section id='paiement' className='mt-6'>
               <h2 className='text-xl font-semibold'>{locale==='fr'? 'Modalités de paiement' : 'Payment modalities'}</h2>
-              <p>{locale==='fr'? (page.paymentFr||'') : (page.paymentEn||'')}</p>
+              <p className='whitespace-pre-wrap'>{locale==='fr'? (page.paymentFr||'') : (page.paymentEn||'')}</p>
             </section>
           )}
           {(page.fuelDepositFr||page.fuelDepositEn) && (
             <section id='carburant' className='mt-6'>
               <h2 className='text-xl font-semibold'>{locale==='fr'? 'Carburant & dépôt' : 'Fuel & security deposit'}</h2>
-              <p>{locale==='fr'? (page.fuelDepositFr||'') : (page.fuelDepositEn||'')}</p>
+              <p className='whitespace-pre-wrap'>{locale==='fr'? (page.fuelDepositFr||'') : (page.fuelDepositEn||'')}</p>
             </section>
           )}
         </article>

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import BoatMediaCarousel from '@/components/BoatMediaCarousel';
 import RequestBookingButton from '@/components/RequestBookingButton';
 import BoatOptionsAndBooking from '@/components/BoatOptionsAndBooking';
+import RichTextViewer from '@/components/RichTextViewer';
 import { getServerSession } from '@/lib/auth';
 import { getLabelsWithSettings } from '@/lib/settings';
 
@@ -279,9 +280,10 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
             {((boat as any).avantagesFr || (boat as any).avantagesEn) && (
               <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
                 <h2 className='text-xl font-bold mb-4'>{locale === 'fr' ? 'Avantages du bateau' : 'Boat Advantages'}</h2>
-                <div className='text-sm text-black/80 leading-relaxed whitespace-pre-line'>
-                  {locale === 'fr' ? (boat as any).avantagesFr : (boat as any).avantagesEn}
-                </div>
+                <RichTextViewer
+                  content={locale === 'fr' ? (boat as any).avantagesFr : (boat as any).avantagesEn}
+                  className='text-sm text-black/80 leading-relaxed'
+                />
               </section>
             )}
 
@@ -289,9 +291,10 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
             {((boat as any).optionsInclusesFr || (boat as any).optionsInclusesEn) && (
               <section className='rounded-2xl border border-black/10 bg-white p-6 shadow-sm'>
                 <h2 className='text-xl font-bold mb-4'>{locale === 'fr' ? 'Options incluses' : 'Included Options'}</h2>
-                <div className='text-sm text-black/80 leading-relaxed whitespace-pre-line'>
-                  {locale === 'fr' ? (boat as any).optionsInclusesFr : (boat as any).optionsInclusesEn}
-                </div>
+                <RichTextViewer
+                  content={locale === 'fr' ? (boat as any).optionsInclusesFr : (boat as any).optionsInclusesEn}
+                  className='text-sm text-black/80 leading-relaxed'
+                />
               </section>
             )}
 

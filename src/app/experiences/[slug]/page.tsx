@@ -4,6 +4,7 @@ import HeaderBar from "@/components/HeaderBar";
 import Footer from "@/components/Footer";
 import ExperienceBoatSelector from "@/components/ExperienceBoatSelector";
 import BoatMediaCarousel from "@/components/BoatMediaCarousel";
+import RichTextViewer from "@/components/RichTextViewer";
 
 export default async function ExperienceDetailPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; date?: string; boat?: string }> }) {
   // Next.js 15 : params et searchParams sont maintenant des Promises
@@ -168,14 +169,16 @@ export default async function ExperienceDetailPage({ params, searchParams }: { p
               <h1 className="text-3xl sm:text-4xl font-extrabold text-black mb-4 leading-tight">
                 {locale==='fr'? exp.titleFr: exp.titleEn}
               </h1>
-              <p className="text-sm sm:text-base leading-relaxed text-black/70 whitespace-pre-line mb-6">
-                {locale==='fr'? exp.descFr: exp.descEn}
-              </p>
+              <RichTextViewer
+                content={locale==='fr'? exp.descFr: exp.descEn}
+                className="text-sm sm:text-base leading-relaxed text-black/70 mb-6"
+              />
               {/* Texte supplémentaire (affiché sur la page d'expérience) */}
               {((locale==='fr' ? (exp as any).additionalTextFr : (exp as any).additionalTextEn)) && (
-                <p className="text-sm sm:text-base leading-relaxed text-black/70 whitespace-pre-line mb-6 pt-4 border-t border-black/10">
-                  {locale==='fr' ? (exp as any).additionalTextFr : (exp as any).additionalTextEn}
-                </p>
+                <RichTextViewer
+                  content={locale==='fr' ? (exp as any).additionalTextFr : (exp as any).additionalTextEn}
+                  className="text-sm sm:text-base leading-relaxed text-black/70 mb-6 pt-4 border-t border-black/10"
+                />
               )}
               {(locale==='fr'? exp.timeFr: exp.timeEn) && (
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[color:var(--primary)]/10 border border-[color:var(--primary)]/20 text-[12px] font-semibold text-[color:var(--primary)]">
