@@ -26,7 +26,10 @@ export async function GET(req: Request) {
     const experiences = await (prisma as any).experience.findMany({ select: { id:true, slug:true, titleFr:true, titleEn:true, imageUrl:true } });
     let slots: any[] = [];
     try {
-      slots = await (prisma as any).experienceAvailabilitySlot.findMany({ where: { date: { gte: start, lte: end } }, select: { id:true, experienceId:true, boatId:true, date:true, part:true, status:true, note:true, showInUpcoming:true } });
+      slots = await (prisma as any).experienceAvailabilitySlot.findMany({
+        where: { date: { gte: start, lte: end } },
+        select: { id:true, experienceId:true, boatId:true, date:true, part:true, status:true, note:true }
+      });
     } catch {
       // Table absente (migration non appliquée) => on renvoie quand même les expériences
     }
@@ -34,16 +37,15 @@ export async function GET(req: Request) {
   } catch { return NextResponse.json({ error: 'failed' }, { status: 500 }); }
 }
 
-// PATCH { id, note?, showInUpcoming? }
+// PATCH { id, note? }
 export async function PATCH(req: Request) {
   if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   let body: any = {}; try { body = await req.json(); } catch {}
-  const { id, note, showInUpcoming } = body || {};
+  const { id, note } = body || {};
   if (!id) return NextResponse.json({ error: 'missing_id' }, { status: 400 });
   try {
     const data: any = {};
     if (note !== undefined) data.note = note || null;
-    if (showInUpcoming !== undefined) data.showInUpcoming = !!showInUpcoming;
     const updated = await (prisma as any).experienceAvailabilitySlot.update({ where: { id: Number(id) }, data });
     return NextResponse.json({ ok:true, slot: updated });
   } catch { return NextResponse.json({ error: 'failed' }, { status: 500 }); }
@@ -53,7 +55,7 @@ export async function PATCH(req: Request) {
 export async function POST(req: Request) {
   if (!(await ensureAdmin())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   let body: any = {}; try { body = await req.json(); } catch {}
-  const { experienceId, boatId, date, part, note, experiencePrice, addOnly } = body || {};
+  const { experienceId, boatId, date, part, note, experiencePrice, addOnly, deleteOnly } = body || {};
   if (!experienceId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   if (!['AM','PM','FULL','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
   const dateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -69,12 +71,14 @@ export async function POST(req: Request) {
     let existing = null;
     try {
       if (bId !== null) {
-        existing = await (prisma as any).experienceAvailabilitySlot.findFirst({ 
-          where: { experienceId: expId, boatId: bId, date: day, part } 
+        existing = await (prisma as any).experienceAvailabilitySlot.findFirst({
+          where: { experienceId: expId, boatId: bId, date: day, part },
+          select: { id: true },
         });
       } else {
-        existing = await (prisma as any).experienceAvailabilitySlot.findFirst({ 
-          where: { experienceId: expId, boatId: null, date: day, part } 
+        existing = await (prisma as any).experienceAvailabilitySlot.findFirst({
+          where: { experienceId: expId, boatId: null, date: day, part },
+          select: { id: true },
         });
       }
     } catch (e: any) {
@@ -83,32 +87,115 @@ export async function POST(req: Request) {
     
     if (existing) { 
       if (addOnly) return NextResponse.json({ toggled:'unchanged', id: existing.id }); 
-      await (prisma as any).experienceAvailabilitySlot.delete({ where: { id: existing.id } }); 
-      return NextResponse.json({ toggled:'removed', id: existing.id }); 
+      // Ne pas utiliser Prisma pour DELETE: certaines colonnes peuvent être absentes côté DB.
+      await (prisma as any).$executeRawUnsafe(
+        `DELETE FROM "ExperienceAvailabilitySlot" WHERE "id" = ${existing.id}`
+      );
+      return NextResponse.json({ toggled:'removed', id: existing.id });
     }
     
     if (!addOnly) {
-      const deleteWhere: any = { experienceId: expId, date: day };
-      if (bId !== null) {
-        deleteWhere.boatId = bId;
-      } else {
-        deleteWhere.boatId = null;
-      }
-      if (part==='FULL') {
-        deleteWhere.part = { in:['AM','PM','SUNSET'] };
-        await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
-      } else if (part==='SUNSET') {
-        deleteWhere.part = { in:['FULL','AM','PM'] };
-        await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
-      } else {
-        deleteWhere.part = { in:['FULL','SUNSET'] };
-        await (prisma as any).experienceAvailabilitySlot.deleteMany({ where: deleteWhere });
-      }
+      // Ne pas utiliser Prisma pour DELETE: certaines colonnes peuvent être absentes côté DB.
+      const partsToDelete =
+        part === 'FULL' ? ['AM', 'PM', 'SUNSET'] :
+        part === 'SUNSET' ? ['FULL', 'AM', 'PM'] :
+        ['FULL', 'SUNSET'];
+
+      const boatCond = bId !== null ? `"boatId" = ${bId}` : `"boatId" IS NULL`;
+      const partIn = partsToDelete.map(p => `'${p}'`).join(',');
+      const dayIso = day.toISOString();
+
+      await (prisma as any).$executeRawUnsafe(
+        `DELETE FROM "ExperienceAvailabilitySlot"
+         WHERE "experienceId" = ${expId}
+           AND "date" = '${dayIso}'
+           AND ${boatCond}
+           AND "part" IN (${partIn})`
+      );
+
+      // Si c'est une suppression (UI "Supprimer"), ne pas réinsérer un slot.
+      if (deleteOnly) return NextResponse.json({ toggled:'removed', id: null });
     }
     
-    const created = await (prisma as any).experienceAvailabilitySlot.create({ 
-      data: { experienceId: expId, boatId: bId, date: day, part, status:'available', note: note||null, showInUpcoming: true } 
-    });
+    // Certains environnements n'ont pas encore la colonne `showInUpcoming`.
+    // On teste d'abord son existence, puis on construit l'INSERT en conséquence.
+    const safeNote = note || null;
+    const hasShowInUpcoming = await (prisma as any).$queryRaw<Array<{ exists: boolean }>>`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND LOWER(table_name) = LOWER('ExperienceAvailabilitySlot')
+          AND LOWER(column_name) = LOWER('showInUpcoming')
+      ) AS "exists"
+    `;
+
+    let inserted: Array<{ id: number }> = [];
+    if (hasShowInUpcoming?.[0]?.exists) {
+      inserted = await (prisma as any).$queryRaw<Array<{ id: number }>>`
+        INSERT INTO "ExperienceAvailabilitySlot"
+          (
+            "experienceId",
+            "boatId",
+            "date",
+            "part",
+            "status",
+            "note",
+            "fixedDepartureTime",
+            "fixedReturnTime",
+            "showInUpcoming",
+            "createdAt",
+            "updatedAt"
+          )
+        VALUES
+          (
+            ${expId},
+            ${bId},
+            ${day},
+            ${part},
+            'available',
+            ${safeNote},
+            null,
+            null,
+            true,
+            NOW(),
+            NOW()
+          )
+        RETURNING "id"
+      `;
+    } else {
+      inserted = await (prisma as any).$queryRaw<Array<{ id: number }>>`
+        INSERT INTO "ExperienceAvailabilitySlot"
+          (
+            "experienceId",
+            "boatId",
+            "date",
+            "part",
+            "status",
+            "note",
+            "fixedDepartureTime",
+            "fixedReturnTime",
+            "createdAt",
+            "updatedAt"
+          )
+        VALUES
+          (
+            ${expId},
+            ${bId},
+            ${day},
+            ${part},
+            'available',
+            ${safeNote},
+            null,
+            null,
+            NOW(),
+            NOW()
+          )
+        RETURNING "id"
+      `;
+    }
+
+    const created = { id: inserted?.[0]?.id };
     
     // Si un boatId est fourni et un prix est défini, créer ou mettre à jour le BoatExperience
     if (bId !== null && price !== null) {

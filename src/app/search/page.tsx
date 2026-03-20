@@ -24,12 +24,15 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
   const t = messages[locale];
 
   const { city, pax, start, end, startTime, endTime, part } = sp;
-  // Gérer HALF comme AM (demi-journée = matin)
-  let partSel: 'AM' | 'PM' | 'FULL' = 'FULL';
+  // Demi-journée = un créneau de 4h. En recherche, on accepte les bateaux disponibles
+  // en AM OU en PM (au lieu de limiter à AM uniquement).
+  let partSel: 'AM' | 'PM' | 'FULL' | 'HALF' = 'FULL';
   if (part === 'AM' || part === 'PM' || part === 'FULL') {
     partSel = part;
-  } else if (part === 'HALF' || part === 'SUNSET') {
-    // HALF et SUNSET sont traités comme AM pour la recherche
+  } else if (part === 'HALF') {
+    partSel = 'HALF';
+  } else if (part === 'SUNSET') {
+    // SUNSET reste rapproché du mode AM côté recherche/UI
     partSel = 'AM';
   }
   console.log('[search] Part from URL:', part, '-> partSel:', partSel);
@@ -419,6 +422,15 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
           return { ...b, availableParts, hasOnlyExpSlots };
         }).filter((b:any) => b !== null).sort((a:any,b:any)=> {
           // Trier d'abord par correspondance exacte au critère recherché, puis par prix
+          if (partSel === 'HALF') {
+            // Priorité: journée complète d'abord, puis prix.
+            const aFull = !!a.availableParts.FULL;
+            const bFull = !!b.availableParts.FULL;
+            if (aFull && !bFull) return -1;
+            if (!aFull && bFull) return 1;
+            return a.pricePerDay - b.pricePerDay;
+          }
+
           const aMatches = partSel==='AM' ? !!(a.availableParts.FULL || a.availableParts.AM) : !!(a.availableParts.FULL || a.availableParts.PM);
           const bMatches = partSel==='AM' ? !!(b.availableParts.FULL || b.availableParts.AM) : !!(b.availableParts.FULL || b.availableParts.PM);
           if(aMatches && !bMatches) return -1;
@@ -466,7 +478,11 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
             {partSel==='FULL' ? (
               <>Période sélectionnée: <span className="font-semibold text-black">{nbJours} jour{nbJours>1? 's':''}</span></>
             ) : (
-              <>Créneau sélectionné: <span className="font-semibold text-black">{partSel==='AM'? 'Matin':'Après-midi'} {start}</span></>
+              <>Créneau sélectionné:{' '}
+                <span className="font-semibold text-black">
+                  {partSel === 'HALF' ? 'Demi-journée' : partSel === 'AM' ? 'Matin' : 'Après-midi'} {start}
+                </span>
+              </>
             )}
           </div>
         )}
@@ -500,21 +516,28 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
             
             // Déterminer le meilleur créneau disponible pour ce bateau
             // Priorité: FULL > AM > PM > SUNSET
-            let bestPart = partSel; // Par défaut, utiliser le créneau recherché
+            let bestPart: 'FULL' | 'AM' | 'PM' = 'AM';
             if (b.availableParts) {
               // Si le bateau a le créneau recherché, l'utiliser
-              if (partSel === 'FULL' && b.availableParts.FULL) {
-                bestPart = 'FULL';
-              } else if (partSel === 'AM' && (b.availableParts.FULL || b.availableParts.AM)) {
-                bestPart = b.availableParts.FULL ? 'FULL' : 'AM';
-              } else if (partSel === 'PM' && (b.availableParts.FULL || b.availableParts.PM)) {
-                bestPart = b.availableParts.FULL ? 'FULL' : 'PM';
-              } else {
-                // Sinon, utiliser le premier créneau disponible (priorité: FULL > AM > PM > SUNSET)
+              if (partSel === 'FULL') {
                 if (b.availableParts.FULL) bestPart = 'FULL';
                 else if (b.availableParts.AM) bestPart = 'AM';
                 else if (b.availableParts.PM) bestPart = 'PM';
-                // else if (b.availableParts.SUNSET) bestPart = 'SUNSET'; // SUNSET removed to satisfy type ("AM" | "PM" | "FULL")
+              } else if (partSel === 'AM') {
+                if (b.availableParts.FULL || b.availableParts.AM) bestPart = b.availableParts.FULL ? 'FULL' : 'AM';
+              } else if (partSel === 'PM') {
+                if (b.availableParts.FULL || b.availableParts.PM) bestPart = b.availableParts.FULL ? 'FULL' : 'PM';
+              } else if (partSel === 'HALF') {
+                // En demi-journée, on accepte AM OU PM.
+                // On choisit le premier créneau disponible.
+                if (b.availableParts.FULL) bestPart = 'FULL';
+                else if (b.availableParts.AM) bestPart = 'AM';
+                else if (b.availableParts.PM) bestPart = 'PM';
+              } else {
+                // Fallback (ne devrait pas arriver)
+                if (b.availableParts.FULL) bestPart = 'FULL';
+                else if (b.availableParts.AM) bestPart = 'AM';
+                else if (b.availableParts.PM) bestPart = 'PM';
               }
             }
             
@@ -564,37 +587,45 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
                 {/* Afficher les créneaux disponibles */}
                 {b.availableParts && (
                   <div className="flex flex-wrap gap-1.5 mt-1">
-                    {b.availableParts.FULL && (
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
-                        partSel === 'FULL' 
-                          ? 'bg-emerald-500 text-white bg-emerald-600' 
-                          : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                      }`}>
-                        {locale === 'fr' ? 'Journée complète' : 'Full day'}
+                    {partSel === 'HALF' ? (
+                      <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-emerald-600 text-white">
+                        {locale === 'fr' ? 'Demi-journée' : 'Half-day'}
                       </span>
-                    )}
-                    {b.availableParts.AM && (
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
-                        partSel === 'AM' 
-                          ? 'bg-blue-500 text-white bg-blue-600' 
-                          : 'bg-blue-100 text-blue-700 border border-blue-300'
-                      }`}>
-                        {locale === 'fr' ? 'Matin' : 'Morning'}
-                      </span>
-                    )}
-                    {b.availableParts.PM && (
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
-                        partSel === 'PM' 
-                          ? 'bg-orange-500 text-white bg-orange-600' 
-                          : 'bg-orange-100 text-orange-700 border border-orange-300'
-                      }`}>
-                        {locale === 'fr' ? 'Après-midi' : 'Afternoon'}
-                      </span>
-                    )}
-                    {b.availableParts.SUNSET && (
-                      <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 border border-purple-300">
-                        {locale === 'fr' ? 'Coucher de soleil' : 'Sunset'}
-                      </span>
+                    ) : (
+                      <>
+                        {b.availableParts.FULL && (
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
+                            partSel === 'FULL' 
+                              ? 'bg-emerald-500 text-white bg-emerald-600' 
+                              : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                          }`}>
+                            {locale === 'fr' ? 'Journée complète' : 'Full day'}
+                          </span>
+                        )}
+                        {b.availableParts.AM && (
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
+                            partSel === 'AM' 
+                              ? 'bg-blue-500 text-white bg-blue-600' 
+                              : 'bg-blue-100 text-blue-700 border border-blue-300'
+                          }`}>
+                            {locale === 'fr' ? 'Matin' : 'Morning'}
+                          </span>
+                        )}
+                        {b.availableParts.PM && (
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
+                            partSel === 'PM' 
+                              ? 'bg-orange-500 text-white bg-orange-600' 
+                              : 'bg-orange-100 text-orange-700 border border-orange-300'
+                          }`}>
+                            {locale === 'fr' ? 'Après-midi' : 'Afternoon'}
+                          </span>
+                        )}
+                        {b.availableParts.SUNSET && (
+                          <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 border border-purple-300">
+                            {locale === 'fr' ? 'Coucher de soleil' : 'Sunset'}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

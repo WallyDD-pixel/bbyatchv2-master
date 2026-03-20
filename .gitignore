@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# temporaire (debug / export)
+.tmp-*.html
+
 # debug
 npm-debug.log*
 yarn-debug.log*

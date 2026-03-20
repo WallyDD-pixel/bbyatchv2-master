@@ -19,9 +19,17 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  // Garde-fou : si Next n'a pas chargé les variables d'env Supabase,
+  // on évite que le middleware fasse crash toute la page.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey || supabaseAnonKey.includes("...")) {
+    return response;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {

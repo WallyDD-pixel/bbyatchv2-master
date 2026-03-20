@@ -75,8 +75,11 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   const [tooltipPosition, setTooltipPosition] = useState<{x: number, y: number} | null>(null);
 
   const load = useCallback(async (anchor: Date) => {
-    const from = startOfDay(addDays(anchor, -31));
-    const to = endOfDay(addDays(anchor, 62));
+    // Le calendrier admin doit afficher suffisamment loin dans le futur.
+    // Avant: -31 / +62 => typiquement jusqu'à ~mai si on est au milieu du printemps.
+    // Maintenant: on étend la fenêtre pour couvrir jusqu'à octobre.
+    const from = startOfDay(addDays(anchor, -60));
+    const to = endOfDay(addDays(anchor, 260));
     const fmt = (d: Date) => { 
       const y=d.getFullYear(); 
       const m=String(d.getMonth()+1).padStart(2,'0'); 
@@ -1607,32 +1610,6 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                         <div className="text-base mt-1">{expSlotInfo.note}</div>
                       </div>
                     )}
-                    <div className="p-4 bg-gray-50 rounded-lg flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700 cursor-pointer flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={expSlotInfo.showInUpcoming !== false}
-                          onChange={async (e) => {
-                            const value = e.target.checked;
-                            try {
-                              const res = await fetch('/api/admin/availability/experiences', {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ id: expSlotInfo.id, showInUpcoming: value }),
-                              });
-                              if (res.ok) {
-                                setExpSlotInfo((prev: any) => prev ? { ...prev, showInUpcoming: value } : null);
-                                setCalendarUpdateKey(prev => prev + 1);
-                              }
-                            } catch (err) {
-                              console.error(err);
-                            }
-                          }}
-                          className="rounded border-gray-300"
-                        />
-                        {locale === 'fr' ? 'Afficher dans le bloc "Prochains événements" (accueil)' : 'Show in "Upcoming events" block (homepage)'}
-                      </label>
-                    </div>
                     <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                       <button
                         onClick={async () => {
@@ -1664,6 +1641,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                                 boatId: expSlotInfo.boatId || null,
                                 date: dateStr,
                                 part: expSlotInfo.part,
+                                deleteOnly: true,
                               }),
                             });
                             

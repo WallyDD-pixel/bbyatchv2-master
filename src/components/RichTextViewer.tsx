@@ -23,6 +23,11 @@ export default function RichTextViewer({
   if (!trimmed) return null;
 
   let toRender = trimmed;
+  // Si le contenu arrive comme HTML échappé (ex: &lt;br&gt;), on le normalise
+  // pour que le rendu se fasse en HTML (sinon on affiche les balises en texte).
+  if (toRender.includes("&lt;") && !toRender.includes("<")) {
+    toRender = toRender.replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+  }
   if (toRender.includes("&lt;br") && !toRender.includes("<br>")) {
     toRender = toRender.replace(/&lt;br\s*\/?&gt;/gi, "<br>");
   }

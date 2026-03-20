@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase-client";
+import { createClient, supabaseClientReady, supabaseClientEnvDebug } from "@/lib/supabase-client";
 
 export default function SignInFormClient() {
   const searchParams = useSearchParams();
@@ -19,6 +19,13 @@ export default function SignInFormClient() {
     setError(null);
     if (!email || !password) {
       setError("Veuillez renseigner votre email et votre mot de passe.");
+      return;
+    }
+
+    if (!supabaseClientReady) {
+      setError(
+        `Configuration Supabase manquante/tronquée. URL=${supabaseClientEnvDebug.urlPresent ? "ok" : "missing"}, anonLen=${supabaseClientEnvDebug.anonLen}, anonHasEllipsis=${supabaseClientEnvDebug.anonHasEllipsis}. Remplace NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY (clés complètes) dans .env puis redémarre Next.`
+      );
       return;
     }
     setLoading(true);

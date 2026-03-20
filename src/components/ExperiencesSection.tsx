@@ -2,6 +2,7 @@ import Image from "next/image";
 import { type Locale } from "@/i18n/messages";
 import { prisma } from "@/lib/prisma";
 import ExperienceLinkButton from "./ExperienceLinkButton";
+import RichTextViewer from "./RichTextViewer";
 
 export default async function ExperiencesSection({ locale, t }: { locale: Locale; t: Record<string, string> }) {
   let items: { slug: string; title: string; desc: string; time?: string | null; imageUrl?: string | null }[] = [];
@@ -61,7 +62,10 @@ export default async function ExperiencesSection({ locale, t }: { locale: Locale
             </a>
             <div className="p-4 sm:p-6 flex flex-col flex-1">
               <h4 className="text-base sm:text-lg font-extrabold tracking-tight uppercase text-black/90">{c.title}</h4>
-              <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-relaxed text-black/70 line-clamp-4">{c.desc}</p>
+              <RichTextViewer
+                content={c.desc}
+                className="mt-2 sm:mt-3 text-xs sm:text-sm leading-relaxed text-black/70 line-clamp-4"
+              />
               {c.time && <p className="mt-3 sm:mt-4 text-[11px] sm:text-xs text-black/60">{c.time}</p>}
               <div className="mt-4 sm:mt-5">
                 <ExperienceLinkButton href={`/experiences/${c.slug}`} locale={locale} />

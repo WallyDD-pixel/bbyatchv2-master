@@ -5,11 +5,25 @@ const { createClient } = require('@supabase/supabase-js');
 // Lire le fichier .env manuellement
 const envContent = fs.readFileSync('.env', 'utf8');
 const envVars = {};
-envContent.split('\n').forEach(line => {
-  const match = line.match(/^([^=]+)="?(.+?)"?$/);
-  if (match) {
-    envVars[match[1].trim()] = match[2].trim().replace(/^"|"$/g, '');
+envContent.split(/\r?\n/).forEach((line) => {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith('#')) return;
+
+  const idx = trimmed.indexOf('=');
+  if (idx === -1) return;
+
+  const key = trimmed.slice(0, idx).trim();
+  let value = trimmed.slice(idx + 1).trim();
+
+  // Dé-quote basique si la valeur est entre guillemets
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1);
   }
+
+  envVars[key] = value;
 });
 
 console.log('🔍 Vérification de la configuration Supabase...\n');

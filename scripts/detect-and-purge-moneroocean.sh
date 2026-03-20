@@ -65,6 +65,12 @@ check_locations() {
     log "DÉTECTION: processus de minage en cours"
     FOUND=1
   fi
+  # Unités systemd déposées par le malware (souvent après suppression des fichiers)
+  if [[ -f /etc/systemd/system/moneroocean_miner.service ]] || \
+     systemctl list-unit-files 2>/dev/null | grep -qE 'moneroocean|xmrig'; then
+    log "DÉTECTION: unité systemd liée au mineur"
+    FOUND=1
+  fi
 }
 
 # Purge: tuer les processus (sans tuer ce script: son nom contient "moneroocean")
@@ -89,6 +95,28 @@ purge_processes() {
       fi
     fi
   done
+}
+
+# Purge: systemd (nécessite root pour stop/disable sous /etc)
+purge_systemd_miner_units() {
+  log "Purge: désactivation des unités systemd liées au mineur..."
+  local units=(moneroocean_miner.service)
+  local u
+  for u in "${units[@]}"; do
+    if systemctl list-unit-files 2>/dev/null | grep -q "^${u}"; then
+      systemctl stop "$u" 2>/dev/null || sudo systemctl stop "$u" 2>/dev/null || true
+      systemctl disable "$u" 2>/dev/null || sudo systemctl disable "$u" 2>/dev/null || true
+    fi
+    if [[ -f "/etc/systemd/system/$u" ]]; then
+      rm -f "/etc/systemd/system/$u" 2>/dev/null || sudo rm -f "/etc/systemd/system/$u" 2>/dev/null || true
+      log "  -> supprimé: /etc/systemd/system/$u"
+    fi
+    if [[ -L "/etc/systemd/system/multi-user.target.wants/$u" ]]; then
+      rm -f "/etc/systemd/system/multi-user.target.wants/$u" 2>/dev/null || \
+        sudo rm -f "/etc/systemd/system/multi-user.target.wants/$u" 2>/dev/null || true
+    fi
+  done
+  systemctl daemon-reload 2>/dev/null || sudo systemctl daemon-reload 2>/dev/null || true
 }
 
 # Purge: supprimer dossiers et fichiers
@@ -168,6 +196,7 @@ main() {
 
   log "========== PURGE AUTOMATIQUE DÉMARRÉE =========="
   purge_processes
+  purge_systemd_miner_units
   purge_files
   block_malware_ip
   log "========== PURGE TERMINÉE =========="
