@@ -22,12 +22,25 @@ export default function RichTextEditor({
   const elRef = useRef<HTMLDivElement>(null);
   const isInternalRef = useRef(false);
 
+  const decodeHtmlEntities = (input: string) => {
+    // Utilise le parser natif du navigateur pour décoder proprement les entités.
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = input;
+    return textarea.value;
+  };
+
   const syncFromValue = useCallback(() => {
     if (!elRef.current) return;
     let raw = (value || "").trim();
     if (!raw) {
       if (!isInternalRef.current) elRef.current.innerHTML = "";
       return;
+    }
+    // Certaines descriptions reviennent encodées (&lt;p&gt;...).
+    // Sans décodage, l'éditeur les ré-encode et affiche "du code".
+    if ((raw.includes("&lt;") || raw.includes("&gt;")) && !raw.includes("<")) {
+      const decoded = decodeHtmlEntities(raw);
+      if (decoded && decoded.includes("<")) raw = decoded;
     }
     if (raw.includes("&lt;br") && !raw.includes("<br>")) {
       raw = raw.replace(/&lt;br\s*\/?&gt;/gi, "<br>");
