@@ -268,11 +268,16 @@ export function generateSecureFileName(originalName: string, mimeType: string): 
   const ext = extMap[mimeType] || 'bin';
   const timestamp = Date.now();
   const randomStr = Math.random().toString(36).slice(2, 10);
-  
-  // Nettoyer le nom original (enlever caractères dangereux)
-  const cleanName = originalName
+
+  let cleanName = originalName
     .replace(/[^a-zA-Z0-9.-]/g, '_')
     .slice(0, 50);
+  // Éviter cropped-123.jpg → …jpg.jpg
+  cleanName = cleanName.replace(
+    new RegExp(`\\.(${ext}|jpe?g|png|gif|webp|mov|mp4|webm|ogg)$`, 'i'),
+    ''
+  );
+  if (!cleanName) cleanName = 'file';
 
   return `${timestamp}-${randomStr}-${cleanName}.${ext}`;
 }

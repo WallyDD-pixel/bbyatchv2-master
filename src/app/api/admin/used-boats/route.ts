@@ -4,6 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { uploadMultipleToSupabase } from '@/lib/storage';
 import { createRedirectUrl } from '@/lib/redirect';
 
+function isFileLike(value: unknown): value is File {
+  return typeof value === 'object' && value !== null && typeof (value as any).arrayBuffer === 'function' && typeof (value as any).name === 'string';
+}
+
 export async function GET(){
   try {
     const rows = await (prisma as any).usedBoat.findMany({ orderBy:[{ sort:'asc' }, { createdAt:'desc' }] });
@@ -40,7 +44,7 @@ export async function POST(req: Request){
         const validFiles: File[] = [];
         
         for (const file of imageFiles) {
-          if (!(file instanceof File) || file.size === 0) continue;
+          if (!isFileLike(file) || file.size === 0) continue;
           const validation = await validateImageFile(file);
           if (validation.valid) {
             validFiles.push(file);

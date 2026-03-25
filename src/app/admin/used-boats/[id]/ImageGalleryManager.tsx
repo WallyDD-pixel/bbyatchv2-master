@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import ImageCropper from '@/components/ImageCropper';
 
 interface ImageItem {
@@ -59,9 +59,10 @@ export default function ImageGalleryManager({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const keepPhotosInputRef = useRef<HTMLInputElement>(null);
   const mainImageInputRef = useRef<HTMLInputElement>(null);
+  const mainNewUploadIndexRef = useRef<HTMLInputElement>(null);
 
-  // Mettre à jour les champs cachés quand les images changent
-  useEffect(() => {
+  // Mettre à jour les champs cachés quand les images changent (layout = avant peinture, évite une course avec « Enregistrer »)
+  useLayoutEffect(() => {
     console.log('🔄 Mise à jour des champs cachés, images:', images.length);
     
     // Utiliser requestAnimationFrame pour s'assurer que les refs sont bien attachées
@@ -69,6 +70,12 @@ export default function ImageGalleryManager({
       // Trouver l'image principale (priorité aux images existantes, sinon la première image principale)
       const mainImage = images.find(img => img.isMain && !img.isTemp) || images.find(img => img.isMain);
       const otherImages = images.filter(img => !img.isMain && !img.isTemp);
+      // Ordre des fichiers à uploader = même ordre que le parent (FormSubmitHandler append)
+      const tempsWithFile = images.filter((img) => img.isTemp && img.file);
+      const mainIsNewUpload =
+        mainImage?.isTemp && mainImage.file
+          ? tempsWithFile.findIndex((img) => img === mainImage)
+          : -1;
       
       console.log('📊 Images analysées - mainImage:', mainImage ? 'trouvée' : 'absente', 'otherImages:', otherImages.length);
       console.log('📊 Détail mainImage:', mainImage ? { url: mainImage.url.substring(0, 50) + '...', isTemp: mainImage.isTemp } : 'aucune');
@@ -93,6 +100,11 @@ export default function ImageGalleryManager({
         console.warn('⚠️ keepPhotosInputRef.current est null');
       }
 
+      if (mainNewUploadIndexRef.current) {
+        mainNewUploadIndexRef.current.value =
+          mainIsNewUpload >= 0 ? String(mainIsNewUpload) : '';
+      }
+
       // Notifier les nouveaux fichiers
       if (onNewFilesChange) {
         const newFiles = images.filter(img => img.isTemp && img.file).map(img => img.file!);
@@ -105,8 +117,20 @@ export default function ImageGalleryManager({
     const files = e.target.files;
     if (!files) return;
 
-    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-    if (imageFiles.length === 0) return;
+    const looksLikeImage = (f: File) =>
+      f.type.startsWith('image/') ||
+      /\.(jpe?g|png|gif|webp|bmp|avif)$/i.test(f.name);
+
+    const imageFiles = Array.from(files).filter(looksLikeImage);
+    if (imageFiles.length === 0) {
+      alert(
+        locale === 'fr'
+          ? 'Aucune image reconnue (JPEG, PNG, WebP, GIF…). Les fichiers HEIC/iPhone peuvent être refusés par le navigateur : exportez en JPEG ou utilisez une autre photo.'
+          : 'No supported image (JPEG, PNG, WebP, GIF…). HEIC/iPhone files may not work in the browser — export as JPEG or pick another photo.'
+      );
+      e.target.value = '';
+      return;
+    }
 
     console.log('📁 Fichiers sélectionnés:', imageFiles.length);
 
@@ -121,20 +145,37 @@ export default function ImageGalleryManager({
         r.readAsDataURL(file);
       });
 
-    if (restFiles.length > 0) {
-      const restUrls = await Promise.all(restFiles.map(readAsDataUrl));
-      const newItems: ImageItem[] = restUrls.map((url, i) => ({
-        url,
-        isMain: false,
-        isTemp: true,
-        file: restFiles[i],
-      }));
-      setImages(prev => [...prev, ...newItems]);
-    }
+    const cropIndex = images.length + restFiles.length;
 
-    const firstUrl = await readAsDataUrl(firstFile);
-    if (firstUrl) {
-      setCroppingImage({ url: firstUrl, index: images.length + restFiles.length });
+    try {
+      if (restFiles.length > 0) {
+        const restUrls = await Promise.all(restFiles.map(readAsDataUrl));
+        const newItems: ImageItem[] = restUrls.map((url, i) => ({
+          url,
+          isMain: false,
+          isTemp: true,
+          file: restFiles[i],
+        }));
+        setImages((prev) => {
+          const isFirst = prev.length === 0;
+          if (isFirst && newItems.length > 0) {
+            newItems[0] = { ...newItems[0], isMain: true };
+          }
+          return [...prev, ...newItems];
+        });
+      }
+
+      const firstUrl = await readAsDataUrl(firstFile);
+      if (firstUrl) {
+        setCroppingImage({ url: firstUrl, index: cropIndex });
+      }
+    } catch (err) {
+      console.error('Erreur lecture image:', err);
+      alert(
+        locale === 'fr'
+          ? 'Impossible de lire ce fichier image. Essayez un autre format (JPEG, PNG).'
+          : 'Could not read this image file. Try another format (JPEG, PNG).'
+      );
     }
 
     e.target.value = '';
@@ -148,7 +189,8 @@ export default function ImageGalleryManager({
       const url = event.target?.result as string;
       if (url) {
         setImages(prev => {
-          const newImages = [...prev, { url, isMain: false, isTemp: true, file: croppedFile }];
+          const isFirst = prev.length === 0;
+          const newImages = [...prev, { url, isMain: isFirst, isTemp: true, file: croppedFile }];
           return newImages;
         });
       }
@@ -206,7 +248,10 @@ export default function ImageGalleryManager({
       reader.onload = (event) => {
         const url = event.target?.result as string;
         if (url) {
-          setImages(prev => [...prev, { url, isMain: false, isTemp: true, file }]);
+          setImages((prev) => {
+            const isFirst = prev.length === 0;
+            return [...prev, { url, isMain: isFirst, isTemp: true, file }];
+          });
         }
       };
       reader.readAsDataURL(file);
@@ -239,9 +284,16 @@ export default function ImageGalleryManager({
         console.log('✅ Nouvelle image principale définie:', newImages[0].url.substring(newImages[0].url.length - 30));
       }
       
-      // Mettre à jour immédiatement les champs cachés
-      const mainImage = newImages.find(img => img.isMain && !img.isTemp);
+      // Mettre à jour immédiatement les champs cachés (même logique que useEffect : main peut être temporaire)
+      const mainImage =
+        newImages.find((img) => img.isMain && !img.isTemp) ||
+        newImages.find((img) => img.isMain);
       const otherImages = newImages.filter(img => !img.isMain && !img.isTemp);
+      const tempsWithFile = newImages.filter((img) => img.isTemp && img.file);
+      const mainNewIdx =
+        mainImage?.isTemp && mainImage.file
+          ? tempsWithFile.findIndex((img) => img === mainImage)
+          : -1;
       
       if (mainImageInputRef.current) {
         mainImageInputRef.current.value = mainImage?.url || '';
@@ -253,6 +305,10 @@ export default function ImageGalleryManager({
         const jsonValue = JSON.stringify(existingPhotos);
         keepPhotosInputRef.current.value = jsonValue;
         console.log('✅ keepPhotosInput mis à jour après suppression:', existingPhotos.length, 'photos, valeur:', jsonValue);
+      }
+
+      if (mainNewUploadIndexRef.current) {
+        mainNewUploadIndexRef.current.value = mainNewIdx >= 0 ? String(mainNewIdx) : '';
       }
       
       return newImages;
@@ -358,7 +414,11 @@ export default function ImageGalleryManager({
           imageUrl={croppingImage.url}
           aspectRatio={16/9}
           locale={locale}
-          onCrop={croppingImage.index >= images.length ? handleCropNewImage : handleCropExistingImage}
+          onCrop={
+            croppingImage.url.startsWith('data:') || croppingImage.url.startsWith('blob:')
+              ? handleCropNewImage
+              : handleCropExistingImage
+          }
           onCancel={() => {
             setCroppingImage(null);
           }}
@@ -587,6 +647,12 @@ export default function ImageGalleryManager({
         ref={mainImageInputRef}
         type="hidden" 
         name="mainImageChoice" 
+        defaultValue=""
+      />
+      <input
+        ref={mainNewUploadIndexRef}
+        type="hidden"
+        name="mainNewUploadIndex"
         defaultValue=""
       />
     </div>

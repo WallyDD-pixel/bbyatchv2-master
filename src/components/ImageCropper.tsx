@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface ImageCropperProps {
   imageUrl: string;
@@ -21,63 +22,85 @@ export default function ImageCropper({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    if (imageRef.current && containerRef.current) {
-      const img = imageRef.current;
-      const container = containerRef.current;
-      
-      // Définir crossOrigin uniquement pour les URLs externes (pas pour blob: ou data:)
-      const isLocalUrl = imageUrl.startsWith('blob:') || imageUrl.startsWith('data:');
-      if (!isLocalUrl) {
-        img.crossOrigin = 'anonymous';
-      } else {
-        img.crossOrigin = '';
+  useLayoutEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Important : `mounted` doit être dans les deps. Au 1er passage, le portail n’existe pas encore
+  // (return null), donc les refs sont null et l’effet ne fait rien — sans re-run l’image reste invisible.
+  useLayoutEffect(() => {
+    if (!mounted) return;
+    const img = imageRef.current;
+    const container = containerRef.current;
+    if (!img || !container) return;
+
+    const isLocalUrl =
+      imageUrl.startsWith("blob:") || imageUrl.startsWith("data:");
+    img.crossOrigin = isLocalUrl ? "" : "anonymous";
+
+    const layout = () => {
+      if (!img.naturalWidth || !img.naturalHeight) return;
+
+      let cw = container.clientWidth;
+      let ch = container.clientHeight;
+      if (cw < 32 || ch < 32) {
+        const br = container.getBoundingClientRect();
+        cw = Math.max(32, Math.floor(br.width) || 640);
+        ch = Math.max(200, Math.floor(br.height) || 400);
       }
-      
-      const handleLoad = () => {
-        setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
-        
-        const containerWidth = container.clientWidth;
-        const containerHeight = container.clientHeight;
-        const cropWidth = Math.min(containerWidth * 0.8, containerHeight * 0.8 * aspectRatio);
-        const cropHeight = cropWidth / aspectRatio;
-        const cropX = (containerWidth - cropWidth) / 2;
-        const cropY = (containerHeight - cropHeight) / 2;
-        
-        const scaleX = cropWidth / img.naturalWidth;
-        const scaleY = cropHeight / img.naturalHeight;
-        const initialScale = Math.max(scaleX, scaleY) * 1.1;
-        
-        setScale(initialScale);
-        const displayW = img.naturalWidth * initialScale;
-        const displayH = img.naturalHeight * initialScale;
-        setPosition({
-          x: cropX - (displayW - cropWidth) / 2,
-          y: cropY - (displayH - cropHeight) / 2,
-        });
-      };
-      
-      const handleError = () => {
-        console.warn('⚠️ Erreur de chargement de l\'image, tentative sans crossOrigin');
-        // Si l'image ne peut pas être chargée avec crossOrigin, réessayer sans
-        if (!isLocalUrl && img.crossOrigin === 'anonymous') {
-          img.crossOrigin = '';
-          img.src = imageUrl;
-        }
-      };
-      
-      if (img.complete) {
-        handleLoad();
-      } else {
-        img.onload = handleLoad;
-        img.onerror = handleError;
+
+      setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
+
+      const cropWidth = Math.min(cw * 0.8, ch * 0.8 * aspectRatio);
+      const cropHeight = cropWidth / aspectRatio;
+      const cropX = (cw - cropWidth) / 2;
+      const cropY = (ch - cropHeight) / 2;
+
+      const scaleX = cropWidth / img.naturalWidth;
+      const scaleY = cropHeight / img.naturalHeight;
+      const initialScale = Math.max(scaleX, scaleY, 0.01) * 1.1;
+
+      setScale(initialScale);
+      const displayW = img.naturalWidth * initialScale;
+      const displayH = img.naturalHeight * initialScale;
+      setPosition({
+        x: cropX - (displayW - cropWidth) / 2,
+        y: cropY - (displayH - cropHeight) / 2,
+      });
+    };
+
+    const onLoad = () => layout();
+    const onError = () => {
+      if (!isLocalUrl && img.crossOrigin === "anonymous") {
+        img.crossOrigin = "";
+        img.src = imageUrl;
       }
+    };
+
+    img.addEventListener("load", onLoad);
+    img.addEventListener("error", onError);
+
+    const ro = new ResizeObserver(() => layout());
+    ro.observe(container);
+
+    if (img.complete && img.naturalWidth) {
+      layout();
     }
-  }, [imageUrl, aspectRatio]);
+
+    requestAnimationFrame(() => layout());
+    requestAnimationFrame(() => requestAnimationFrame(() => layout()));
+
+    return () => {
+      img.removeEventListener("load", onLoad);
+      img.removeEventListener("error", onError);
+      ro.disconnect();
+    };
+  }, [imageUrl, aspectRatio, mounted]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -202,11 +225,16 @@ export default function ImageCropper({
 
   const cropArea = getCropArea();
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+  const modal = (
+    <div
+      className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="image-cropper-title"
+    >
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
         <div className="p-4 border-b border-black/10">
-          <h2 className="text-lg font-semibold">
+          <h2 id="image-cropper-title" className="text-lg font-semibold">
             {locale === "fr" ? "Recadrer l'image" : "Crop image"}
           </h2>
           <p className="text-sm text-black/60 mt-1">
@@ -226,6 +254,7 @@ export default function ImageCropper({
           onWheel={handleWheel}
         >
           <img
+            key={imageUrl}
             ref={imageRef}
             src={imageUrl}
             alt="Image à recadrer"
@@ -298,6 +327,7 @@ export default function ImageCropper({
                 <span className="text-xs text-black/60 w-12">{(scale * 100).toFixed(0)}%</span>
               </label>
               <button
+                type="button"
                 onClick={() => setScale(1)}
                 className="px-3 py-1 text-xs rounded border border-black/15 bg-white hover:bg-black/5"
               >
@@ -307,12 +337,14 @@ export default function ImageCropper({
             
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={onCancel}
                 className="px-4 py-2 rounded-lg border border-black/15 bg-white hover:bg-black/5 transition-colors"
               >
                 {locale === "fr" ? "Annuler" : "Cancel"}
               </button>
               <button
+                type="button"
                 onClick={handleCrop}
                 className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-semibold"
               >
@@ -335,4 +367,7 @@ export default function ImageCropper({
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(modal, document.body);
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useRef } from 'react';
 import ImageGalleryManager from './ImageGalleryManager';
 import FormSubmitHandler from './FormSubmitHandler';
 
@@ -10,18 +10,20 @@ interface UsedBoatEditFormProps {
 }
 
 export default function UsedBoatEditForm({ boat, locale, photoList }: UsedBoatEditFormProps) {
-  const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
+  const newImageFilesRef = useRef<File[]>([]);
 
   return (
     <>
-      <FormSubmitHandler newImageFiles={newImageFiles} />
+      <FormSubmitHandler newImageFilesRef={newImageFilesRef} />
       
       {/* Gestion images drag & drop */}
       <ImageGalleryManager 
         initialMainImage={boat.mainImage}
         initialPhotos={photoList}
         locale={locale}
-        onNewFilesChange={setNewImageFiles}
+        onNewFilesChange={(files) => {
+          newImageFilesRef.current = files;
+        }}
       />
     </>
   );

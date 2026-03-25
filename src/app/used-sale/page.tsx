@@ -1,11 +1,16 @@
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
+import RichTextViewer from '@/components/RichTextViewer';
 import { messages, type Locale } from '@/i18n/messages';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Image from 'next/image';
 
 export const dynamic = 'force-dynamic';
+
+function stripTagsForAlt(s: string) {
+  return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
+}
 
 export default async function UsedSalePage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }){
   const sp = (await searchParams) || {};
@@ -51,11 +56,18 @@ export default async function UsedSalePage({ searchParams }: { searchParams?: Pr
           <div className='text-black/50 mb-12 text-sm'>{locale==='fr'? 'Aucun bateau disponible pour le moment.' : 'No boats currently available.'}</div>
         )}
         <div className='grid sm:grid-cols-2 xl:grid-cols-3 gap-8'>
-          {listed.map((b:any)=> (
-            <Link key={b.id} href={`/used-sale/${b.slug}`} className='group relative rounded-2xl bg-white border border-black/10 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition'>
+          {listed.map((b:any)=> {
+            const boatTitle = locale === 'fr' ? b.titleFr : b.titleEn;
+            const summary =
+              locale === 'fr'
+                ? (b.summaryFr || b.summaryEn)
+                : (b.summaryEn || b.summaryFr);
+            const imgAlt = stripTagsForAlt(boatTitle) || (locale === 'fr' ? 'Bateau' : 'Boat');
+            return (
+            <Link key={b.id} href={`/used-sale/${b.slug}?lang=${locale}`} className='group relative rounded-2xl bg-white border border-black/10 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition'>
               {b.mainImage && (
                 <div className='relative aspect-[16/10] w-full overflow-hidden'>
-                  <Image src={b.mainImage} alt={b.titleFr} fill className='object-cover group-hover:scale-105 transition-transform duration-500' />
+                  <Image src={b.mainImage} alt={imgAlt} fill className='object-cover group-hover:scale-105 transition-transform duration-500' />
                   <div className='absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent opacity-60 group-hover:opacity-70 transition' />
                   <div className='absolute top-3 left-3 flex flex-col gap-2'>
                     <span className='px-3 py-1 rounded-full text-[11px] font-medium bg-white/90 backdrop-blur border border-white/60 text-black shadow'>
@@ -63,7 +75,12 @@ export default async function UsedSalePage({ searchParams }: { searchParams?: Pr
                     </span>
                   </div>
                   <div className='absolute bottom-3 left-3 right-3 flex items-end justify-between'>
-                    <h2 className='text-white text-lg font-semibold drop-shadow max-w-[70%] line-clamp-2'>{locale==='fr'? b.titleFr : b.titleEn}</h2>
+                    <div className='max-w-[70%] min-w-0'>
+                      <RichTextViewer
+                        content={boatTitle}
+                        className="text-white text-lg font-semibold drop-shadow line-clamp-2 [&_*]:text-white [&_a]:text-white [&_p]:mb-0 [&_p]:inline"
+                      />
+                    </div>
                     {/* Prix masqué - ne plus afficher même s'il existe en base */}
                   </div>
                 </div>
@@ -72,7 +89,18 @@ export default async function UsedSalePage({ searchParams }: { searchParams?: Pr
                 <div className='aspect-[16/10] w-full bg-black/5 flex items-center justify-center text-black/40 text-sm'>No image</div>
               )}
               <div className='p-5 flex flex-col gap-3 flex-1'>
-                {b.summaryFr && <p className='text-[13px] leading-snug text-black/60 line-clamp-3'>{b.summaryFr}</p>}
+                {!b.mainImage && (
+                  <div className='text-base font-semibold text-black/90 line-clamp-2'>
+                    <RichTextViewer content={boatTitle} />
+                  </div>
+                )}
+                {summary ? (
+                  <RichTextViewer
+                    content={summary}
+                    className='text-[13px] leading-snug text-black/60 line-clamp-3 [&_p]:mb-0'
+                    maxLength={2000}
+                  />
+                ) : null}
                 <div className='mt-auto flex flex-wrap gap-2 text-[11px]'>
                   {b.engineHours && <span className='px-2 py-1 rounded-full bg-black/5 text-black/70'>{b.engineHours} h</span>}
                   {b.fuelType && <span className='px-2 py-1 rounded-full bg-black/5 text-black/70'>{b.fuelType}</span>}
@@ -80,26 +108,31 @@ export default async function UsedSalePage({ searchParams }: { searchParams?: Pr
                 </div>
               </div>
             </Link>
-          ))}
+          );})}
         </div>
         {sold.length > 0 && (
           <div className='mt-24'>
             <h2 className='text-2xl font-semibold mb-6 flex items-center gap-3'>{locale==='fr'? 'Déjà vendus':'Recently sold'}<span className='text-xs font-normal text-black/40'>({sold.length})</span></h2>
             <div className='grid sm:grid-cols-3 lg:grid-cols-5 gap-4'>
-              {sold.map((b:any)=> (
-                <Link key={b.id} href={`/used-sale/${b.slug}`} className='group rounded-xl bg-white border border-black/10 shadow-sm overflow-hidden hover:shadow-md transition'>
+              {sold.map((b:any)=> {
+                const boatTitle = locale === 'fr' ? b.titleFr : b.titleEn;
+                const imgAlt = stripTagsForAlt(boatTitle) || (locale === 'fr' ? 'Bateau' : 'Boat');
+                return (
+                <Link key={b.id} href={`/used-sale/${b.slug}?lang=${locale}`} className='group rounded-xl bg-white border border-black/10 shadow-sm overflow-hidden hover:shadow-md transition'>
                   {b.mainImage && (
                     <div className='relative aspect-video w-full overflow-hidden'>
-                      <Image src={b.mainImage} alt={b.titleFr} fill className='object-cover group-hover:scale-105 transition-transform' />
+                      <Image src={b.mainImage} alt={imgAlt} fill className='object-cover group-hover:scale-105 transition-transform' />
                       <span className='absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 text-white text-[10px] uppercase tracking-wide'>Vendu</span>
                     </div>
                   )}
                   <div className='p-3 space-y-1'>
-                    <div className='text-[12px] font-medium line-clamp-2'>{locale==='fr'? b.titleFr : b.titleEn}</div>
+                    <div className='text-[12px] font-medium line-clamp-2'>
+                      <RichTextViewer content={boatTitle} />
+                    </div>
                     <div className='text-[10px] text-black/50'>{b.year} · {b.lengthM} m</div>
                   </div>
                 </Link>
-              ))}
+              );})}
             </div>
           </div>
         )}

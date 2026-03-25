@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 
 interface FormSubmitHandlerProps {
-  newImageFiles: File[];
+  /** Ref toujours à jour (évite les fichiers manquants si l’état React n’a pas encore rejoué). */
+  newImageFilesRef: RefObject<File[]>;
 }
 
-export default function FormSubmitHandler({ newImageFiles }: FormSubmitHandlerProps) {
+export default function FormSubmitHandler({ newImageFilesRef }: FormSubmitHandlerProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
@@ -26,6 +27,7 @@ export default function FormSubmitHandler({ newImageFiles }: FormSubmitHandlerPr
       
       const keepPhotosInput = form.querySelector('input[name="keepPhotos"]') as HTMLInputElement;
       const mainImageInput = form.querySelector('input[name="mainImageChoice"]') as HTMLInputElement;
+      const mainNewIdxInput = form.querySelector('input[name="mainNewUploadIndex"]') as HTMLInputElement;
       
       if (keepPhotosInput) {
         console.log('📤 keepPhotos avant soumission:', keepPhotosInput.value?.substring(0, 80) + (keepPhotosInput.value && keepPhotosInput.value.length > 80 ? '...' : ''));
@@ -35,6 +37,7 @@ export default function FormSubmitHandler({ newImageFiles }: FormSubmitHandlerPr
       }
       
       const formData = new FormData(form);
+      const pendingImageFiles = newImageFilesRef.current || [];
 
       // S'assurer que les champs cachés sont bien inclus même s'ils sont vides
       // Utiliser les valeurs directement depuis les inputs pour garantir qu'elles sont à jour
@@ -44,13 +47,26 @@ export default function FormSubmitHandler({ newImageFiles }: FormSubmitHandlerPr
         console.log('📤 keepPhotos forcé dans FormData:', keepPhotosValue);
       }
       if (mainImageInput) {
-        const mainImageValue = mainImageInput.value || '';
+        let mainImageValue = mainImageInput.value || '';
+        // Ne pas envoyer un data: énorme : la principale parmi les nouveaux fichiers vient de mainNewUploadIndex
+        if (
+          pendingImageFiles.length > 0 &&
+          (mainImageValue.startsWith('data:') || mainImageValue.startsWith('blob:'))
+        ) {
+          mainImageValue = '';
+        }
         formData.set('mainImageChoice', mainImageValue);
-        console.log('📤 mainImageChoice forcé dans FormData:', mainImageValue || '(vide)');
+        console.log(
+          '📤 mainImageChoice dans FormData:',
+          mainImageValue ? `(${mainImageValue.length} car.)` : '(vide)'
+        );
+      }
+      if (mainNewIdxInput) {
+        formData.set('mainNewUploadIndex', mainNewIdxInput.value || '');
       }
 
-      // Ajouter les nouveaux fichiers d'images
-      newImageFiles.forEach((file) => {
+      // Ajouter les nouveaux fichiers d'images (depuis la ref = dernier état connu)
+      pendingImageFiles.forEach((file) => {
         formData.append('images', file);
       });
       
@@ -59,27 +75,44 @@ export default function FormSubmitHandler({ newImageFiles }: FormSubmitHandlerPr
       console.log('📤 FormData mainImageChoice:', formData.get('mainImageChoice') || '(vide)');
 
       try {
+        // manual : ne pas suivre la 303 en fetch (évite CORS si Location pointait vers un autre domaine)
         const response = await fetch('/api/admin/used-boats/update', {
           method: 'POST',
           body: formData,
-          redirect: 'follow', // Suivre les redirections automatiquement
+          redirect: 'manual',
         });
 
-        // Vérifier si la réponse est une redirection (status 303 ou 307)
-        if (response.status === 303 || response.status === 307 || response.redirected) {
-          // Redirection gérée par le serveur
-          const redirectUrl = response.url || response.headers.get('Location') || window.location.href;
-          window.location.href = redirectUrl;
-        } else if (response.ok) {
-          // Si pas de redirection mais OK, rediriger manuellement
+        const loc = response.headers.get('Location');
+        if (
+          (response.status === 303 || response.status === 302 || response.status === 307) &&
+          loc
+        ) {
+          const target = loc.startsWith('http')
+            ? loc
+            : `${window.location.origin}${loc.startsWith('/') ? '' : '/'}${loc}`;
+          window.location.assign(target);
+          return;
+        }
+
+        // Certains navigateurs renvoient 0 + opaqueredirect pour une 302/303 en mode manual
+        if (response.type === 'opaqueredirect' || response.status === 0) {
+          window.location.reload();
+          return;
+        }
+
+        if (response.ok) {
           const url = new URL(window.location.href);
           url.searchParams.set('updated', '1');
           window.location.href = url.toString();
         } else {
-          // Erreur - essayer de lire le JSON d'erreur
-          const error = await response.json().catch(() => ({ error: 'unknown', details: `Status: ${response.status}` }));
+          const error = await response.json().catch(() => ({
+            error: 'unknown',
+            details: `Status: ${response.status}`,
+          }));
           console.error('Erreur API:', error);
-          alert(`Erreur lors de l'enregistrement: ${error.error || error.details || 'Erreur inconnue'}`);
+          alert(
+            `Erreur lors de l'enregistrement: ${error.error || error.details || 'Erreur inconnue'}`
+          );
         }
       } catch (error) {
         console.error('Erreur lors de la soumission:', error);
@@ -92,7 +125,7 @@ export default function FormSubmitHandler({ newImageFiles }: FormSubmitHandlerPr
     return () => {
       form.removeEventListener('submit', handleSubmit);
     };
-  }, [newImageFiles]);
+  }, [newImageFilesRef]);
 
   return null;
 }

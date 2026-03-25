@@ -109,7 +109,7 @@ export async function POST(req: Request){
 
     // Upload nouvelles images vers Supabase Storage avec validation
     const imageFiles = data.getAll('images') as File[];
-    const newUrls: string[] = [];
+    let newUrls: string[] = [];
     if(imageFiles && imageFiles.length){
       try {
         const { validateImageFile } = await import('@/lib/security/file-validation');
@@ -132,6 +132,22 @@ export async function POST(req: Request){
       } catch (e: any) {
         console.error('Error uploading images to Supabase Storage:', e?.message || e);
         // Continue même si l'upload échoue
+      }
+    }
+
+    // Image principale = une des nouvelles vignettes (data: / blob: côté client n’est pas une URL en base)
+    const rawMainNewIdx = data.get('mainNewUploadIndex');
+    if (rawMainNewIdx != null && String(rawMainNewIdx).trim() !== '') {
+      const uploadMainIdx = parseInt(String(rawMainNewIdx), 10);
+      if (
+        !Number.isNaN(uploadMainIdx) &&
+        uploadMainIdx >= 0 &&
+        uploadMainIdx < newUrls.length
+      ) {
+        const picked = newUrls[uploadMainIdx];
+        mainImage = picked;
+        newUrls = newUrls.filter((_, i) => i !== uploadMainIdx);
+        console.log('📸 Principale choisie parmi les nouveaux fichiers, index', uploadMainIdx, '→', picked?.substring(0, 60));
       }
     }
 

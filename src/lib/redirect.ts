@@ -35,45 +35,49 @@ export function getBaseUrl(req: Request): string {
 /**
  * Crée une URL de redirection correcte (absolue pour Next.js 15)
  * Next.js 15 exige des URLs absolues pour les redirections dans les routes API
+ *
+ * Important : utiliser en priorité le Host de la requête (localhost, préprod, etc.).
+ * Si on force NEXTAUTH_URL alors que l’admin est ouvert sur localhost, le navigateur
+ * suit la 303 vers un autre domaine → erreur CORS / fetch qui casse l’enregistrement.
  */
 export function createRedirectUrl(path: string, req: Request): string {
-  // Normaliser le path (ajouter / au début si absent)
   const normalizedPath = path.startsWith('/') ? path : '/' + path;
-  
-  // Priorité 1: Variable d'environnement APP_BASE_URL ou NEXTAUTH_URL
+
+  const rawHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+  const host = rawHost?.split(',')[0]?.trim();
+
+  let protocol =
+    (req.headers.get('x-forwarded-proto') || '').split(',')[0]?.trim() ||
+    (req.headers.get('x-forwarded-ssl') === 'on' ? 'https' : '');
+
+  if (!protocol) {
+    try {
+      const u = new URL(req.url);
+      protocol = u.protocol.replace(':', '');
+    } catch {
+      protocol = 'http';
+    }
+  }
+
+  if (host) {
+    return `${protocol}://${host}${normalizedPath}`;
+  }
+
   const envUrl = (process.env as any).APP_BASE_URL || (process.env as any).NEXTAUTH_URL;
   if (envUrl) {
-    // Nettoyer l'URL (enlever le / à la fin si présent)
     const cleanEnvUrl = envUrl.toString().replace(/\/$/, '');
     return `${cleanEnvUrl}${normalizedPath}`;
   }
-  
-  // Priorité 2: Construire depuis les headers HTTP (proxy/nginx)
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-  const protocol = req.headers.get('x-forwarded-proto') || 
-                   (req.headers.get('x-forwarded-ssl') === 'on' ? 'https' : 'http');
-  
-  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
-    return `${protocol}://${host}${normalizedPath}`;
-  }
-  
-  // Priorité 3: Essayer de parser req.url (peut être relatif dans Next.js)
+
   try {
-    // Si req.url est déjà une URL absolue, l'utiliser
     if (req.url.startsWith('http://') || req.url.startsWith('https://')) {
       const url = new URL(req.url);
       return `${url.protocol}//${url.host}${normalizedPath}`;
     }
   } catch {
-    // Ignorer si parsing échoue
+    /* ignore */
   }
-  
-  // Dernier fallback: utiliser le host depuis les headers (même localhost)
-  if (host) {
-    return `${protocol}://${host}${normalizedPath}`;
-  }
-  
-  // Dernier recours absolu (ne devrait jamais arriver en production)
+
   return `https://preprod.bbservicescharter.com${normalizedPath}`;
 }
 

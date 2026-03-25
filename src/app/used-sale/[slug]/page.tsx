@@ -80,6 +80,7 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
     // Impossible d'accéder à la DB pendant le build -> 404
     notFound();
   }
+
   if(!boat || (boat.status !== 'listed' && boat.status !== 'sold')) {
     console.warn(`[used-sale] Boat not found or invalid status. Slug: "${slug}", Boat found: ${boat ? `yes (title: "${boat.titleFr}", status: "${boat.status}")` : 'no'}`);
     notFound();
@@ -91,6 +92,16 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
     // Rediriger vers le bon slug si on a trouvé un bateau mais avec un slug différent
     notFound();
   }
+
+  const boatTitle = locale === 'fr' ? boat.titleFr : boat.titleEn;
+  const boatSummary =
+    locale === 'fr' ? (boat.summaryFr || boat.summaryEn) : (boat.summaryEn || boat.summaryFr);
+  const boatDescription =
+    locale === 'fr'
+      ? (boat.descriptionFr || boat.descriptionEn)
+      : (boat.descriptionEn || boat.descriptionFr);
+  const boatTitlePlain = boatTitle.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
   // Parse JSON photos
   let photos: string[] = [];
   if (boat.photoUrls) {
@@ -130,7 +141,7 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
           <nav className="text-[11px] sm:text-xs text-black/50 flex items-center gap-2" aria-label="Breadcrumb">
             <Link href={`/used-sale?lang=${locale}`} className="hover:text-black/80">{locale==='fr'?"Occasion":"Pre‑owned"}</Link>
             <span>/</span>
-            <span className="text-black/70 truncate max-w-[220px]" title={boat.titleFr}>{boat.titleFr}</span>
+            <span className="text-black/70 truncate max-w-[220px]" title={boatTitlePlain}>{boatTitlePlain}</span>
           </nav>
 
           <div className="grid md:grid-cols-2 gap-10 items-start">
@@ -156,8 +167,13 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
             {/* Détails */}
             <div className="space-y-7">
               <div className="space-y-4">
-                <h1 className="text-3xl sm:text-4xl font-bold leading-tight tracking-tight">{boat.titleFr}</h1>
-                {boat.summaryFr && <RichTextViewer content={boat.summaryFr} className="text-sm sm:text-base text-black/60 leading-relaxed" />}
+                <RichTextViewer
+                  content={boatTitle}
+                  className="text-3xl sm:text-4xl font-bold leading-tight tracking-tight"
+                />
+                {boatSummary ? (
+                  <RichTextViewer content={boatSummary} className="text-sm sm:text-base text-black/60 leading-relaxed" />
+                ) : null}
                 {/* Afficher le prix seulement s'il existe et est supérieur à 0, sinon afficher un message de contact */}
                 {boat.priceEur && boat.priceEur > 0 ? (
                   <p className="text-lg sm:text-xl font-semibold text-black/80">
@@ -186,7 +202,7 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
                 <div className="p-6 rounded-2xl bg-white border border-black/10 shadow-sm">
                   <a
                     href="#contact"
-                    aria-label={(locale==='fr'? 'Contacter au sujet de ':'Contact about ')+boat.titleFr}
+                    aria-label={(locale==='fr'? 'Contacter au sujet de ':'Contact about ')+boatTitlePlain}
                     className="group relative w-full inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-4 focus:ring-blue-600/30 overflow-hidden"
                     data-cta="usedboat-contact"
                   >
@@ -201,11 +217,11 @@ export default async function UsedBoatDetail({ params, searchParams }: { params:
                 </div>
               )}
 
-              {boat.descriptionFr && (
+              {boatDescription ? (
                 <article className="prose prose-sm sm:prose-base max-w-none">
-                  <RichTextViewer content={boat.descriptionFr} className="text-black/80 leading-relaxed" />
+                  <RichTextViewer content={boatDescription} className="text-black/80 leading-relaxed" />
                 </article>
-              )}
+              ) : null}
             </div>
           </div>
 
