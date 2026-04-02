@@ -78,7 +78,12 @@ export function createRedirectUrl(path: string, req: Request): string {
     /* ignore */
   }
 
-  return `https://preprod.bbservicescharter.com${normalizedPath}`;
+  const fallbackBase =
+    (process.env as any).NEXT_PUBLIC_SITE_URL ||
+    (process.env as any).NEXTAUTH_URL ||
+    'https://bbservicescharter.com';
+  const cleanFallback = String(fallbackBase).replace(/\/$/, '');
+  return `${cleanFallback}${normalizedPath}`;
 }
 
 
