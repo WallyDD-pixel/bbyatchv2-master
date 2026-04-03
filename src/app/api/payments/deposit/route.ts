@@ -417,8 +417,9 @@ export async function POST(req: Request){
     const depositPct = 0.20;
     // L'acompte est calculé uniquement sur le prix du bateau + options (sans skipper ni carburant)
     const deposit = Math.round(basePriceForDeposit * depositPct);
-    // Le reste à payer = prix bateau + options - acompte (sans skipper ni carburant, payés sur place)
-    const remaining = basePriceForDeposit - deposit;
+    // Solde restant après l’acompte = total prestation (bateau + options + skipper) − acompte.
+    // (L’acompte ne porte que sur bateau + options, mais le « reste » affiché partout doit inclure le skipper.)
+    const remaining = grandTotal - deposit;
     const currency = (settings?.currency || 'eur').toLowerCase();
 
     // Générer une référence unique
