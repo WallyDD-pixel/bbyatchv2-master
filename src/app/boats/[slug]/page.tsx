@@ -17,7 +17,7 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
   const { slug } = await params;
   const sp = (await searchParams) || {};
   const { start, end, part: rawPart, departurePort: departurePortFromUrl } = sp;
-  const part = (rawPart==='AM' || rawPart==='PM' || rawPart==='FULL' || rawPart==='SUNSET') ? rawPart : 'FULL';
+  const part = (rawPart==='AM' || rawPart==='PM' || rawPart==='FULL' || rawPart==='SUNSET') ? rawPart : (rawPart === 'HALF' ? 'AM' : 'FULL');
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
   type BoatType = {

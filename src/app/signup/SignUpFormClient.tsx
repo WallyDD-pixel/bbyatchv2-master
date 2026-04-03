@@ -152,9 +152,18 @@ export default function SignUpFormClient() {
       } else {
         const j = await res.json().catch(() => ({}));
         const errors: typeof fieldErrors = {};
-        
+
+        if (res.status >= 502 || res.status === 503 || res.status === 504) {
+          setErr(
+            "Le service est temporairement indisponible (erreur réseau ou serveur). Réessayez dans quelques instants."
+          );
+          return;
+        }
+
         // Mapper les erreurs API vers les champs correspondants
-        if (j?.error === "exists") {
+        if (j?.error === "server_error") {
+          setErr("Erreur serveur lors de l'inscription. Réessayez ou contactez le support si le problème persiste.");
+        } else if (j?.error === "exists") {
           errors.email = "Un compte existe déjà avec cet email.";
         } else if (j?.error === "missing") {
           if (!email) errors.email = "L'email est requis.";

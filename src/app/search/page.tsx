@@ -423,11 +423,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
         }).filter((b:any) => b !== null).sort((a:any,b:any)=> {
           // Trier d'abord par correspondance exacte au critère recherché, puis par prix
           if (partSel === 'HALF') {
-            // Priorité: journée complète d'abord, puis prix.
-            const aFull = !!a.availableParts.FULL;
-            const bFull = !!b.availableParts.FULL;
-            if (aFull && !bFull) return -1;
-            if (!aFull && bFull) return 1;
+            // Même logique que l’intent demi-journée : tri par prix, pas par préférence FULL.
             return a.pricePerDay - b.pricePerDay;
           }
 
@@ -528,11 +524,11 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
               } else if (partSel === 'PM') {
                 if (b.availableParts.FULL || b.availableParts.PM) bestPart = b.availableParts.FULL ? 'FULL' : 'PM';
               } else if (partSel === 'HALF') {
-                // En demi-journée, on accepte AM OU PM.
-                // On choisit le premier créneau disponible.
-                if (b.availableParts.FULL) bestPart = 'FULL';
-                else if (b.availableParts.AM) bestPart = 'AM';
+                // Demi-journée : facturer et réserver un créneau demi (AM/PM), pas une journée complète
+                // lorsque ces slots existent. FULL seulement si aucun AM ni PM n’est dispo.
+                if (b.availableParts.AM) bestPart = 'AM';
                 else if (b.availableParts.PM) bestPart = 'PM';
+                else if (b.availableParts.FULL) bestPart = 'FULL';
               } else {
                 // Fallback (ne devrait pas arriver)
                 if (b.availableParts.FULL) bestPart = 'FULL';

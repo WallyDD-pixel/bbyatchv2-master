@@ -42,6 +42,7 @@ async function ensureUserTable() {
 }
 
 export async function POST(req: Request) {
+  try {
   // Rate limiting
   const ip = getClientIP(req);
   const rateLimit = checkSignupRateLimit(ip);
@@ -251,4 +252,12 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: true });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[signup] POST error:', message, err);
+    return NextResponse.json(
+      { error: 'server_error', ...(process.env.NODE_ENV !== 'production' ? { detail: message } : {}) },
+      { status: 500 }
+    );
+  }
 }

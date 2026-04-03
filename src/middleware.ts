@@ -13,6 +13,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // API : pas de rafraîchissement session ici (évite latence / timeouts sur POST signup, webhooks, etc.)
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
   const response = NextResponse.next({
     request: {
       headers: request.headers,

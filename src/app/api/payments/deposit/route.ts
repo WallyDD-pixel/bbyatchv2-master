@@ -6,7 +6,9 @@ import { getServerSession } from '@/lib/auth';
 export async function POST(req: Request){
   try {
     const body = await req.json();
-    const { boatSlug, start, end, part, pax, locale='fr', waterToys, children, specialNeeds, excursion, departurePort } = body || {};
+    const rawPart = body?.part;
+    const part = rawPart === 'HALF' ? 'AM' : rawPart;
+    const { boatSlug, start, end, pax, locale='fr', waterToys, children, specialNeeds, excursion, departurePort } = body || {};
     console.log('[deposit] Request received:', { boatSlug, start, end, part, pax });
     if(!boatSlug || !start || !part) {
       console.log('[deposit] Missing params:', { boatSlug: !!boatSlug, start: !!start, part: !!part });
