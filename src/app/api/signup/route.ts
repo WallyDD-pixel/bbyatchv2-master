@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase-server";
+import { createSupabaseApiClient } from "@/lib/supabase-api-client";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { validateEmail, validatePassword, validateName, validatePhone } from "@/lib/security/validation";
@@ -169,9 +169,12 @@ export async function POST(req: Request) {
     createdUser = { id, email: normalizedEmail, name: sanitizedName, firstName, lastName, phone: sanitizedPhone, createdAt: now };
   }
 
-  // Créer le compte dans Supabase Auth pour synchronisation
+  // Créer le compte dans Supabase Auth pour synchronisation (client sans cookies)
   try {
-    const supabase = await createClient();
+    const supabase = createSupabaseApiClient();
+    if (!supabase) {
+      console.warn("⚠️ Supabase URL/clé manquants — sync Auth ignorée");
+    } else {
     const { data: supabaseUser, error: supabaseError } = await supabase.auth.signUp({
       email: normalizedEmail,
       password: password, // Utiliser le mot de passe en clair pour Supabase Auth
@@ -195,6 +198,7 @@ export async function POST(req: Request) {
       }
     } else {
       console.log('✅ Compte créé dans Supabase Auth:', supabaseUser?.user?.email);
+    }
     }
   } catch (supabaseErr) {
     // Ne pas bloquer la création de compte si Supabase Auth échoue
