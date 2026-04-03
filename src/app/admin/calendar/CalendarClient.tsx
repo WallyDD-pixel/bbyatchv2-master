@@ -51,6 +51,63 @@ function localKey(dateStr: string) {
 }
 function keyToDate(key: string) { return new Date(key + 'T00:00:00'); }
 
+function safeDecodeURIComponent(s: string): string {
+  if (s == null || s === '') return s;
+  if (!/%[0-9A-Fa-f]{2}/.test(s)) return s;
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
+function parseBookingMetadata(metadata: string | null | undefined): Record<string, unknown> | null {
+  if (!metadata) return null;
+  try {
+    return typeof metadata === 'string' ? JSON.parse(metadata) : (metadata as Record<string, unknown>);
+  } catch {
+    return null;
+  }
+}
+
+function departurePortFromMeta(meta: Record<string, unknown> | null): string | null {
+  if (!meta) return null;
+  const port = meta.departurePort;
+  if (port == null) return null;
+  const str = String(port).trim();
+  if (!str || str === 'Port à définir') return null;
+  return safeDecodeURIComponent(str);
+}
+
+function formatReservationEventTitle(r: Reservation, boatsList: Boat[], locale: 'fr' | 'en'): string {
+  const boatName = r.boat?.name || boatsList.find(b => b.id === r.boatId)?.name || '#';
+  const price = r.totalPrice
+    ? r.totalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
+    : '';
+  const port = departurePortFromMeta(parseBookingMetadata(r.metadata));
+  // Port juste après le bateau (souvent tronqué en fin de titre par le calendrier)
+  const mid = port ? ` · ${port}` : '';
+  return `${boatName}${mid}${price ? ' - ' + price : ''}`;
+}
+
+function formatAgencyEventTitle(ar: AgencyRequest, boatsList: Boat[], locale: 'fr' | 'en'): string {
+  const boatName = ar.boat?.name || boatsList.find(b => b.id === ar.boatId)?.name || '#';
+  const price = ar.totalPrice
+    ? ar.totalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
+    : '';
+  const statusLabel =
+    ar.status === 'pending'
+      ? (locale === 'fr' ? 'En attente' : 'Pending')
+      : ar.status === 'approved'
+        ? (locale === 'fr' ? 'Approuvé' : 'Approved')
+        : ar.status === 'converted'
+          ? (locale === 'fr' ? 'Converti' : 'Converted')
+          : ar.status;
+  const port = departurePortFromMeta(parseBookingMetadata(ar.metadata));
+  const mid = port ? ` · ${port}` : '';
+  return `${locale === 'fr' ? '[AGENCE]' : '[AGENCY]'} ${boatName}${mid}${price ? ' - ' + price : ''} (${statusLabel})`;
+}
+
 export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   const [date, setDate] = useState(new Date());
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -216,12 +273,9 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         const endDateStr = r.endDate.includes('T') ? r.endDate.split('T')[0] : r.endDate;
         const start = new Date(startDateStr + 'T00:00:00');
         const end = new Date(endDateStr + 'T23:59:59');
-        const boatName = r.boat?.name || boats.find(b => b.id === r.boatId)?.name || '#';
-        const price = r.totalPrice ? `${r.totalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}` : '';
-        
         ev.push({
           id: 'res-' + r.id,
-          title: `${boatName}${price ? ' - ' + price : ''}`,
+          title: formatReservationEventTitle(r, boats, locale),
           start: start.toISOString(),
           end: end.toISOString(),
           allDay: true,
@@ -238,15 +292,9 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         const endDateStr = ar.endDate.includes('T') ? ar.endDate.split('T')[0] : ar.endDate;
         const start = new Date(startDateStr + 'T00:00:00');
         const end = new Date(endDateStr + 'T23:59:59');
-        const boatName = ar.boat?.name || boats.find(b => b.id === ar.boatId)?.name || '#';
-        const price = ar.totalPrice ? `${ar.totalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}` : '';
-        const statusLabel = ar.status === 'pending' ? (locale==='fr'?'En attente':'Pending') :
-                           ar.status === 'approved' ? (locale==='fr'?'Approuvé':'Approved') :
-                           ar.status === 'converted' ? (locale==='fr'?'Converti':'Converted') : ar.status;
-        
         ev.push({
           id: 'agency-' + ar.id,
-          title: `${locale==='fr'?'[AGENCE]':'[AGENCY]'} ${boatName}${price ? ' - ' + price : ''} (${statusLabel})`,
+          title: formatAgencyEventTitle(ar, boats, locale),
           start: start.toISOString(),
           end: end.toISOString(),
           allDay: true,
@@ -296,7 +344,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         
         ev.push({
           id: 'res-' + r.id,
-          title: locale === 'fr' ? 'Réservation' : 'Reservation',
+          title: formatReservationEventTitle(r, boats, locale),
           start: start.toISOString(),
           end: end.toISOString(),
           allDay: true,
@@ -311,13 +359,9 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         const endDateStr = ar.endDate.includes('T') ? ar.endDate.split('T')[0] : ar.endDate;
         const start = new Date(startDateStr + 'T00:00:00');
         const end = new Date(endDateStr + 'T23:59:59');
-        const statusLabel = ar.status === 'pending' ? (locale==='fr'?'En attente':'Pending') :
-                           ar.status === 'approved' ? (locale==='fr'?'Approuvé':'Approved') :
-                           ar.status === 'converted' ? (locale==='fr'?'Converti':'Converted') : ar.status;
-        
         ev.push({
           id: 'agency-' + ar.id,
-          title: `${locale==='fr'?'[AGENCE]':'[AGENCY]'} ${statusLabel}`,
+          title: formatAgencyEventTitle(ar, boats, locale),
           start: start.toISOString(),
           end: end.toISOString(),
           allDay: true,
@@ -992,6 +1036,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                           boatSpeed: { fr: 'Vitesse du bateau (km/h)', en: 'Boat speed (km/h)' },
                           departurePort: { fr: 'Port de départ', en: 'Departure port' },
                           preferredTime: { fr: 'Heure préférée', en: 'Preferred time' },
+                          specialNeeds: { fr: 'Besoins particuliers', en: 'Special needs' },
                           specialRequest: { fr: 'Demande spéciale', en: 'Special request' },
                           bookingDate: { fr: 'Date de réservation', en: 'Booking date' },
                           userRole: { fr: 'Rôle de l\'utilisateur', en: 'User role' },
@@ -1048,6 +1093,15 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                             </ul>
                           ) as any;
                         }
+                        if (key === 'specialNeeds' && typeof value === 'string') {
+                          const decoded = safeDecodeURIComponent(value);
+                          return (
+                            <div className="whitespace-pre-wrap text-sm">{decoded}</div>
+                          ) as any;
+                        }
+                        if (key === 'departurePort' && typeof value === 'string') {
+                          return safeDecodeURIComponent(value.trim());
+                        }
                         if (typeof value === 'boolean') {
                           return value ? (locale === 'fr' ? 'Oui' : 'Yes') : (locale === 'fr' ? 'Non' : 'No');
                         }
@@ -1076,7 +1130,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                         if (key === 'specialRequest') {
                           if (typeof value === 'string') {
                             // Si c'est une chaîne, afficher avec formatage multi-lignes
-                            const lines = value.split('\n');
+                            const lines = safeDecodeURIComponent(value).split('\n');
                             return (
                               <div className="whitespace-pre-wrap text-sm">
                                 {lines.map((line, idx) => (
