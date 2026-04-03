@@ -41,34 +41,23 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Créer une nouvelle réponse pour chaque cookie à définir
+          // Laisser Supabase contrôler maxAge / httpOnly / sameSite (recommandation officielle SSR).
+          // Un maxAge forcé à 1 an cassait l’expiration / le rafraîchissement après un long détour (ex. Stripe).
           cookiesToSet.forEach(({ name, value, options }) => {
-            // Définir les options par défaut pour la persistance
-            const cookieOptions = {
+            response.cookies.set(name, value, {
               ...options,
-              path: options?.path || '/',
-              sameSite: options?.sameSite || 'lax' as const,
-              httpOnly: options?.httpOnly ?? true,
-              secure: options?.secure ?? (process.env.NODE_ENV === 'production'),
-              maxAge: options?.maxAge || 60 * 60 * 24 * 365, // 1 an par défaut
-            };
-            
-            // Mettre à jour la réponse avec le cookie
-            response.cookies.set(name, value, cookieOptions);
+              path: options?.path ?? '/',
+              secure: options?.secure ?? process.env.NODE_ENV === 'production',
+            });
           });
         },
       },
     }
   );
 
-  // Rafraîchir la session si nécessaire
-  // Appeler getSession() pour rafraîchir la session et mettre à jour les cookies
-  const { data: { session }, error } = await supabase.auth.getSession();
-  
-  // Si la session existe, s'assurer qu'elle est rafraîchie
-  if (session && !error) {
-    await supabase.auth.getUser();
-  }
+  // Toujours valider/rafraîchir via getUser() : getSession() peut être vide si l’access token
+  // a expiré pendant le paiement externe (Stripe), alors que le refresh token permet de restaurer la session.
+  await supabase.auth.getUser();
 
   return response;
 }

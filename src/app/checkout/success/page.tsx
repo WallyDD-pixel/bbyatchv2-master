@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { messages, type Locale } from '@/i18n/messages';
 import { notFound } from 'next/navigation';
 import Stripe from 'stripe';
+import CheckoutSuccessSessionSync from './CheckoutSuccessSessionSync';
 
 interface Props { searchParams?: Promise<{ lang?: string; session_id?: string; res?: string }> }
 
@@ -182,6 +183,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props){
 
   return (
     <div className='min-h-screen flex flex-col'>
+      <CheckoutSuccessSessionSync />
       <HeaderBar initialLocale={locale} />
       <main className='flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 md:px-8 py-12'>
         <div className='text-center mb-10'>

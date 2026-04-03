@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { sendEmail, getNotificationEmail } from '@/lib/email';
+import { getPublicSiteUrlFromEnv } from '@/lib/redirect';
 
 async function ensureAdmin() {
   const session = await getServerSession() as any;
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     const notificationEmail = await getNotificationEmail();
     const settings = await prisma.settings.findFirst({ select: { logoUrl: true } });
     const logoUrl = (settings as any)?.logoUrl || null;
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const baseUrl = getPublicSiteUrlFromEnv();
     
     // Importer les templates
     const { 

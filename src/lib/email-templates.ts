@@ -2,6 +2,8 @@
  * Templates d'emails pour les notifications
  */
 
+import { getPublicSiteUrlFromEnv } from './redirect';
+
 interface ReservationData {
   id: string;
   reference?: string | null;
@@ -80,7 +82,7 @@ export async function newReservationEmail(data: ReservationData, locale: 'fr' | 
     ? `Nouvelle réservation - ${data.boatName} - ${data.startDate}`
     : `New reservation - ${data.boatName} - ${data.startDate}`;
 
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const baseUrl = getPublicSiteUrlFromEnv();
   const langParam = locale === 'en' ? '?lang=en' : '';
   
   const html = `
@@ -496,7 +498,7 @@ export function reservationStatusChangeEmail(data: ReservationData, oldStatus: s
     ? `Réservation ${statusLabel} - ${data.boatName}`
     : `Reservation ${statusLabel} - ${data.boatName}`;
 
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const baseUrl = getPublicSiteUrlFromEnv();
   const langParam = locale === 'en' ? '?lang=en' : '';
 
   const html = `
@@ -597,7 +599,7 @@ export function newAgencyRequestEmail(data: AgencyRequestData, locale: 'fr' | 'e
     ? `Nouvelle demande agence - ${data.boatName} - ${data.startDate}`
     : `New agency request - ${data.boatName} - ${data.startDate}`;
 
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const baseUrl = getPublicSiteUrlFromEnv();
   const langParam = locale === 'en' ? '?lang=en' : '';
 
   const html = `
@@ -899,7 +901,7 @@ export function paymentReceivedEmail(data: ReservationData, amount: number, loca
     ? `Paiement reçu - ${data.reference || data.id} - ${amount.toLocaleString('fr-FR')} €`
     : `Payment received - ${data.reference || data.id} - ${amount.toLocaleString('en-US')} €`;
 
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const baseUrl = getPublicSiteUrlFromEnv();
   const langParam = locale === 'en' ? '?lang=en' : '';
 
   const html = `
@@ -988,7 +990,7 @@ export function newUserAccountEmail(data: UserAccountData, locale: 'fr' | 'en' =
     ? `Nouveau compte créé - ${data.email}`
     : `New account created - ${data.email}`;
 
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const baseUrl = getPublicSiteUrlFromEnv();
   const langParam = locale === 'en' ? '?lang=en' : '';
   const userName = data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.email;
   const createdAt = data.createdAt instanceof Date 
@@ -1115,7 +1117,7 @@ export function welcomeEmail(data: UserAccountData, locale: 'fr' | 'en' = 'fr', 
     ? `Bienvenue sur BB YACHTS !`
     : `Welcome to BB YACHTS!`;
 
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const baseUrl = getPublicSiteUrlFromEnv();
   const langParam = locale === 'en' ? '?lang=en' : '';
   const userName = data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.email;
 

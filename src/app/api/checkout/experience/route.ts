@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
+import { getPublicSiteUrl } from '@/lib/redirect';
 import Stripe from 'stripe';
 import type { ExperienceCheckoutBody, DayPart, SettingsStripe } from '@/types/domain';
 
@@ -134,7 +135,7 @@ export async function POST(req: Request) {
       ? `Acompte expérience: ${experience.titleFr}`
       : `Experience deposit: ${experience.titleEn || experience.titleFr}`;
 
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const baseUrl = getPublicSiteUrl(req);
     const successUrl = `${baseUrl}/booking/experience/success?res=${reservation.id}`;
     const cancelUrl = `${baseUrl}/checkout/cancel?res=${reservation.id}${locale === 'en' ? '&lang=en' : ''}`;
 

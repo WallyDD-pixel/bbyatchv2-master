@@ -110,7 +110,19 @@ export const messages: Record<Locale, Record<string, string>> = {
     boat_invalid_slot: "Créneau indisponible pour ce bateau à cette date.",
     checkout_deposit_now: "Acompte (20%)",
     checkout_deposit_remaining: "Solde à régler à l'agence",
-    checkout_deposit_info: "Un acompte de 20% est prélevé maintenant. Le solde restant sera payé directement à l'agence.",
+    checkout_subtotal_rental_options: "Sous-total location & options (base de l'acompte)",
+    checkout_skipper_not_online:
+      "Payable uniquement auprès de l'agence — non prélevé par carte sur ce site.",
+    checkout_trip_total_estimate: "Total estimé prestation (hors carburant)",
+    checkout_trip_total_hint:
+      "Montant indicatif incluant le skipper. L'acompte en ligne ne porte que sur le sous-total « location & options ».",
+    checkout_pay_online_title: "Paiement en ligne",
+    checkout_pay_agency_title: "À régler auprès de l'agence",
+    checkout_agency_remain_rental: "Reste location & options (après acompte)",
+    checkout_agency_remain_skipper: "Skipper",
+    checkout_agency_remain_total: "Total solde agence",
+    checkout_deposit_info:
+      "L'acompte correspond à 20 % du prix de la location et des options (le skipper n'est pas inclus dans cet acompte : il fait partie du solde final avec l'agence). Le reste sera payé directement à l'agence.",
     checkout_pay_deposit: "Payer l'acompte",
     checkout_request_agency: "Faire une demande",
     checkout_agency_info_title: "Demande agence",
@@ -245,7 +257,19 @@ export const messages: Record<Locale, Record<string, string>> = {
     boat_invalid_slot: "Slot not available for this boat on that date.",
     checkout_deposit_now: "Deposit (20%)",
     checkout_deposit_remaining: "Balance due to agency",
-    checkout_deposit_info: "A 20% deposit is charged now. The remaining balance will be paid directly to the agency.",
+    checkout_subtotal_rental_options: "Subtotal — rental & options (deposit base)",
+    checkout_skipper_not_online:
+      "Payable only to the agency — not charged on this site.",
+    checkout_trip_total_estimate: "Estimated trip total (excl. fuel)",
+    checkout_trip_total_hint:
+      "Indicative amount including the skipper. The online deposit applies only to the “rental & options” subtotal.",
+    checkout_pay_online_title: "Online payment",
+    checkout_pay_agency_title: "Due to the agency",
+    checkout_agency_remain_rental: "Remaining rental & options (after deposit)",
+    checkout_agency_remain_skipper: "Skipper",
+    checkout_agency_remain_total: "Total balance at agency",
+    checkout_deposit_info:
+      "The deposit is 20% of the boat rental and options only (the skipper is not included in the deposit; it is part of the final balance with the agency). The remainder will be paid directly to the agency.",
     checkout_pay_deposit: "Pay deposit",
     checkout_request_agency: "Send request",
     checkout_agency_info_title: "Agency request",

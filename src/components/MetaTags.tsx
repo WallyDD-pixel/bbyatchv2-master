@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { getPublicSiteUrlFromEnv } from '@/lib/redirect';
 
 interface MetaTagsProps {
   title?: string;
@@ -15,7 +16,7 @@ export function generateMetadata({
   url,
   locale = 'fr',
 }: MetaTagsProps): Metadata {
-  const siteUrl = url || (process.env.NEXT_PUBLIC_SITE_URL || 'https://bbservicescharter.com');
+  const siteUrl = url || getPublicSiteUrlFromEnv();
   const ogImage = image || `${siteUrl}/og-image.jpg`;
   const fullTitle = title.includes('BB SERVICES') ? title : `${title} | BB SERVICES CHARTER`;
 

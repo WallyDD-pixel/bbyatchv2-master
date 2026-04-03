@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 import { getServerSession } from '@/lib/auth';
+import { getPublicSiteUrl } from '@/lib/redirect';
 
 export async function POST(req: Request){
   try {
@@ -39,6 +40,10 @@ export async function POST(req: Request){
       return NextResponse.json({ error: 'boat_not_found' }, { status: 404 });
     }
     console.log('[deposit] Boat found:', boat.id, boat.name);
+
+    const settingsSkipper = await prisma.settings.findFirst({ select: { defaultSkipperPrice: true } });
+    const defaultSkipperPrice = settingsSkipper?.defaultSkipperPrice ?? 350;
+    const skipperPricePerDay = boat.skipperPrice ?? defaultSkipperPrice;
     
     // Debug: Vérifier tous les slots pour ce bateau autour de la date demandée
     // Normaliser la date de recherche en UTC
@@ -153,16 +158,16 @@ export async function POST(req: Request){
     if (userRole === 'agency') {
       // Agence : skipper seulement si demandé explicitement
       const needsSkipper = body.skipper === '1' || body.skipper === true || body.needsSkipper === true;
-      if (needsSkipper && boat?.skipperPrice) {
-        skipperTotal = boat.skipperPrice * skipperDays; // HT sans TVA pour agence
+      if (needsSkipper) {
+        skipperTotal = skipperPricePerDay * skipperDays;
       }
     } else {
-      // Utilisateur normal : skipper obligatoire si requis
-      if (boat?.skipperRequired && boat?.skipperPrice) {
-        skipperTotal = boat.skipperPrice * skipperDays;
+      // Utilisateur normal : skipper obligatoire si requis (même fallback prix que la page checkout)
+      if (boat?.skipperRequired) {
+        skipperTotal = skipperPricePerDay * skipperDays;
       }
     }
-    const effectiveSkipperPrice = skipperTotal;
+    const effectiveSkipperPrice = skipperPricePerDay;
 
     // Vérification dynamique de chevauchement (Option 1)
     // Conflit si plage de dates recouvre et si parties incompatibles (FULL avec tout, AM avec FULL ou AM, etc.)
@@ -555,6 +560,7 @@ Détails complets disponibles dans le tableau de bord admin.
       }),
     };
 
+    const publicOrigin = getPublicSiteUrl(req);
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'payment',
       locale: locale==='fr' ? 'fr' : 'en',
@@ -563,8 +569,8 @@ Détails complets disponibles dans le tableau de bord admin.
         { price_data: { currency, unit_amount: deposit * 100, product_data: { name: lineName } }, quantity: 1 }
       ],
       metadata: reservationMetadata, // Toutes les données nécessaires pour créer la réservation après paiement
-      success_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout/success?session_id={CHECKOUT_SESSION_ID}${locale === 'en' ? '&lang=en' : ''}`,
-      cancel_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/checkout/cancel${locale === 'en' ? '?lang=en' : ''}`,
+      success_url: `${publicOrigin}/checkout/success?session_id={CHECKOUT_SESSION_ID}${locale === 'en' ? '&lang=en' : ''}`,
+      cancel_url: `${publicOrigin}/checkout/cancel${locale === 'en' ? '?lang=en' : ''}`,
       expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // Expire après 30 minutes
     });
 

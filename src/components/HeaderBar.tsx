@@ -4,6 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { messages, type Locale } from "@/i18n/messages";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase-client";
+import { AUTH_SESSION_REFRESHED_EVENT } from "@/lib/auth-events";
 
 interface NavbarItem {
   id: number;
@@ -59,6 +60,11 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
 
     checkSession();
 
+    const onAuthRefreshed = () => {
+      void checkSession();
+    };
+    window.addEventListener(AUTH_SESSION_REFRESHED_EVENT, onAuthRefreshed);
+
     // Écouter les changements de session Supabase
     const supabase = createClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -71,6 +77,7 @@ export default function HeaderBar({ initialLocale }: { initialLocale: Locale }) 
     });
 
     return () => {
+      window.removeEventListener(AUTH_SESSION_REFRESHED_EVENT, onAuthRefreshed);
       subscription.unsubscribe();
     };
   }, []);

@@ -86,10 +86,14 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
   }
   const selectedOptions = (boat?.options||[]).filter((o:any)=> selectedOptionIds.includes(o.id));
   const optionsTotal = selectedOptions.reduce((sum:number,o:any)=> sum + (o.price || 0), 0);
-  // Grand total = base + options + skipper
+  // Total réservation = location + options + skipper (carburant à part)
   const grandTotal = total!=null ? total + optionsTotal + skipperTotal : null;
-  const deposit = grandTotal!=null ? Math.round(grandTotal * 0.2) : null;
-  const remaining = grandTotal!=null && deposit!=null ? grandTotal - deposit : null;
+  // Acompte = 20 % sur location + options uniquement (hors skipper), comme Stripe /api/payments/deposit
+  const baseForDeposit = total != null ? total + optionsTotal : null;
+  const deposit = baseForDeposit != null ? Math.round(baseForDeposit * 0.2) : null;
+  const remaining = grandTotal != null && deposit != null ? grandTotal - deposit : null;
+  const remainingBoatOptions =
+    baseForDeposit != null && deposit != null ? baseForDeposit - deposit : null;
   const partLabel = slot==='FULL'? (locale==='fr'? t.search_part_full : t.search_part_full) 
     : slot==='AM'? (locale==='fr'? t.search_part_am : t.search_part_am) 
     : slot==='PM'? (locale==='fr'? t.search_part_pm : t.search_part_pm)
@@ -178,19 +182,31 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
                             <span className='font-medium'>+{optionsTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
                           </div>
                         )}
+                        <div className='flex justify-between text-xs pt-2 border-t border-dashed border-black/15 font-medium'>
+                          <span>{t.checkout_subtotal_rental_options}</span>
+                          <span>{baseForDeposit?.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
+                        </div>
                         {skipperTotal > 0 && (
-                          <div className='flex justify-between text-xs'>
-                            <span>{locale === 'fr' ? 'Skipper obligatoire' : 'Required skipper'}</span>
-                            <span className='font-medium'>
-                              +{skipperTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} € {isAgency ? '(HT)' : ''}
-                              {slot==='FULL' && nbJours>1 && ` (${effectiveSkipperPrice}€ × ${skipperDays}j)`}
-                            </span>
+                          <div className='pt-1 space-y-0.5'>
+                            <div className='flex justify-between text-xs'>
+                              <span>{locale === 'fr' ? 'Skipper obligatoire' : 'Required skipper'}</span>
+                              <span className='font-medium'>
+                                +{skipperTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} € {isAgency ? '(HT)' : ''}
+                                {slot==='FULL' && nbJours>1 && ` (${effectiveSkipperPrice}€ × ${skipperDays}j)`}
+                              </span>
+                            </div>
+                            {!isAgency && (
+                              <p className='text-[10px] text-amber-800/90 bg-amber-50/80 border border-amber-100 rounded-md px-2 py-1.5 leading-snug'>
+                                {t.checkout_skipper_not_online}
+                              </p>
+                            )}
                           </div>
                         )}
                         <div className='flex justify-between text-xs pt-2 border-t border-black/10 font-semibold'>
-                          <span>{locale === 'fr' ? 'Total hors carburant' : 'Total excluding fuel'}</span>
+                          <span>{t.checkout_trip_total_estimate}</span>
                           <span className='text-[var(--primary)]'>{grandTotal?.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
                         </div>
+                        <p className='text-[10px] text-black/50'>{t.checkout_trip_total_hint}</p>
                         <p className='text-[10px] text-black/50 italic'>{locale === 'fr' ? 'Carburant non inclus dans le tarif, à régler en fonction de la consommation à la fin de la location.' : 'Fuel not included in the rate, to be paid according to consumption at the end of the rental.'}</p>
                       </>
                     )}
@@ -238,31 +254,66 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
                           <span>+{optionsTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
                         </div>
                       )}
+                      <div className='flex justify-between text-xs text-black/80 font-medium pt-1 border-t border-dashed border-black/10'>
+                        <span>{t.checkout_subtotal_rental_options}</span>
+                        <span>{baseForDeposit?.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
+                      </div>
                       {skipperTotal > 0 && (
-                        <div className='flex justify-between text-xs text-black/70'>
-                          <span>{locale === 'fr' ? 'Skipper obligatoire' : 'Required skipper'}</span>
-                          <span>
-                            +{skipperTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} € {isAgency ? '(HT)' : ''}
-                            {slot==='FULL' && nbJours>1 && ` (${effectiveSkipperPrice}€ × ${skipperDays}j)`}
-                          </span>
+                        <div className='space-y-1'>
+                          <div className='flex justify-between text-xs text-black/70'>
+                            <span>{locale === 'fr' ? 'Skipper obligatoire' : 'Required skipper'}</span>
+                            <span>
+                              +{skipperTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} € {isAgency ? '(HT)' : ''}
+                              {slot==='FULL' && nbJours>1 && ` (${effectiveSkipperPrice}€ × ${skipperDays}j)`}
+                            </span>
+                          </div>
+                          {!isAgency && (
+                            <p className='text-[10px] text-black/55 leading-snug'>{t.checkout_skipper_not_online}</p>
+                          )}
                         </div>
                       )}
                       <div className='pt-2 border-t border-black/10 mt-2'>
-                        <div className='flex justify-between items-center'>
-                          <span className='font-semibold'>{locale === 'fr' ? 'Total hors carburant' : 'Total excluding fuel'}</span>
-                          <span className='font-bold text-xl text-[var(--primary)]'>{grandTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
+                        <div className='flex justify-between items-center text-sm'>
+                          <span className='font-semibold'>{t.checkout_trip_total_estimate}</span>
+                          <span className='font-bold text-lg text-[var(--primary)]'>{grandTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
                         </div>
                         {isAgency && skipperTotal > 0 && (
                           <p className='text-[10px] text-black/50 mt-1'>{locale === 'fr' ? 'Prix skipper HT (sans TVA)' : 'Skipper price HT (no VAT)'}</p>
                         )}
+                        {!isAgency && (
+                          <p className='text-[10px] text-black/50 mt-1'>{t.checkout_trip_total_hint}</p>
+                        )}
                       </div>
-                      {!isAgency && deposit!=null && (
+                      {!isAgency && deposit!=null && remainingBoatOptions!=null && remaining!=null && (
                         <>
-                          <div className='pt-2 border-t border-black/10 space-y-1'>
-                            <div className='flex justify-between text-xs'><span>{t.checkout_deposit_now}</span><span className='font-medium'>{deposit.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span></div>
-                            {remaining!=null && (
-                              <div className='flex justify-between text-xs'><span>{t.checkout_deposit_remaining}</span><span className='font-medium'>{remaining.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span></div>
+                          <div className='mt-3 rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-3 space-y-2'>
+                            <div className='text-xs font-semibold text-emerald-900'>{t.checkout_pay_online_title}</div>
+                            <div className='flex justify-between text-xs'>
+                              <span>{t.checkout_deposit_now}</span>
+                              <span className='font-semibold'>{deposit.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
+                            </div>
+                            <p className='text-[10px] text-emerald-900/75 leading-snug'>
+                              {locale === 'fr'
+                                ? 'Uniquement sur location & options — le skipper n’est pas inclus.'
+                                : 'Rental & options only — skipper not included.'}
+                            </p>
+                          </div>
+                          <div className='mt-2 rounded-xl border border-black/10 bg-slate-50/80 p-3 space-y-2'>
+                            <div className='text-xs font-semibold text-black/80'>{t.checkout_pay_agency_title}</div>
+                            <div className='flex justify-between text-xs text-black/70'>
+                              <span>{t.checkout_agency_remain_rental}</span>
+                              <span>{remainingBoatOptions.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
+                            </div>
+                            {skipperTotal > 0 && (
+                              <div className='flex justify-between text-xs text-black/70'>
+                                <span>{t.checkout_agency_remain_skipper}</span>
+                                <span>{skipperTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
+                              </div>
                             )}
+                            <div className='flex justify-between text-xs font-semibold pt-2 border-t border-black/10'>
+                              <span>{t.checkout_agency_remain_total}</span>
+                              <span>{remaining.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} €</span>
+                            </div>
                           </div>
                         </>
                       )}

@@ -1,4 +1,44 @@
 /**
+ * URL publique sans requête (emails, cron) : préférer NEXT_PUBLIC_SITE_URL pour coller au domaine déployé.
+ */
+export function getPublicSiteUrlFromEnv(): string {
+  const url =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.APP_BASE_URL ||
+    process.env.NEXTAUTH_URL ||
+    'http://localhost:3000';
+  return String(url).replace(/\/$/, '');
+}
+
+/**
+ * URL publique pour retours Stripe / liens utilisateur : priorité au Host réel de la requête
+ * (préprod vs prod). Si NEXTAUTH_URL pointe encore vers la prod alors que l’utilisateur est sur préprod,
+ * on évite de le renvoyer sur le mauvais domaine (cookies / session perdus).
+ */
+export function getPublicSiteUrl(req: Request): string {
+  const rawHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+  const host = rawHost?.split(',')[0]?.trim();
+
+  let protocol =
+    (req.headers.get('x-forwarded-proto') || '').split(',')[0]?.trim() ||
+    (req.headers.get('x-forwarded-ssl') === 'on' ? 'https' : '');
+
+  if (!protocol) {
+    try {
+      protocol = new URL(req.url).protocol.replace(':', '');
+    } catch {
+      protocol = 'https';
+    }
+  }
+
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    return `${protocol}://${host}`.replace(/\/$/, '');
+  }
+
+  return getPublicSiteUrlFromEnv();
+}
+
+/**
  * Utilitaire pour obtenir l'URL de base correcte pour les redirections
  * Évite les redirections vers localhost en production
  */
@@ -78,11 +118,7 @@ export function createRedirectUrl(path: string, req: Request): string {
     /* ignore */
   }
 
-  const fallbackBase =
-    (process.env as any).NEXT_PUBLIC_SITE_URL ||
-    (process.env as any).NEXTAUTH_URL ||
-    'https://bbservicescharter.com';
-  const cleanFallback = String(fallbackBase).replace(/\/$/, '');
+  const cleanFallback = getPublicSiteUrlFromEnv();
   return `${cleanFallback}${normalizedPath}`;
 }
 

@@ -120,8 +120,7 @@ export default function SignUpFormClient() {
       });
       if (res.ok) {
         setOk("Compte créé avec succès !");
-        setLoading(true);
-        
+        // loading reste true jusqu'à la fin du try (connexion Supabase + redirection)
         // Connecter automatiquement l'utilisateur après inscription
         try {
           const supabase = createClient();
@@ -362,7 +361,24 @@ export default function SignUpFormClient() {
         {ok && <p className="text-sm text-green-700 bg-green-50 border border-green-100 rounded-md px-3 py-2">{ok}</p>}
         {err && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">{err}</p>}
 
-        <button type="submit" disabled={loading} className="w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors disabled:opacity-50">{loading ? "Inscription…" : "Inscription"}</button>
+        <button
+          type="submit"
+          disabled={loading}
+          aria-busy={loading}
+          className="w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors disabled:opacity-90 disabled:cursor-wait flex items-center justify-center gap-3"
+        >
+          {loading ? (
+            <>
+              <span
+                className="inline-block size-5 shrink-0 rounded-full border-2 border-white/35 border-t-white animate-spin motion-reduce:animate-none"
+                aria-hidden
+              />
+              <span>Inscription en cours…</span>
+            </>
+          ) : (
+            "S'inscrire"
+          )}
+        </button>
 
         <p className="text-sm text-black/70">Vous avez déjà un compte ? <a className="text-[color:var(--primary)] hover:underline" href={`/signin?callbackUrl=${encodeURIComponent(redirectUrl)}`}>Se connecter</a></p>
       </form>
