@@ -79,9 +79,17 @@ exe_is_deleted() {
 
 exe_path_suspicious() {
   local ex="$1"
-  [[ -z "$ex" ]] && return 0
+  # Vide = thread noyau / cas spéciaux — PAS un binaire dans /tmp (ne jamais tuer sur ça seul)
+  [[ -z "$ex" ]] && return 1
   exe_is_deleted "$ex" && return 0
   echo "$ex" | grep -qE "$SUSPICIOUS_EXE_PREFIX_REGEX" && return 0
+  return 1
+}
+
+# ps affiche les threads noyau comme [kthreadd], [kworker/0:...] — à ne jamais traiter
+is_kernel_thread_ps_line() {
+  local s="$1"
+  [[ "${s:0:1}" == "[" ]] && [[ "$s" == *']'* ]] && return 0
   return 1
 }
 
@@ -183,6 +191,10 @@ one_pass() {
     cmd=$(get_cmdline "$pid")
     [[ -z "$cmd" ]] && cmd="$args"
     exe=$(get_exe "$pid")
+
+    if is_kernel_thread_ps_line "$args" || is_kernel_thread_ps_line "$cmd"; then
+      continue
+    fi
 
     if [[ "$cmd" == *"cpu-abuse-watchdog"* ]]; then
       continue
