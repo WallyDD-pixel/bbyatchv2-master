@@ -88,8 +88,10 @@ exe_path_suspicious() {
 
 # ps affiche les threads noyau comme [kthreadd], [kworker/0:...] — à ne jamais traiter
 is_kernel_thread_ps_line() {
-  local s="$1"
-  [[ "${s:0:1}" == "[" ]] && [[ "$s" == *']'* ]] && return 0
+  local s
+  s=$(echo "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+  [[ -z "$s" ]] && return 1
+  echo "$s" | grep -qE '^\[[^]]+\]$' && return 0
   return 1
 }
 
@@ -203,6 +205,11 @@ one_pass() {
     # --- 1) Motifs minage / cmdline évidents
     if echo "$cmd" | grep -qE "$INSTAKILL_REGEX"; then
       kill_pid "$pid" "instakill cmd: ${cmd:0:160}"
+      continue
+    fi
+
+    # Pas de binaire résolu (typique threads noyau) : ne rien tuer d'autre
+    if [[ -z "$exe" ]]; then
       continue
     fi
 
