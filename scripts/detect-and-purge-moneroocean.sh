@@ -44,6 +44,7 @@ check_locations() {
     "/var/tmp/logic.sh"
     "/var/tmp/system-check"
     "/tmp/system-check"
+    "/tmp/npm_update"
   )
   for d in "${dirs_to_check[@]}"; do
     if [[ -d "$d" ]]; then
@@ -60,6 +61,7 @@ check_locations() {
   # Processus suspects
   if pgrep -f "moneroocean" >/dev/null 2>&1 || \
      pgrep -f "xmrig" >/dev/null 2>&1 || \
+     pgrep -f "npm_update" >/dev/null 2>&1 || \
      pgrep -f "logic\.sh" >/dev/null 2>&1 || \
      pgrep -f "system-check" >/dev/null 2>&1; then
     log "DÉTECTION: processus de minage en cours"
@@ -77,7 +79,7 @@ check_locations() {
 purge_processes() {
   log "Purge: arrêt des processus malveillants..."
   SELF_PID=$$
-  for pattern in "xmrig" "logic\.sh" "system-check" "miner" "/moneroocean/" "moneroocean/xmrig"; do
+  for pattern in "xmrig" "npm_update" "logic\.sh" "system-check" "miner" "/moneroocean/" "moneroocean/xmrig"; do
     pgrep -f "$pattern" 2>/dev/null | while read -r pid; do
       if [[ -n "$pid" && "$pid" != "$SELF_PID" ]]; then
         kill -9 "$pid" 2>/dev/null || true
@@ -136,6 +138,7 @@ purge_files() {
     "/var/tmp/logic.sh"
     "/var/tmp/system-check"
     "/tmp/system-check"
+    "/tmp/npm_update"
   )
   for d in "${dirs[@]}"; do
     if [[ -d "$d" ]]; then
