@@ -23,6 +23,9 @@
 
 set -uo pipefail
 
+# Incrémenter après chaque correctif important (vérifier sur le serveur : grep VERSION cpu-abuse-watchdog.sh)
+readonly CPU_WATCHDOG_SCRIPT_VERSION=4
+
 LOG_FILE="${CPU_WATCHDOG_LOG:-/var/log/cpu-watchdog.log}"
 STATE_DIR="${CPU_WATCHDOG_STATE:-/var/run/cpu-watchdog}"
 HIGH_PCT="${CPU_HIGH_PCT:-88}"
@@ -189,6 +192,12 @@ one_pass() {
     pcpu=$(awk '{print $2}' <<<"$line")
     args=$(awk '{$1=""; $2=""; sub(/^ +/, ""); print}' <<<"$line")
     [[ -z "${pid:-}" ]] && continue
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+
+    # Threads noyau : pas de fichier exécutable — ne jamais envoyer de kill (ancien bug "exe vide")
+    if [[ ! -e "/proc/$pid/exe" ]]; then
+      continue
+    fi
 
     cmd=$(get_cmdline "$pid")
     [[ -z "$cmd" ]] && cmd="$args"
