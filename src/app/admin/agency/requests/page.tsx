@@ -88,7 +88,7 @@ export default async function AdminAgencyRequestsPage({ searchParams }: { search
                         // Vérification overlap avant conversion
                         const overlap = await prisma.reservation.findFirst({ where:{ boatId: r.boatId || undefined, status:{ not:'cancelled' }, startDate:{ lte: r.endDate }, endDate:{ gte: r.startDate }, OR:[ { part:'FULL' }, { part: r.part }, ...(r.part==='FULL'? [{ part:'AM' },{ part:'PM' }]:[]), { part:null } ] }, select:{ id:true } });
                         if(overlap) return; // on ne crée pas (créneau déjà pris)
-                        const res= await prisma.reservation.create({ data:{ userId:r.userId, boatId:r.boatId, startDate:r.startDate, endDate:r.endDate, part:r.part, passengers:r.passengers, totalPrice:r.totalPrice, status:'pending_deposit', locale:r.locale, currency:r.currency } }); await prisma.agencyRequest.update({ where:{ id }, data:{ reservationId: res.id } }); }
+                        const res= await prisma.reservation.create({ data:{ userId:r.userId, boatId:r.boatId, startDate:r.startDate, endDate:r.endDate, part:r.part, passengers:r.passengers, totalPrice:r.totalPrice, status:'pending_deposit', locale:r.locale, currency:r.currency, metadata: r.metadata ?? undefined } }); await prisma.agencyRequest.update({ where:{ id }, data:{ reservationId: res.id } }); }
                         }} className='flex items-center gap-1'>
                         <input type='hidden' name='id' value={r.id} />
                         {r.status==='pending' && <button name='action' value='approve' className='h-7 px-3 rounded-md bg-emerald-500 text-white text-[11px] hover:brightness-110'>✔</button>}

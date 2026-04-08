@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { userId, boatId, startDate, endDate, part, passengers, totalPrice, depositAmount, optionIds, notes, locale } = body;
+    const { userId, boatId, startDate, endDate, part, passengers, totalPrice, depositAmount, optionIds, notes, locale, departurePort, preferredTime } = body;
 
     // Validation
     if (!userId || !boatId || !startDate || !totalPrice) {
@@ -86,6 +86,8 @@ export async function POST(req: Request) {
           createdByAdmin: true,
           createdAt: new Date().toISOString(),
           optionIds: optionIds || [],
+          departurePort: departurePort || 'Port à définir',
+          preferredTime: preferredTime || null,
         }),
       },
     });

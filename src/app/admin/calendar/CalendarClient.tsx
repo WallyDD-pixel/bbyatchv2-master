@@ -130,6 +130,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
   const [currentView, setCurrentView] = useState<'dayGridMonth' | 'timeGridWeek' | 'timeGridDay'>('dayGridMonth');
   const [hoveredEvent, setHoveredEvent] = useState<any>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{x: number, y: number} | null>(null);
+  const [moreEventsCard, setMoreEventsCard] = useState<{ date: Date; events: any[] } | null>(null);
 
   const load = useCallback(async (anchor: Date) => {
     // Le calendrier admin doit afficher suffisamment loin dans le futur.
@@ -405,11 +406,11 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     return ev;
   }, [slots, expSlots, reservations, agencyRequests, selectedBoat, selectedExperience, showAll, boats, experiences, locale]);
 
-  const handleEventClick = (info: any) => {
-    const event = info.event;
+  const openEventDetails = (event: any) => {
     const extProps = event.extendedProps;
     
     // Fermer les autres modals
+    setMoreEventsCard(null);
     setReservationInfo(null);
     setAgencyRequestInfo(null);
     setSlotInfo(null);
@@ -425,6 +426,52 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
       setExpSlotInfo(extProps.expSlotData);
     }
   };
+
+  const handleEventClick = (info: any) => {
+    openEventDetails(info.event);
+  };
+
+  const handleMoreLinkClick = (arg: any) => {
+    const segs = Array.isArray(arg?.allSegs) ? arg.allSegs : [];
+    const events = segs
+      .map((seg: any) => seg?.event)
+      .filter((ev: any) => ev && ev.id);
+
+    const uniqueEvents = Array.from(
+      new Map(events.map((ev: any) => [ev.id, ev])).values()
+    ).sort((a: any, b: any) => {
+      const aTime = a?.start ? new Date(a.start).getTime() : 0;
+      const bTime = b?.start ? new Date(b.start).getTime() : 0;
+      return aTime - bTime;
+    });
+
+    setHoveredEvent(null);
+    setTooltipPosition(null);
+    setMoreEventsCard({
+      date: arg?.date instanceof Date ? arg.date : new Date(),
+      events: uniqueEvents
+    });
+
+    return 'none';
+  };
+
+  const getMoreCardEventMeta = (ev: any) => {
+    const t = ev?.extendedProps?.type;
+    if (t === 'reservation') return { label: locale === 'fr' ? 'Réservation' : 'Reservation', badge: 'bg-red-100 text-red-700' };
+    if (t === 'agencyRequest') return { label: locale === 'fr' ? 'Agence' : 'Agency', badge: 'bg-amber-100 text-amber-700' };
+    if (t === 'slot') return { label: locale === 'fr' ? 'Disponibilité' : 'Availability', badge: 'bg-blue-100 text-blue-700' };
+    if (t === 'expSlot') return { label: locale === 'fr' ? 'Expérience' : 'Experience', badge: 'bg-violet-100 text-violet-700' };
+    return { label: locale === 'fr' ? 'Événement' : 'Event', badge: 'bg-gray-100 text-gray-700' };
+  };
+
+  useEffect(() => {
+    if (!moreEventsCard) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoreEventsCard(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [moreEventsCard]);
 
   const handleEventMouseEnter = (info: any, jsEvent: MouseEvent) => {
     setHoveredEvent(info.event);
@@ -669,7 +716,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           nowIndicator={true}
           dayMaxEvents={3}
           dayMaxEventRows={3}
-          moreLinkClick="popover"
+          moreLinkClick={handleMoreLinkClick}
           eventDisplay="block"
           eventMaxStack={3}
           eventTimeFormat={{
@@ -681,7 +728,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
             dayGridMonth: {
               dayMaxEvents: 3,
               dayMaxEventRows: 3,
-              moreLinkClick: 'popover',
+              moreLinkClick: handleMoreLinkClick,
               eventMinHeight: 30,
               eventShortHeight: 30
             },
@@ -862,6 +909,63 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
       />
 
       {/* Modal de détails de réservation */}
+      {moreEventsCard && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setMoreEventsCard(null)}>
+          <div className="bg-white rounded-xl w-full max-w-3xl max-h-[85vh] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+              <div>
+                <h3 className="font-semibold text-lg">
+                  {locale === 'fr' ? 'Événements du' : 'Events on'}{' '}
+                  {moreEventsCard.date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-GB', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  {moreEventsCard.events.length} {locale === 'fr' ? 'élément(s) - cliquez pour ouvrir le détail' : 'item(s) - click to open details'}
+                </p>
+              </div>
+              <button onClick={() => setMoreEventsCard(null)} className="text-gray-500 hover:text-gray-700 text-xl leading-none" aria-label={locale === 'fr' ? 'Fermer' : 'Close'}>×</button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[70vh] space-y-3">
+              {moreEventsCard.events.length === 0 ? (
+                <div className="text-sm text-gray-500">
+                  {locale === 'fr' ? 'Aucun événement.' : 'No events.'}
+                </div>
+              ) : (
+                moreEventsCard.events.map((ev: any) => {
+                  const isAllDay = !!ev.allDay;
+                  const meta = getMoreCardEventMeta(ev);
+                  const timeLabel = isAllDay
+                    ? (locale === 'fr' ? 'Toute la journée' : 'All day')
+                    : (ev.start
+                      ? new Date(ev.start).toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-GB', { hour: '2-digit', minute: '2-digit' })
+                      : '--:--');
+                  const color = ev.backgroundColor || '#3b82f6';
+
+                  return (
+                    <button
+                      key={ev.id}
+                      onClick={() => openEventDetails(ev)}
+                      className="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
+                      style={{ borderLeft: `5px solid ${color}` }}
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <div className="text-xs text-gray-500">{timeLabel}</div>
+                        <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${meta.badge}`}>{meta.label}</span>
+                      </div>
+                      <div className="font-medium text-gray-900 line-clamp-2">{ev.title}</div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {reservationInfo && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/40 p-4" style={{ zIndex: 99999 }}>
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto relative" style={{ zIndex: 100000 }}>
