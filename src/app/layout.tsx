@@ -63,6 +63,7 @@ export default async function RootLayout({
         <SEOTracking
           facebookPixelId={settings?.facebookPixelId}
           googleAnalyticsId={settings?.googleAnalyticsId}
+          googleTagManagerId={settings?.googleTagManagerId}
         />
         <script dangerouslySetInnerHTML={{__html:`
           (function() {

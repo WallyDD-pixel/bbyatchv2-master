@@ -6,12 +6,16 @@ interface SEOTrackingProps {
   googleTagManagerId?: string | null;
 }
 
-export default function SEOTracking({ 
-  facebookPixelId, 
+export default function SEOTracking({
+  facebookPixelId,
   googleAnalyticsId,
-  googleTagManagerId: _googleTagManagerId,
+  googleTagManagerId,
 }: SEOTrackingProps) {
-  if (!facebookPixelId && !googleAnalyticsId) {
+  // GA4 via GTM uniquement : éviter le double gtag direct + conteneur GTM
+  const loadDirectGa4 =
+    googleAnalyticsId && !sanitizeGtmContainerId(googleTagManagerId ?? '');
+
+  if (!facebookPixelId && !loadDirectGa4) {
     return null;
   }
 
@@ -50,8 +54,8 @@ export default function SEOTracking({
         </>
       )}
 
-      {/* Google Analytics */}
-      {googleAnalyticsId && (
+      {/* Google Analytics (direct) — désactivé si GTM est configuré */}
+      {loadDirectGa4 && googleAnalyticsId && (
         <>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
@@ -82,19 +86,7 @@ function sanitizeGtmContainerId(containerId: string): string | null {
   return id.toUpperCase();
 }
 
-/**
- * Commentaires HTML dans le DOM (React ne les émet pas en JSX).
- * Pattern documenté pour Next.js : fermeture factice de <script>.
- */
-function HtmlComment({ text }: { text: string }) {
-  return (
-    <script
-      dangerouslySetInnerHTML={{ __html: `</script><!-- ${text} --><script>` }}
-    />
-  );
-}
-
-/** Snippet GTM officiel Google — premier élément du <head> */
+/** Snippet GTM officiel Google — <script> inline dans <head> */
 export function GoogleTagManagerHead({ containerId }: { containerId: string }) {
   const id = sanitizeGtmContainerId(containerId);
   if (!id) return null;
@@ -105,30 +97,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','${id}');`;
 
-  return (
-    <>
-      <HtmlComment text="Google Tag Manager" />
-      <script dangerouslySetInnerHTML={{ __html: gtmInline }} />
-      <HtmlComment text="End Google Tag Manager" />
-    </>
-  );
+  return <script dangerouslySetInnerHTML={{ __html: gtmInline }} />;
 }
 
-/** Snippet noscript officiel Google — juste après l’ouverture de <body> */
+/** iframe noscript juste après l’ouverture de <body> */
 export function GoogleTagManagerNoScript({ containerId }: { containerId: string }) {
   const id = sanitizeGtmContainerId(containerId);
   if (!id) return null;
 
   return (
-    <>
-      <HtmlComment text="Google Tag Manager (noscript)" />
-      <noscript
-        dangerouslySetInnerHTML={{
-          __html: `<iframe src="https://www.googletagmanager.com/ns.html?id=${id}" height="0" width="0" style="display:none;visibility:hidden"></iframe>`,
-        }}
-      />
-      <HtmlComment text="End Google Tag Manager (noscript)" />
-    </>
+    <noscript
+      dangerouslySetInnerHTML={{
+        __html: `<iframe src="https://www.googletagmanager.com/ns.html?id=${id}" height="0" width="0" style="display:none;visibility:hidden"></iframe>`,
+      }}
+    />
   );
 }
 
