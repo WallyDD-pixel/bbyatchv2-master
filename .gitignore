@@ -48,3 +48,6 @@ next-env.d.ts
 *.db-journal
 prisma/prisma/dev.db
 prisma/dev.db
+
+# Projet Remotion séparé (ne pas inclure dans ce repo Next.js)
+/my-video

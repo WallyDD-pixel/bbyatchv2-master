@@ -88,7 +88,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: https: blob:",
               "media-src 'self' https: blob: data:",
               "font-src 'self' https://fonts.gstatic.com data:",
-              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.facebook.com https://connect.facebook.net https://www.facebook.com http://localhost:* ws://localhost:* wss://localhost:*",
+              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://*.google-analytics.com https://region1.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://stats.g.doubleclick.net https://*.facebook.com https://connect.facebook.net https://www.facebook.com http://localhost:* ws://localhost:* wss://localhost:*",
               "frame-src https://js.stripe.com https://hooks.stripe.com https://www.youtube.com https://youtube.com https://player.vimeo.com https://www.googletagmanager.com https://www.facebook.com",
               "object-src 'self' data:",
               "base-uri 'self'",
