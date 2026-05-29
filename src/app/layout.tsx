@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma';
 
 // Les fonts Google sont chargées via <link> dans le <head>
 // Les variables CSS sont définies dans globals.css
-// Favicon : src/app/favicon.ico + icon.png (voir scripts/generate-favicon.mjs)
+// Favicon : logo jaune (public/brand-favicon-source.png) — voir scripts/generate-favicon.mjs
 
 export const metadata: Metadata = {
   title: "BB SERVICES CHARTER - Location de yachts sur la Côte d'Azur",

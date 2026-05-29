@@ -1,7 +1,8 @@
 import { writeFileSync } from "fs";
 import sharp from "sharp";
 
-const source = "public/cropped-LOGO-BB-yacht-ok_black-FEEL-THE-MEdierranean-247x82.png";
+/** Logo jaune / emblème blanc (fichier fourni par le client) */
+const source = "public/brand-favicon-source.png";
 
 /** ICO Windows Vista+ : un PNG embarqué */
 function pngBufferToIco(pngBuffer) {
@@ -23,12 +24,12 @@ function pngBufferToIco(pngBuffer) {
 }
 
 const square32 = await sharp(source)
-  .resize(32, 32, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 1 } })
+  .resize(32, 32, { fit: "cover" })
   .png()
   .toBuffer();
 
 const square180 = await sharp(source)
-  .resize(180, 180, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 1 } })
+  .resize(180, 180, { fit: "cover" })
   .png()
   .toBuffer();
 
@@ -39,5 +40,7 @@ writeFileSync("public/favicon.ico", ico);
 writeFileSync("src/app/icon.png", square32);
 writeFileSync("src/app/apple-icon.png", square180);
 writeFileSync("public/favicon-32.png", square32);
+writeFileSync("public/favicon.png", square32);
+writeFileSync("public/apple-icon.png", square180);
 
-console.log("Favicon OK —", ico.length, "octets");
+console.log("Favicon OK —", ico.length, "octets (source:", source, ")");
