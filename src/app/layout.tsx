@@ -2,16 +2,21 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ForceLight } from '@/components/ForceLight';
 import { AppProviders } from '@/components/Providers';
-import SEOTracking from '@/components/SEOTracking';
+import SEOTracking, {
+  GoogleTagManagerHead,
+  GoogleTagManagerNoScript,
+} from '@/components/SEOTracking';
 import PageLoader from '@/components/PageLoader';
 import { prisma } from '@/lib/prisma';
 
 // Les fonts Google sont chargées via <link> dans le <head>
 // Les variables CSS sont définies dans globals.css
+// Favicon : src/app/favicon.ico + icon.png (voir scripts/generate-favicon.mjs)
 
 export const metadata: Metadata = {
   title: "BB SERVICES CHARTER - Location de yachts sur la Côte d'Azur",
-  description: "Réservez votre yacht de luxe pour une expérience inoubliable sur la Côte d'Azur et la Riviera italienne. Location de bateaux avec skipper professionnel.",
+  description:
+    "Réservez votre yacht de luxe pour une expérience inoubliable sur la Côte d'Azur et la Riviera italienne. Location de bateaux avec skipper professionnel.",
 };
 
 export const dynamic = 'force-dynamic';
@@ -32,6 +37,13 @@ export default async function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
+        {/* Google Tag Manager — le plus haut possible dans <head> (instructions Google) */}
+        {settings?.googleTagManagerId ? (
+          <GoogleTagManagerHead containerId={settings.googleTagManagerId} />
+        ) : null}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
         {/* Script d'init light forcé */}
         <script dangerouslySetInnerHTML={{__html:`(function(){try{document.documentElement.classList.remove('dark');localStorage.setItem('theme','light');}catch(e){}})();`}}/>
         {/* Google Fonts chargées côté client (pas pendant le build) */}
@@ -40,15 +52,17 @@ export default async function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-sans antialiased" style={{ fontFamily: 'var(--font-sans)' }}>
+        {settings?.googleTagManagerId ? (
+          <GoogleTagManagerNoScript containerId={settings.googleTagManagerId} />
+        ) : null}
         <ForceLight />
         <AppProviders>
           <PageLoader />
           {children}
         </AppProviders>
-        <SEOTracking 
+        <SEOTracking
           facebookPixelId={settings?.facebookPixelId}
           googleAnalyticsId={settings?.googleAnalyticsId}
-          googleTagManagerId={settings?.googleTagManagerId}
         />
         <script dangerouslySetInnerHTML={{__html:`
           (function() {

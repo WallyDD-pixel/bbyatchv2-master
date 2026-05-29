@@ -140,7 +140,7 @@ export default function ExperienceNewClient({ locale }: ExperienceNewClientProps
     
     // Vérifier la taille des fichiers avant soumission
     const maxFileSize = 10 * 1024 * 1024; // 10MB par fichier
-    const maxTotalSize = 45 * 1024 * 1024; // 45MB total
+    const maxTotalSize = 95 * 1024 * 1024; // 95MB total (sous la limite Nginx 100MB)
     
     const validFiles: File[] = [];
     const invalidFiles: string[] = [];

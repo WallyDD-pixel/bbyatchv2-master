@@ -9,9 +9,9 @@ interface SEOTrackingProps {
 export default function SEOTracking({ 
   facebookPixelId, 
   googleAnalyticsId,
-  googleTagManagerId 
+  googleTagManagerId: _googleTagManagerId,
 }: SEOTrackingProps) {
-  if (!facebookPixelId && !googleAnalyticsId && !googleTagManagerId) {
+  if (!facebookPixelId && !googleAnalyticsId) {
     return null;
   }
 
@@ -72,33 +72,41 @@ export default function SEOTracking({
         </>
       )}
 
-      {/* Google Tag Manager */}
-      {googleTagManagerId && (
-        <>
-          <Script
-            id="google-tag-manager"
-            strategy="afterInteractive"
-            dangerouslySetInnerHTML={{
-              __html: `
-                (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-                new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-                j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-                'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-                })(window,document,'script','dataLayer','${googleTagManagerId}');
-              `,
-            }}
-          />
-          <noscript>
-            <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${googleTagManagerId}`}
-              height="0"
-              width="0"
-              style={{ display: 'none', visibility: 'hidden' }}
-            />
-          </noscript>
-        </>
-      )}
     </>
+  );
+}
+
+/** Snippet GTM dans <head> (requis pour la détection Tag Assistant) */
+export function GoogleTagManagerHead({ containerId }: { containerId: string }) {
+  return (
+    <Script
+      id="google-tag-manager"
+      strategy="beforeInteractive"
+      dangerouslySetInnerHTML={{
+        __html: `
+          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','${containerId}');
+        `,
+      }}
+    />
+  );
+}
+
+/** iframe noscript juste après <body> */
+export function GoogleTagManagerNoScript({ containerId }: { containerId: string }) {
+  return (
+    <noscript>
+      <iframe
+        src={`https://www.googletagmanager.com/ns.html?id=${containerId}`}
+        height="0"
+        width="0"
+        style={{ display: 'none', visibility: 'hidden' }}
+        title="Google Tag Manager"
+      />
+    </noscript>
   );
 }
 

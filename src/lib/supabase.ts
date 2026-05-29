@@ -33,15 +33,6 @@ try {
         }
       }
     );
-    
-    // Log de configuration (sans exposer la clé complète)
-    if (typeof window === 'undefined') { // Seulement côté serveur
-      console.log('🔧 Supabase configuration:');
-      console.log('  - URL:', supabaseUrl);
-      console.log('  - Service Role Key length:', serviceRoleKey.length);
-      console.log('  - Service Role Key starts with:', serviceRoleKey.substring(0, 20) + '...');
-      console.log('  - Service Role Key ends with:', '...' + serviceRoleKey.substring(serviceRoleKey.length - 20));
-    }
   }
 } catch (error) {
   // En cas d'erreur, créer un client factice

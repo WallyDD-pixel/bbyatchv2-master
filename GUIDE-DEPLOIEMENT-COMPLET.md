@@ -237,7 +237,7 @@ server {
 # Configuration HTTPS
 server {
     server_name preprod.bbservicescharter.com;
-    client_max_body_size 50M;
+    client_max_body_size 100M;
 
     # Servir les fichiers statiques directement depuis Next.js
     location /_next/static {

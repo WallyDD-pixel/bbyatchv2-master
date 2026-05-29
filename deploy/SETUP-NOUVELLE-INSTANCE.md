@@ -94,7 +94,7 @@ server {
     listen 80;
     server_name preprod.bbservicescharter.com;
 
-    client_max_body_size 50M;
+    client_max_body_size 100M;
 
     location / {
         proxy_pass http://localhost:3003;

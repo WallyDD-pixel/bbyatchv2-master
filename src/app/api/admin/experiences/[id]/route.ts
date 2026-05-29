@@ -204,7 +204,7 @@ export async function POST(req:Request, { params }: { params: Promise<{ id:strin
           
           // Vérifier la taille totale et individuelle des fichiers
           const totalSize = validFiles.reduce((sum, f) => sum + f.size, 0);
-          const maxTotalSize = 45 * 1024 * 1024; // 45MB total
+          const maxTotalSize = 95 * 1024 * 1024; // 95MB total (sous la limite Nginx 100MB)
           const maxFileSize = 10 * 1024 * 1024; // 10MB par fichier
           
           // Filtrer les fichiers qui dépassent la taille individuelle
