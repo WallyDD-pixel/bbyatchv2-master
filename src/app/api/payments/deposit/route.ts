@@ -324,9 +324,14 @@ export async function POST(req: Request){
             console.log(`[deposit] DEBUG: All available slots for boat ${boat.id} (${allBoatSlots.length} total):`, allBoatSlots.slice(0, 20).map(s => ({ part: s.part, date: s.date.toISOString().split('T')[0] })));
           }
           const partsSet = new Set(daySlots.map(s=>s.part));
-          const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
-          if(!hasFullEquivalent){
-            console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${dateStr}, parts found:`, Array.from(partsSet));
+          if (part === 'FULL') {
+            const hasFullEquivalent = partsSet.has('FULL') || (partsSet.has('AM') && partsSet.has('PM'));
+            if (!hasFullEquivalent) {
+              console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${dateStr}, parts found:`, Array.from(partsSet));
+              return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+            }
+          } else if (!(partsSet.has('SUNSET') || partsSet.has('FULL'))) {
+            console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${dateStr} for SUNSET, parts found:`, Array.from(partsSet));
             return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
           }
         }
@@ -359,16 +364,13 @@ export async function POST(req: Request){
           console.log(`[deposit] DEBUG: All available slots for boat ${boat.id} (${allBoatSlots.length} total):`, allBoatSlots.slice(0, 20).map(s => ({ part: s.part, date: s.date.toISOString().split('T')[0] })));
         }
         const partsSet = new Set(startSlots.map(s=>s.part));
-        if(part==='AM' && !(partsSet.has('AM') || partsSet.has('FULL'))){
-          console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${start} for AM, parts found:`, Array.from(partsSet));
-          return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
-        }
-        if(part==='PM' && !(partsSet.has('PM') || partsSet.has('FULL'))){
-          console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${start} for PM, parts found:`, Array.from(partsSet));
-          return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
-        }
-        if(part==='SUNSET' && !(partsSet.has('SUNSET') || partsSet.has('FULL'))){
-          console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${start} for SUNSET, parts found:`, Array.from(partsSet));
+        const hasHalf =
+          partsSet.has('HALF') ||
+          partsSet.has('AM') ||
+          partsSet.has('PM') ||
+          partsSet.has('FULL');
+        if (!hasHalf) {
+          console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${start} for HALF, parts found:`, Array.from(partsSet));
           return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
         }
       }

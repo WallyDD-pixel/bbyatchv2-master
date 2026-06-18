@@ -20,7 +20,7 @@ interface Props {
   disabledMessage?: string;
   startDate?: string;
   endDate?: string;
-  part?: 'FULL'|'AM'|'PM'|'SUNSET';
+  part?: 'FULL'|'HALF'|'AM'|'PM'|'SUNSET';
   optionIds?: number[]; // nouvelles options sélectionnées
   needsSkipper?: boolean;
   additionalInfo?: AdditionalInfo;

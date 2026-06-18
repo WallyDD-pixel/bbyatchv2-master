@@ -5,7 +5,7 @@ import {
   isBoatReservedOnDate,
   slotDateKey,
 } from '@/lib/reservation-availability';
-import { hasHalfDaySlot } from '@/lib/part-labels';
+import { hasHalfDaySlot, isHalfDayPart } from '@/lib/part-labels';
 
 // GET /api/availability/boats?from=YYYY-MM-DD&to=YYYY-MM-DD&part=FULL|AM|PM
 // Retourne les bateaux disponibles sur TOUTE la plage demandée selon la logique de part :
@@ -48,12 +48,12 @@ export async function GET(req: Request) {
       pricePerDay: number;
     }
 
-    // type SlotPart = 'FULL' | 'AM' | 'PM';
+    // type SlotPart = 'FULL' | 'AM' | 'PM' | 'HALF' | 'SUNSET';
 
     interface AvailabilitySlot {
       boatId: number;
       date: Date | string;
-      part: SlotPart;
+      part: string;
     }
 
     const [boats, slots, reservations]: [Boat[], AvailabilitySlot[], any[]] = await Promise.all([
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
       const boat = (byBoat[s.boatId] ||= {});
       const day = (boat[key] ||= {});
       (day as any)[s.part] = true;
-      if (s.part === 'AM' || s.part === 'PM' || s.part === 'HALF') {
+      if (isHalfDayPart(s.part)) {
         day.HALF = true;
       }
     }
@@ -103,12 +103,10 @@ export async function GET(req: Request) {
       pricePerDay: number;
     }
 
-    type SlotPart = 'FULL' | 'AM' | 'PM' | 'SUNSET';
-
     interface AvailabilitySlot {
       boatId: number;
       date: Date | string;
-      part: SlotPart;
+      part: string;
     }
 
     interface BoatsResult {
@@ -123,7 +121,7 @@ export async function GET(req: Request) {
     interface SlotsResult {
       boatId: number;
       date: Date | string;
-      part: SlotPart;
+      part: string;
     }
 
     // Add types to boats and slots

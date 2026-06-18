@@ -11,8 +11,15 @@ import {
   resolveBookingPart,
   type SearchPart,
 } from "@/lib/boat-pricing";
+import { hasHalfDaySlot, isHalfDayPart } from "@/lib/part-labels";
 
-// Page résultats de recherche de bateaux
+type DaySlotFlags = {
+  FULL?: boolean;
+  AM?: boolean;
+  PM?: boolean;
+  HALF?: boolean;
+  SUNSET?: boolean;
+};
 interface SearchParamsShape {
   lang?: string;
   city?: string;
@@ -157,7 +164,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
           }
           
           // Organiser les slots normaux par bateau et par date (en UTC)
-          const byBoat: Record<number, Record<string, { AM?: boolean; PM?: boolean; FULL?: boolean }>> = {};
+          const byBoat: Record<number, Record<string, DaySlotFlags>> = {};
           for (const s of slots) {
             const d = new Date(s.date);
             // Utiliser UTC pour extraire la date, comme les slots sont stockés en UTC
@@ -168,7 +175,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
           }
           
           // Organiser les slots d'événements par bateau et par date (en UTC)
-          const expByBoat: Record<number, Record<string, { AM?: boolean; PM?: boolean; FULL?: boolean }>> = {};
+          const expByBoat: Record<number, Record<string, DaySlotFlags>> = {};
           for (const s of expSlots) {
             if (!s.boatId) continue;
             const d = new Date(s.date);
@@ -224,7 +231,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
             }
             
             // Déterminer les créneaux disponibles pour ce bateau sur la plage de dates
-            const availableParts: { FULL?: boolean; AM?: boolean; PM?: boolean; SUNSET?: boolean } = {};
+            const availableParts: DaySlotFlags = {};
             let hasAnySlot = false;
             let hasOnlyExpSlots = false; // Indique si le bateau n'a QUE des slots d'événements
             
@@ -235,8 +242,8 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
                 if(dayParts) {
                   hasAnySlot = true;
                   if(dayParts.FULL) availableParts.FULL = true;
-                  if(dayParts.AM || dayParts.PM || (dayParts as any).HALF) availableParts.HALF = true;
-                  if((dayParts as any).SUNSET) availableParts.SUNSET = true;
+                  if (hasHalfDaySlot(dayParts)) availableParts.HALF = true;
+                  if(dayParts.SUNSET) availableParts.SUNSET = true;
                 }
               }
             }
@@ -249,8 +256,8 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
                   hasAnySlot = true;
                   // Les slots d'événements sont aussi comptabilisés
                   if(dayParts.FULL) availableParts.FULL = true;
-                  if(dayParts.AM || dayParts.PM || (dayParts as any).HALF) availableParts.HALF = true;
-                  if((dayParts as any).SUNSET) availableParts.SUNSET = true;
+                  if (hasHalfDaySlot(dayParts)) availableParts.HALF = true;
+                  if(dayParts.SUNSET) availableParts.SUNSET = true;
                 }
               }
             }
@@ -372,11 +379,11 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
             }
           }
         }
-        const byBoat: Record<number, { AM?: boolean; PM?: boolean; FULL?: boolean; SUNSET?: boolean }> = {};
+        const byBoat: Record<number, DaySlotFlags> = {};
         for (const s of slots) { (byBoat[s.boatId] ||= {}); (byBoat[s.boatId] as any)[s.part] = true; }
         
         // Organiser aussi les slots d'événements
-        const expByBoat: Record<number, { AM?: boolean; PM?: boolean; FULL?: boolean; SUNSET?: boolean }> = {};
+        const expByBoat: Record<number, DaySlotFlags> = {};
         for (const s of expSlots) { 
           if (!s.boatId) continue;
           (expByBoat[s.boatId] ||= {}); 
@@ -399,15 +406,15 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
           }
           
           // Ajouter la propriété availableParts au bateau
-          const availableParts: { FULL?: boolean; AM?: boolean; PM?: boolean; SUNSET?: boolean } = {};
+          const availableParts: DaySlotFlags = {};
           if(parts) {
             if(parts.FULL) availableParts.FULL = true;
-            if(parts.AM || parts.PM || (parts as any).HALF) availableParts.HALF = true;
+            if (hasHalfDaySlot(parts)) availableParts.HALF = true;
             if(parts.SUNSET) availableParts.SUNSET = true;
           }
           if(expParts) {
             if(expParts.FULL) availableParts.FULL = true;
-            if(expParts.AM || expParts.PM || (expParts as any).HALF) availableParts.HALF = true;
+            if (hasHalfDaySlot(expParts)) availableParts.HALF = true;
             if(expParts.SUNSET) availableParts.SUNSET = true;
           }
           
@@ -416,26 +423,13 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
           
           return { ...b, availableParts, hasOnlyExpSlots };
         }).filter((b:any) => b !== null).sort((a:any,b:any)=> {
-          // Trier d'abord par correspondance exacte au critère recherché, puis par prix
-          if (partSel === 'HALF') {
-            // Même logique que l’intent demi-journée : tri par prix, pas par préférence FULL.
+          if (partSel === 'HALF' || partSel === 'AM' || partSel === 'PM') {
             return a.pricePerDay - b.pricePerDay;
           }
-
-          const aMatches =
-            partSel === 'SUNSET'
-              ? !!a.availableParts.SUNSET
-              : partSel === 'HALF'
-                ? !!(a.availableParts.HALF || a.availableParts.AM || a.availableParts.PM || a.availableParts.FULL)
-                : !!(a.availableParts.FULL);
-          const bMatches =
-            partSel === 'SUNSET'
-              ? !!b.availableParts.SUNSET
-              : partSel === 'HALF'
-                ? !!(b.availableParts.HALF || b.availableParts.AM || b.availableParts.PM || b.availableParts.FULL)
-                : !!(b.availableParts.FULL);
-          if(aMatches && !bMatches) return -1;
-          if(!aMatches && bMatches) return 1;
+          const aMatches = !!a.availableParts.SUNSET;
+          const bMatches = !!b.availableParts.SUNSET;
+          if (aMatches && !bMatches) return -1;
+          if (!aMatches && bMatches) return 1;
           return a.pricePerDay - b.pricePerDay;
         });
           console.log('[search] AM/PM - After slot filter:', boats.length, 'boats');
@@ -485,6 +479,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
         )}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {boats.map((b) => {
+            if (!partSel) return null;
             const bestPart = resolveBookingPart(partSel, b.availableParts);
             const priceFrom = getBoatPriceForPart(b, partSel, nbJours > 0 ? nbJours : 1);
             
@@ -538,7 +533,7 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
                 {/* Afficher les créneaux disponibles */}
                 {b.availableParts && (
                   <div className="flex flex-wrap gap-1.5 mt-1">
-                    {partSel === 'HALF' ? (
+                    {isHalfDayPart(partSel) ? (
                       <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-emerald-600 text-white">
                         {locale === 'fr' ? 'Demi-journée' : 'Half-day'}
                       </span>
@@ -559,8 +554,8 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
                         )}
                         {(b.availableParts.HALF || b.availableParts.AM || b.availableParts.PM) && (
                           <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
-                            partSel === 'HALF' 
-                              ? 'bg-emerald-600 text-white' 
+                            isHalfDayPart(partSel)
+                              ? 'bg-emerald-600 text-white'
                               : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
                           }`}>
                             {locale === 'fr' ? 'Demi-journée' : 'Half day'}

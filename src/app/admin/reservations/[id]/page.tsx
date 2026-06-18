@@ -1,5 +1,6 @@
 import { getServerSession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
 import { formatPartLabel } from '@/lib/part-labels';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';

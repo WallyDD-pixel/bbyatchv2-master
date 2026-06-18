@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { formatPartLabelShort } from '@/lib/part-labels';
+import { formatPartLabelShort, isHalfDayPart } from '@/lib/part-labels';
 
 interface AgencyUser {
   id: string;
@@ -87,7 +87,7 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
       } else if (selectedBoat.pricePerDay) {
         basePrice = Math.round(selectedBoat.pricePerDay * 0.8 * nbJours); // -20% si pas de prix agence
       }
-    } else if (part === 'HALF' || part === 'AM' || part === 'PM') {
+    } else if (isHalfDayPart(part)) {
       const halfPublic = selectedBoat.priceAm ?? selectedBoat.pricePm;
       const halfAgency = selectedBoat.priceAgencyAm ?? selectedBoat.priceAgencyPm;
       basePrice = halfAgency ?? (halfPublic ? Math.round(halfPublic * 0.8) : 0);

@@ -73,8 +73,8 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     }
 
     const { transporter, isJsonTransport } = await createTransporter();
-    const fromEmail = settings.smtpFromEmail || 'noreply@bb-yachts.com';
-    const fromName = settings.smtpFromName || 'BB YACHTS';
+    const fromEmail = settings?.smtpFromEmail || 'noreply@bb-yachts.com';
+    const fromName = settings?.smtpFromName || 'BB YACHTS';
 
     const toAddress = Array.isArray(options.to) ? options.to.join(', ') : (options.to || '').trim();
     if (!toAddress) {
