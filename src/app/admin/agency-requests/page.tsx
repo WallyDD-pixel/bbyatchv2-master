@@ -1,6 +1,7 @@
 import { getServerSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { formatPartLabel } from '@/lib/part-labels';
 import Footer from '@/components/Footer';
 import HeaderBar from '@/components/HeaderBar';
 import { messages, type Locale } from '@/i18n/messages';
@@ -115,7 +116,7 @@ export default async function AgencyRequestsAdminPage({ searchParams }: { search
                     </td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 font-medium text-[10px] sm:text-xs'>{r.boat?.name||'—'}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[9px] sm:text-xs'>{dateDisplay}</td>
-                    <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell text-[9px] sm:text-xs'>{r.part ? (r.part === 'AM' ? (locale==='fr'? 'Matin':'AM') : r.part === 'PM' ? (locale==='fr'? 'Après-midi':'PM') : r.part) : (locale==='fr'? 'Journée':'FULL')}</td>
+                    <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell text-[9px] sm:text-xs'>{formatPartLabel(r.part || 'FULL', locale)}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden lg:table-cell text-[10px] sm:text-xs'>{r.passengers??'—'}</td>
                     <td className='py-2 sm:py-2.5 px-2 sm:px-3 hidden md:table-cell text-[9px] sm:text-xs text-black/70 max-w-[180px] truncate' title={specialNeeds || undefined}>
                       {specialNeeds || '—'}

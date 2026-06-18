@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
+import { blockAvailabilityForNewReservation } from '@/lib/reservation-availability';
 
 export async function POST(req: Request) {
   try {
@@ -91,6 +92,12 @@ export async function POST(req: Request) {
         }),
       },
     });
+
+    await blockAvailabilityForNewReservation(
+      parseInt(boatId, 10),
+      s,
+      e
+    );
 
     return NextResponse.json({ success: true, reservation });
   } catch (error: any) {

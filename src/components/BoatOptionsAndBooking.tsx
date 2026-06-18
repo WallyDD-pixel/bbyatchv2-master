@@ -9,7 +9,7 @@ interface Props {
   baseTotal: number|null; // prix de base (sans options) pour le créneau/date choisi
   baseTotalLabel: string; // ex: "2 jours" ou "Matin"
   pricePerDay: number; // pour affichage info complémentaire
-  part: 'FULL'|'AM'|'PM';
+  part: 'FULL'|'HALF'|'AM'|'PM'|'SUNSET';
   nbJours: number; // nombre de jours si FULL
   options: BoatOption[];
   disabled?: boolean;
@@ -216,12 +216,20 @@ export default function BoatOptionsAndBooking({ t, locale, baseTotal, baseTotalL
               {locale === 'fr' ? 'Soit' : 'That is'} {pricePerDay.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} {t.boat_per_day}
             </p>
           )}
-          {part!=='FULL' && baseTotal!=null && (
+          {part!=='FULL' && part!=='SUNSET' && baseTotal!=null && (
             <p className='text-[11px] text-black/50 mt-1'>
               {locale === 'fr' ? 'Prix à partir de' : 'Price from'} {baseTotal.toLocaleString(locale==='fr'? 'fr-FR':'en-US')} € ({locale === 'fr' ? 'demi-journée' : 'half-day'})
             </p>
           )}
-          {part!=='FULL' && baseTotal==null && <p className='text-[11px] text-red-600 mt-1'>{part==='AM'? t.boat_price_missing_am : t.boat_price_missing_pm}</p>}
+          {part!=='FULL' && baseTotal==null && (
+            <p className='text-[11px] text-red-600 mt-1'>
+              {part==='SUNSET'
+                ? (locale === 'fr' ? 'Prix sunset non renseigné pour ce bateau.' : 'Sunset price not set for this boat.')
+                : part==='AM'
+                  ? t.boat_price_missing_am
+                  : t.boat_price_missing_pm}
+            </p>
+          )}
         </div>
         {/* Bouton réservation */}
         <RequestBookingButton 

@@ -15,6 +15,7 @@ export interface ExperienceCheckoutBody {
   preferredTime?: string;    // Horaire souhaité (HH:MM)
   children?: Array<{ age: number }>; // Enfants avec leurs âges
   specialRequest?: string;  // Demande spécifique
+  siteOrigin?: string;      // window.location.origin (URLs Stripe)
 }
 
 export interface ExperienceBasic {

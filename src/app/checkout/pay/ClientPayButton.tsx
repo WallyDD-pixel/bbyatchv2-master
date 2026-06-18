@@ -53,7 +53,21 @@ export default function ClientPayButton({ locale, label, boatSlug, start, end, p
       const res = await fetch('/api/payments/deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ boatSlug, start, end, part, pax, locale, opts, waterToys, children, specialNeeds, excursion, departurePort })
+        body: JSON.stringify({
+          boatSlug,
+          start,
+          end,
+          part,
+          pax,
+          locale,
+          opts,
+          waterToys,
+          children,
+          specialNeeds,
+          excursion,
+          departurePort,
+          siteOrigin: typeof window !== 'undefined' ? window.location.origin : undefined,
+        })
       });
       if(!res.ok){
         const data = await res.json().catch(()=>({ error:'unknown' }));

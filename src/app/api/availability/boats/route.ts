@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import {
+  buildReservedDatesByBoat,
+  isBoatReservedOnDate,
+  slotDateKey,
+} from '@/lib/reservation-availability';
+import { hasHalfDaySlot } from '@/lib/part-labels';
 
 // GET /api/availability/boats?from=YYYY-MM-DD&to=YYYY-MM-DD&part=FULL|AM|PM
 // Retourne les bateaux disponibles sur TOUTE la plage demandée selon la logique de part :
@@ -10,9 +16,10 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get('from');
   const to = searchParams.get('to');
-  const part = searchParams.get('part') as 'FULL'|'AM'|'PM'|null;
+  const part = searchParams.get('part') as 'FULL'|'AM'|'PM'|'HALF'|'SUNSET'|null;
   if (!from || !to || !part) return NextResponse.json({ error: 'missing_params' }, { status: 400 });
-  if (!['FULL','AM','PM'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
+  const partNorm = part === 'AM' || part === 'PM' ? 'HALF' : part;
+  if (!['FULL','HALF','SUNSET'].includes(partNorm)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
   const start = new Date(from + 'T00:00:00');
   const end = new Date(to + 'T23:59:59');
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end)
@@ -70,31 +77,21 @@ export async function GET(req: Request) {
       })
     ]);
 
-    // Créer un Set des bateaux réservés pour au moins un jour de la plage
-    const reservedBoatIds = new Set<number>();
-    for (const res of reservations) {
-      if (!res.boatId) continue;
-      const resStart = new Date(res.startDate);
-      const resEnd = new Date(res.endDate);
-      // Vérifier si la réservation chevauche au moins un jour de la plage demandée
-      if (resStart <= end && resEnd >= start) {
-        reservedBoatIds.add(res.boatId);
-        console.log(`[availability/boats] Bateau ${res.boatId} réservé du ${resStart.toISOString().slice(0,10)} au ${resEnd.toISOString().slice(0,10)}`);
-      }
-    }
+    // Dates réservées par bateau (tous créneaux bloqués ces jours-là)
+    const reservedByBoat = buildReservedDatesByBoat(reservations);
 
     // Map des slots par boatId -> date -> parts
-    // Exclure les slots des bateaux réservés
-    const byBoat: Record<number, Record<string, { AM?: boolean; PM?: boolean; FULL?: boolean }>> = {};
+    const byBoat: Record<number, Record<string, { AM?: boolean; PM?: boolean; HALF?: boolean; FULL?: boolean; SUNSET?: boolean }>> = {};
     for (const s of slots) {
-      // Ignorer les slots des bateaux réservés
-      if (reservedBoatIds.has(s.boatId)) continue;
-      
-      const d = new Date(s.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const key = slotDateKey(s.date);
+      if (isBoatReservedOnDate(s.boatId, key, reservedByBoat)) continue;
+
       const boat = (byBoat[s.boatId] ||= {});
       const day = (boat[key] ||= {});
       (day as any)[s.part] = true;
+      if (s.part === 'AM' || s.part === 'PM' || s.part === 'HALF') {
+        day.HALF = true;
+      }
     }
 
     interface Boat {
@@ -106,7 +103,7 @@ export async function GET(req: Request) {
       pricePerDay: number;
     }
 
-    type SlotPart = 'FULL' | 'AM' | 'PM';
+    type SlotPart = 'FULL' | 'AM' | 'PM' | 'SUNSET';
 
     interface AvailabilitySlot {
       boatId: number;
@@ -138,6 +135,7 @@ export async function GET(req: Request) {
       AM?: boolean;
       PM?: boolean;
       FULL?: boolean;
+      SUNSET?: boolean;
     }
 
     interface EligibleBoat extends Boat {
@@ -152,9 +150,11 @@ export async function GET(req: Request) {
       for (const d of requiredDays) {
         const parts = days[d];
         if (!parts) return false;
-        if (part === 'AM' || part === 'PM') {
-          if (!(parts[part] || parts.FULL)) return false;
-        } else if (part === 'FULL') {
+        if (partNorm === 'HALF') {
+          if (!hasHalfDaySlot(parts)) return false;
+        } else if (partNorm === 'SUNSET') {
+          if (!(parts.SUNSET || parts.FULL)) return false;
+        } else if (partNorm === 'FULL') {
           // Assouplissement : si une seule journée (from==to) on accepte n'importe quel slot (FULL ou AM ou PM)
           if (requiredDays.length === 1) {
             if (!(parts.FULL || parts.AM || parts.PM)) return false;

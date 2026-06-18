@@ -7,6 +7,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { format, startOfDay, endOfDay, addDays } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
+import { formatPartLabel, isHalfDaySlotPart } from '@/lib/part-labels';
 import AvailabilityModal from './AvailabilityModal';
 
 interface Boat { id: number; name: string; slug: string; imageUrl?: string|null; options?: { id: number; label: string; price: number | null }[]; skipperPrice?: number | null; skipperRequired?: boolean | null; }
@@ -226,12 +227,12 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         const boatName = boats.find(b => b.id === s.boatId)?.name || '#';
         ev.push({
           id: 'slot-' + s.id,
-          title: boatName + ': ' + s.part + (s.note ? ' • ' + s.note : ''),
+          title: boatName + ': ' + formatPartLabel(s.part, locale) + (s.note ? ' • ' + s.note : ''),
           start: start.toISOString(),
           end: end.toISOString(),
           allDay: false,
-          backgroundColor: s.part === 'FULL' ? '#3b82f6' : s.part === 'AM' || s.part === 'PM' ? '#10b981' : '#8b5cf6',
-          borderColor: s.part === 'FULL' ? '#2563eb' : s.part === 'AM' || s.part === 'PM' ? '#059669' : '#7c3aed',
+          backgroundColor: s.part === 'FULL' ? '#3b82f6' : isHalfDaySlotPart(s.part) ? '#10b981' : '#8b5cf6',
+          borderColor: s.part === 'FULL' ? '#2563eb' : isHalfDaySlotPart(s.part) ? '#059669' : '#7c3aed',
           extendedProps: { type: 'slot', slotData: s }
         });
       });
@@ -327,12 +328,12 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         
         ev.push({
           id: 'slot-' + s.id,
-          title: s.part + (s.note ? ' • ' + s.note : ''),
+          title: formatPartLabel(s.part, locale) + (s.note ? ' • ' + s.note : ''),
           start: start.toISOString(),
           end: end.toISOString(),
           allDay: false,
-          backgroundColor: s.part === 'FULL' ? '#3b82f6' : s.part === 'AM' || s.part === 'PM' ? '#10b981' : '#8b5cf6',
-          borderColor: s.part === 'FULL' ? '#2563eb' : s.part === 'AM' || s.part === 'PM' ? '#059669' : '#7c3aed',
+          backgroundColor: s.part === 'FULL' ? '#3b82f6' : isHalfDaySlotPart(s.part) ? '#10b981' : '#8b5cf6',
+          borderColor: s.part === 'FULL' ? '#2563eb' : isHalfDaySlotPart(s.part) ? '#059669' : '#7c3aed',
           extendedProps: { type: 'slot', slotData: s }
         });
       });
@@ -536,7 +537,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
     boatId: number;
     experienceId?: number | null;
     dates: string[];
-    part: 'FULL' | 'AM' | 'PM' | 'SUNSET';
+    part: 'FULL' | 'HALF' | 'SUNSET';
     note?: string;
     experiencePrice?: number | null;
   }) => {
@@ -985,10 +986,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                 const boatName = boat?.name || 'N/A';
                 const startDateStr = reservationInfo.startDate.includes('T') ? reservationInfo.startDate.split('T')[0] : reservationInfo.startDate;
                 const endDateStr = reservationInfo.endDate.includes('T') ? reservationInfo.endDate.split('T')[0] : reservationInfo.endDate;
-                const partLabel = reservationInfo.part === 'FULL' ? (locale==='fr'?'Journée entière':'Full day') : 
-                                 reservationInfo.part === 'AM' ? (locale==='fr'?'Matin':'Morning') : 
-                                 reservationInfo.part === 'PM' ? (locale==='fr'?'Après-midi':'Afternoon') : 
-                                 reservationInfo.part === 'SUNSET' ? 'Sunset' : reservationInfo.part || (locale==='fr'?'Non spécifié':'Not specified');
+                const partLabel = formatPartLabel(reservationInfo.part, locale);
                 const statusLabel = reservationInfo.status === 'confirmed' ? (locale==='fr'?'Confirmée':'Confirmed') :
                                    reservationInfo.status === 'pending' ? (locale==='fr'?'En attente':'Pending') :
                                    reservationInfo.status === 'pending_deposit' ? (locale==='fr'?'En attente d\'acompte':'Pending deposit') :
@@ -1415,10 +1413,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                 const boatName = boat?.name || 'N/A';
                 const startDateStr = agencyRequestInfo.startDate.includes('T') ? agencyRequestInfo.startDate.split('T')[0] : agencyRequestInfo.startDate;
                 const endDateStr = agencyRequestInfo.endDate.includes('T') ? agencyRequestInfo.endDate.split('T')[0] : agencyRequestInfo.endDate;
-                const partLabel = agencyRequestInfo.part === 'FULL' ? (locale==='fr'?'Journée entière':'Full day') : 
-                                 agencyRequestInfo.part === 'AM' ? (locale==='fr'?'Matin':'Morning') : 
-                                 agencyRequestInfo.part === 'PM' ? (locale==='fr'?'Après-midi':'Afternoon') : 
-                                 agencyRequestInfo.part || (locale==='fr'?'Non spécifié':'Not specified');
+                const partLabel = formatPartLabel(agencyRequestInfo.part, locale);
                 const statusLabel = agencyRequestInfo.status === 'pending' ? (locale==='fr'?'En attente':'Pending') :
                                    agencyRequestInfo.status === 'approved' ? (locale==='fr'?'Approuvé':'Approved') :
                                    agencyRequestInfo.status === 'converted' ? (locale==='fr'?'Converti':'Converted') :
@@ -1617,10 +1612,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                 const boat = boats.find((b: Boat) => Number(b.id) === Number(boatId));
                 console.log('[Modal] Found boat:', boat);
                 const boatName = boat?.name || `N/A (boatId: ${boatId})`;
-                const partLabel = slotInfo.part === 'FULL' ? (locale==='fr'?'Journée entière':'Full day') : 
-                                 slotInfo.part === 'AM' ? (locale==='fr'?'Matin':'Morning') : 
-                                 slotInfo.part === 'PM' ? (locale==='fr'?'Après-midi':'Afternoon') : 
-                                 slotInfo.part === 'SUNSET' ? 'Sunset' : slotInfo.part || '';
+                const partLabel = formatPartLabel(slotInfo.part, locale);
                 const statusLabel = (slotInfo.status || 'available') === 'available' 
                   ? (locale==='fr'?'Disponible':'Available')
                   : (locale==='fr'?'Indisponible':'Unavailable');
@@ -1726,10 +1718,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                 const exp = experiences.find((e: any) => e.id === expSlotInfo.experienceId);
                 const boat = expSlotInfo.boatId ? boats.find((b: Boat) => b.id === expSlotInfo.boatId) : null;
                 const expName = exp?.[locale === 'fr' ? 'titleFr' : 'titleEn'] || 'N/A';
-                const partLabel = expSlotInfo.part === 'FULL' ? (locale==='fr'?'Journée entière':'Full day') : 
-                                 expSlotInfo.part === 'AM' ? (locale==='fr'?'Matin':'Morning') : 
-                                 expSlotInfo.part === 'PM' ? (locale==='fr'?'Après-midi':'Afternoon') : 
-                                 expSlotInfo.part === 'SUNSET' ? 'Sunset' : expSlotInfo.part || '';
+                const partLabel = formatPartLabel(expSlotInfo.part, locale);
                 
                 return (
                   <>
@@ -1896,10 +1885,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
                   <div>
                     <strong className="text-gray-600">{locale==='fr'?'Type':'Type'}:</strong>
                     <div className="text-gray-800 font-medium">
-                      {r.part === 'FULL' ? (locale==='fr'?'Journée entière':'Full day') : 
-                       r.part === 'AM' ? (locale==='fr'?'Matin':'Morning') : 
-                       r.part === 'PM' ? (locale==='fr'?'Après-midi':'Afternoon') : 
-                       r.part === 'SUNSET' ? 'Sunset' : r.part}
+                      {formatPartLabel(r.part, locale)}
                     </div>
                   </div>
                 )}
@@ -1910,10 +1896,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           const s = extProps.slotData;
           const boat = boats.find((b: Boat) => b.id === s.boatId);
           const boatName = boat?.name || 'N/A';
-          const partLabel = s.part === 'FULL' ? (locale==='fr'?'Journée entière':'Full day') : 
-                           s.part === 'AM' ? (locale==='fr'?'Matin':'Morning') : 
-                           s.part === 'PM' ? (locale==='fr'?'Après-midi':'Afternoon') : 
-                           s.part === 'SUNSET' ? 'Sunset' : s.part || '';
+          const partLabel = formatPartLabel(s.part, locale);
           
           return (
             <div
@@ -1967,10 +1950,7 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
           const exp = experiences.find((e: any) => e.id === s.experienceId);
           const boat = s.boatId ? boats.find((b: Boat) => b.id === s.boatId) : null;
           const expName = exp?.[locale === 'fr' ? 'titleFr' : 'titleEn'] || 'N/A';
-          const partLabel = s.part === 'FULL' ? (locale==='fr'?'Journée entière':'Full day') : 
-                           s.part === 'AM' ? (locale==='fr'?'Matin':'Morning') : 
-                           s.part === 'PM' ? (locale==='fr'?'Après-midi':'Afternoon') : 
-                           s.part === 'SUNSET' ? 'Sunset' : s.part || '';
+          const partLabel = formatPartLabel(s.part, locale);
           
           return (
             <div

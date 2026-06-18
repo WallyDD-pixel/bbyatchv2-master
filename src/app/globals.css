@@ -9,6 +9,17 @@
   --font-montserrat: 'Montserrat', sans-serif;
 }
 
+/* Forcer le thème clair même si le téléphone est en mode sombre */
+html {
+  color-scheme: light only;
+  background-color: #ffffff;
+}
+
+body {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
 @keyframes slideIn {
   from {
     transform: translateY(-100%);

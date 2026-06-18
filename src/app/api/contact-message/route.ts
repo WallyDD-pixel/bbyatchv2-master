@@ -56,34 +56,28 @@ export async function POST(req: Request){
     const sourcePage = slug || 'contact';
     await (prisma as any).contactMessage.create({ data:{ name, email, phone, message, usedBoatId, locale, sourcePage } });
     
-    // Envoyer une notification par email pour tous les messages de contact
-    // Pour les messages "autre" (autre-ville) ou depuis la page contact, envoyer à charter@bb-yachts.com
-    const isOtherMessage = sourcePage === 'autre-ville' || sourcePage === 'contact';
-    
+    // Notification email → toujours l'adresse configurée dans Admin > Notifications
     try {
-      const { sendEmail, getNotificationEmail, isNotificationEnabled } = await import('@/lib/email');
+      const { sendEmail, getNotificationEmail } = await import('@/lib/email');
       const { newContactMessageEmail } = await import('@/lib/email-templates');
-      
-      if (await isNotificationEnabled('contactMessage')) {
-        const emailData = {
-          name,
-          email,
-          phone: phone || null,
-          message,
-          sourcePage: sourcePage || null,
-        };
-        
-        const { subject, html } = newContactMessageEmail(emailData, (locale as 'fr' | 'en') || 'fr');
-        
-        // Pour les messages "autre" ou depuis contact, envoyer directement à charter@bb-yachts.com
-        const recipientEmail = isOtherMessage ? 'charter@bb-yachts.com' : await getNotificationEmail();
-        
-        await sendEmail({
-          to: recipientEmail,
-          subject,
-          html,
-        });
-      }
+
+      const emailData = {
+        name,
+        email,
+        phone: phone || null,
+        message,
+        sourcePage: sourcePage || null,
+      };
+
+      const { subject, html } = newContactMessageEmail(emailData, (locale as 'fr' | 'en') || 'fr');
+      const recipientEmail = await getNotificationEmail();
+
+      await sendEmail({
+        to: recipientEmail,
+        subject,
+        html,
+        always: true,
+      });
     } catch (emailErr) {
       console.error('Error sending contact message notification email:', emailErr);
       // Ne pas bloquer l'enregistrement du message si l'email échoue

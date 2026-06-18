@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
+import { blockAvailabilityForNewReservation } from '@/lib/reservation-availability';
 
 // Empêche le cache et garantit l'exécution côté serveur
 export const dynamic = 'force-dynamic';
@@ -135,6 +136,12 @@ export async function POST(req: Request) {
         }
       });
       
+      await blockAvailabilityForNewReservation(
+        reservation.boatId,
+        reservation.startDate,
+        reservation.endDate
+      );
+
       console.log(`[webhook] ✅ Réservation créée: ${reservation.id} (${reservation.reference})`);
       
       // Envoyer une notification pour la nouvelle réservation

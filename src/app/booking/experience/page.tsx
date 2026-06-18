@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import ExperiencePayButton from './pay-button';
 import ExperienceBookingDisplay from './ExperienceBookingDisplay';
 import ExperiencePriceClient from './ExperiencePriceClient';
+import { formatPartLabel } from '@/lib/part-labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,7 @@ export default async function BookingExperiencePage({ searchParams }:{ searchPar
             <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">
               <h2 className="text-base font-semibold mb-3">{locale==='fr'? 'Dates':'Dates'}</h2>
               <p className="text-sm">{locale==='fr'? 'Du':'From'} <strong>{start}</strong> {locale==='fr'? 'au':'to'} <strong>{end}</strong> {fullDay && dayCount>1 && <span>({dayCount} {locale==='fr'? 'jours':'days'})</span>}</p>
-              <p className="text-sm mt-1">{locale==='fr'? 'Créneau':'Slot'} : <strong>{part==='FULL'? (locale==='fr'? 'Journée entière':'Full day'): part==='AM'? (locale==='fr'? 'Matin':'Morning') : (locale==='fr'? 'Après-midi':'Afternoon')}</strong></p>
+              <p className="text-sm mt-1">{locale==='fr'? 'Créneau':'Slot'} : <strong>{formatPartLabel(part, locale)}</strong></p>
               {experience.hasFixedTimes && experience.fixedDepartureTime && experience.fixedReturnTime && (
                 <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
                   <p className="text-xs font-semibold text-blue-900 mb-1">{locale==='fr'? 'Horaires fixes (non modifiables)' : 'Fixed times (non-editable)'}</p>

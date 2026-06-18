@@ -3,13 +3,14 @@ import { prisma } from '@/lib/prisma';
 import Stripe from 'stripe';
 import { getServerSession } from '@/lib/auth';
 import { getPublicSiteUrl } from '@/lib/redirect';
+import { getBoatPriceForPart, parseBookingPart } from '@/lib/boat-pricing';
 
 export async function POST(req: Request){
   try {
     const body = await req.json();
     const rawPart = body?.part;
-    const part = rawPart === 'HALF' ? 'AM' : rawPart;
-    const { boatSlug, start, end, pax, locale='fr', waterToys, children, specialNeeds, excursion, departurePort } = body || {};
+    const part = parseBookingPart(rawPart);
+    const { boatSlug, start, end, pax, locale='fr', waterToys, children, specialNeeds, excursion, departurePort, siteOrigin, opts } = body || {};
     console.log('[deposit] Request received:', { boatSlug, start, end, part, pax });
     if(!boatSlug || !start || !part) {
       console.log('[deposit] Missing params:', { boatSlug: !!boatSlug, start: !!start, part: !!part });
@@ -137,13 +138,13 @@ export async function POST(req: Request){
     // Réutiliser les variables déjà déclarées pour le debug (ligne 43)
     const s = debugDateUTC; // Déjà en UTC depuis le debug
     
-    const endDateStr = (part==='FULL' || part==='SUNSET') && end ? end : start;
+    const endDateStr = part==='FULL' && end ? end : start;
     const [endYear, endMonth, endDay] = endDateStr.split('-').map(Number);
     const e = new Date(Date.UTC(endYear, endMonth - 1, endDay, 0, 0, 0, 0));
     
     if(e < s) return NextResponse.json({ error: 'invalid_range' }, { status: 400 });
     let days = 1;
-    if(part==='FULL' || part==='SUNSET'){
+    if(part==='FULL'){
       days = Math.round((e.getTime()-s.getTime())/86400000)+1;
       if(days>6) return NextResponse.json({ error: 'too_long' }, { status: 400 });
     } else if(end && end!==start){
@@ -153,7 +154,7 @@ export async function POST(req: Request){
     // Calcul du skipper
     // Pour les agences : skipper seulement si explicitement demandé (needsSkipper)
     // Pour les autres : skipper obligatoire si skipperRequired
-    const skipperDays = (part==='FULL' || part==='SUNSET') ? Math.max(days, 1) : 1;
+    const skipperDays = part === 'FULL' ? Math.max(days, 1) : 1;
     let skipperTotal = 0;
     if (userRole === 'agency') {
       // Agence : skipper seulement si demandé explicitement
@@ -366,36 +367,18 @@ export async function POST(req: Request){
           console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${start} for PM, parts found:`, Array.from(partsSet));
           return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
         }
+        if(part==='SUNSET' && !(partsSet.has('SUNSET') || partsSet.has('FULL'))){
+          console.log(`[deposit] Slot unavailable for boat ${boat.id} on ${start} for SUNSET, parts found:`, Array.from(partsSet));
+          return NextResponse.json({ error: 'slot_unavailable' }, { status: 400 });
+        }
       }
     }
     // Prix selon rôle (agence ou normal)
-    // Calcul du prix agence : prix public - 20% sur la coque nue (hors taxe)
-    const calculateAgencyPrice = (publicPrice: number): number => {
-      return Math.round(publicPrice * 0.8); // -20% sur la coque nue
-    };
-    
     const boatWithPrices = await (prisma as any).boat.findUnique({ where: { slug: boatSlug }, select: { pricePerDay:true, priceAm:true, pricePm:true, priceSunset:true, priceAgencyPerDay:true, priceAgencyAm:true, priceAgencyPm:true, priceAgencySunset:true, options: { select:{ id:true, label:true, price:true } } } });
-    let total: number|null = null;
-    if(userRole === 'agency') {
-      // Prix agence : utiliser prix agence défini ou calculer automatiquement (-20%)
-      if(part==='FULL') {
-        total = boatWithPrices?.priceAgencyPerDay 
-          ? boatWithPrices.priceAgencyPerDay * days 
-          : calculateAgencyPrice(boatWithPrices?.pricePerDay || 0) * days;
-      } else if(part==='AM') {
-        total = boatWithPrices?.priceAgencyAm ?? (boatWithPrices?.priceAm ? calculateAgencyPrice(boatWithPrices.priceAm) : calculateAgencyPrice(Math.round((boatWithPrices?.pricePerDay || 0) / 2)));
-      } else if(part==='PM') {
-        total = boatWithPrices?.priceAgencyPm ?? (boatWithPrices?.pricePm ? calculateAgencyPrice(boatWithPrices.pricePm) : calculateAgencyPrice(Math.round((boatWithPrices?.pricePerDay || 0) / 2)));
-      } else if(part==='SUNSET') {
-        total = boatWithPrices?.priceAgencySunset ?? (boatWithPrices?.priceSunset ? calculateAgencyPrice(boatWithPrices.priceSunset) : null);
-      }
-    } else {
-      // Prix normal
-      if(part==='FULL') total = boatWithPrices?.pricePerDay * days;
-      else if(part==='AM') total = boatWithPrices?.priceAm ?? null;
-      else if(part==='PM') total = boatWithPrices?.pricePm ?? null;
-      else if(part==='SUNSET') total = boatWithPrices?.priceSunset ?? null;
-    }
+    const isAgency = userRole === 'agency';
+    const total = boatWithPrices
+      ? getBoatPriceForPart(boatWithPrices, part, days, isAgency)
+      : null;
     if(total==null) return NextResponse.json({ error: 'price_missing' }, { status: 400 });
 
     // Options sélectionnées
@@ -561,7 +544,24 @@ Détails complets disponibles dans le tableau de bord admin.
       }),
     };
 
-    const publicOrigin = getPublicSiteUrl(req);
+    const publicOrigin = getPublicSiteUrl(req, siteOrigin);
+    const cancelQs = new URLSearchParams();
+    cancelQs.set('boat', boatSlug);
+    cancelQs.set('start', start);
+    if (end) cancelQs.set('end', end);
+    cancelQs.set('part', rawPart || part);
+    if (pax) cancelQs.set('pax', String(pax));
+    if (opts) cancelQs.set('opts', String(opts));
+    if (waterToysBool) cancelQs.set('waterToys', '1');
+    if (childrenCount) cancelQs.set('children', String(childrenCount));
+    if (specialNeedsStr) cancelQs.set('specialNeeds', specialNeedsStr);
+    if (wantsExcursionBool) cancelQs.set('excursion', '1');
+    if (departurePort) cancelQs.set('departurePort', departurePort);
+    cancelQs.set('canceled', '1');
+    if (locale === 'en') cancelQs.set('lang', 'en');
+
+    console.log('[deposit] Stripe URLs origin:', publicOrigin);
+
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'payment',
       locale: locale==='fr' ? 'fr' : 'en',
@@ -571,7 +571,7 @@ Détails complets disponibles dans le tableau de bord admin.
       ],
       metadata: reservationMetadata, // Toutes les données nécessaires pour créer la réservation après paiement
       success_url: `${publicOrigin}/checkout/success?session_id={CHECKOUT_SESSION_ID}${locale === 'en' ? '&lang=en' : ''}`,
-      cancel_url: `${publicOrigin}/checkout/cancel${locale === 'en' ? '?lang=en' : ''}`,
+      cancel_url: `${publicOrigin}/checkout?${cancelQs.toString()}`,
       expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // Expire après 30 minutes
     });
 

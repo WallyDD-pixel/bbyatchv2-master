@@ -5,6 +5,7 @@ import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 import Link from 'next/link';
+import { formatPartLabel } from '@/lib/part-labels';
 
 export default async function AgencyDashboard({ searchParams }: { searchParams?: Promise<{ lang?: string }> }){
   const session = await getServerSession() as any;
@@ -27,7 +28,7 @@ export default async function AgencyDashboard({ searchParams }: { searchParams?:
 
   // Réservations converties (optionnel: afficher séparément)
   const dateFmt = (d: Date)=> d.toISOString().slice(0,10);
-  const partLabel = (p:string|null|undefined) => p==='FULL'? (locale==='fr'? 'Journée entière':'Full day') : p==='AM'? (locale==='fr'? 'Matin':'Morning') : p==='PM'? (locale==='fr'? 'Après-midi':'Afternoon') : '—';
+  const partLabel = (p:string|null|undefined) => formatPartLabel(p, locale);
   const statusLabel = (s:string)=>{
     switch(s){
       case 'pending': return locale==='fr'? 'En attente':'Pending';

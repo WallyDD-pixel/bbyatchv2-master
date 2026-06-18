@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo, useEffect } from 'react';
+import { formatPartLabelShort } from '@/lib/part-labels';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfDay, endOfDay, addDays } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 
@@ -18,7 +19,7 @@ interface AvailabilityModalProps {
     boatId: number;
     experienceId?: number | null;
     dates: string[];
-    part: 'FULL' | 'AM' | 'PM';
+    part: 'FULL' | 'HALF' | 'SUNSET';
     note?: string;
     experiencePrice?: number | null;
   }) => Promise<void>;
@@ -31,7 +32,7 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
   const [experiencePrice, setExperiencePrice] = useState<string>('');
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [part, setPart] = useState<'FULL' | 'AM' | 'PM'>('FULL');
+  const [part, setPart] = useState<'FULL' | 'HALF' | 'SUNSET'>('FULL');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [linkToEvent, setLinkToEvent] = useState(false);
@@ -506,8 +507,8 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   {locale === 'fr' ? 'Type de créneau' : 'Slot type'}
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {(['FULL', 'AM', 'PM'] as const).map(p => (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(['FULL', 'HALF', 'SUNSET'] as const).map(p => (
                     <button
                       key={p}
                       onClick={() => setPart(p)}
@@ -521,15 +522,10 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
                         <div className={`text-2xl mb-2 ${
                           part === p ? 'scale-110' : ''
                         } transition-transform`}>
-                          {p === 'FULL' ? '🔵' : '🟢'}
+                          {p === 'FULL' ? '🔵' : p === 'SUNSET' ? '🟣' : '🟢'}
                         </div>
                         <p className="font-semibold text-sm text-gray-900">
-                          {p === 'FULL' 
-                            ? locale === 'fr' ? 'Journée complète (8h)' : 'Full day (8h)'
-                            : p === 'AM'
-                            ? locale === 'fr' ? 'Matin (4h)' : 'Morning (4h)'
-                            : locale === 'fr' ? 'Après-midi (4h)' : 'Afternoon (4h)'
-                          }
+                          {formatPartLabelShort(p, locale)}
                         </p>
                       </div>
                     </button>
@@ -634,14 +630,7 @@ export default function AvailabilityModal({ isOpen, onClose, boats, experiences,
                   </p>
                   <p>
                     <strong>{locale === 'fr' ? 'Type:' : 'Type:'}</strong>{' '}
-                    {part === 'FULL' 
-                      ? locale === 'fr' ? 'Journée complète' : 'Full day'
-                      : part === 'AM'
-                      ? locale === 'fr' ? 'Matin' : 'Morning'
-                      : part === 'PM'
-                      ? locale === 'fr' ? 'Après-midi' : 'Afternoon'
-                      : 'Sunset'
-                    }
+                    {formatPartLabelShort(part, locale)}
                   </p>
                   {linkToEvent && selectedExperienceId && (
                     <>

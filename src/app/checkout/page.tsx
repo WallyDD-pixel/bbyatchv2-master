@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { messages, type Locale } from '@/i18n/messages';
 import PayButtonWithTerms from './pay/PayButtonWithTerms';
 import { getServerSession } from '@/lib/auth';
+import { getBoatPriceForPart, getBookingPartLabel, parseBookingPart } from '@/lib/boat-pricing';
 
 interface BoatOption {
   id: number;
@@ -16,7 +17,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
   const { boat: boatSlug, start, end, part, pax, opts, waterToys, children, specialNeeds, excursion, departurePort } = sp;
-  const slot = (part==='AM'||part==='PM'||part==='FULL'||part==='SUNSET') ? part : (part==='HALF' ? 'AM' : 'FULL');
+  const slot = parseBookingPart(part);
   let boat: any = null;
   if (boatSlug) {
     boat = await (prisma as any).boat.findUnique({ 
@@ -32,7 +33,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
   }
   // Calcule total selon rôle (agence ou normal)
   let nbJours = 1;
-  if ((slot==='FULL' || slot==='SUNSET') && start) {
+  if (slot==='FULL' && start) {
     const s = new Date(start+'T00:00:00');
     const e = new Date(((end)||start)+'T00:00:00');
     const diff = Math.round((e.getTime()-s.getTime())/86400000)+1;
@@ -42,7 +43,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
   const session = await getServerSession() as any;
   const userRole = (session?.user as any)?.role || 'user';
   const isAgency = userRole === 'agency';
-  const skipperDays = (slot==='FULL' || slot==='SUNSET') ? Math.max(nbJours, 1) : 1;
+  const skipperDays = slot === 'FULL' ? Math.max(nbJours, 1) : 1;
   
   // Récupérer le prix par défaut du skipper depuis Settings
   const settings = await prisma.settings.findFirst() as any;
@@ -53,32 +54,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
   // Skipper obligatoire pour les clients directs uniquement. Pour les agences, le skipper n'est pas inclus dans le tarif (optionnel).
   const skipperTotal = !isAgency && boat?.skipperRequired ? (effectiveSkipperPrice * skipperDays) : 0;
   
-  // Calcul du prix agence : prix public - 20% sur la coque nue (hors taxe)
-  const calculateAgencyPrice = (publicPrice: number): number => {
-    return Math.round(publicPrice * 0.8); // -20% sur la coque nue
-  };
-  
-  let total: number | null = null;
-  if (boat) {
-    if (isAgency) {
-      // Prix agence : utiliser prix agence défini ou calculer automatiquement (-20%)
-      if (slot==='FULL') {
-        total = boat.priceAgencyPerDay ? boat.priceAgencyPerDay * nbJours : calculateAgencyPrice(boat.pricePerDay) * nbJours;
-      } else if (slot==='AM') {
-        total = boat.priceAgencyAm ?? (boat.priceAm ? calculateAgencyPrice(boat.priceAm) : calculateAgencyPrice(Math.round(boat.pricePerDay / 2)));
-      } else if (slot==='PM') {
-        total = boat.priceAgencyPm ?? (boat.pricePm ? calculateAgencyPrice(boat.pricePm) : calculateAgencyPrice(Math.round(boat.pricePerDay / 2)));
-      } else if (slot==='SUNSET') {
-        total = boat.priceAgencySunset ?? (boat.priceSunset ? calculateAgencyPrice(boat.priceSunset) : null);
-      }
-    } else {
-      // Prix normal
-      if (slot==='FULL') total = boat.pricePerDay * nbJours;
-      else if (slot==='AM') total = boat.priceAm ?? null;
-      else if (slot==='PM') total = boat.pricePm ?? null;
-      else if (slot==='SUNSET') total = boat.priceSunset ?? null;
-    }
-  }
+  let total: number | null = boat ? getBoatPriceForPart(boat, slot, nbJours, isAgency) : null;
   // Options sélectionnées
   let selectedOptionIds: number[] = [];
   if (opts) {
@@ -94,10 +70,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
   const remaining = grandTotal != null && deposit != null ? grandTotal - deposit : null;
   const remainingBoatOptions =
     baseForDeposit != null && deposit != null ? baseForDeposit - deposit : null;
-  const partLabel = slot==='FULL'? (locale==='fr'? t.search_part_full : t.search_part_full) 
-    : slot==='AM'? (locale==='fr'? t.search_part_am : t.search_part_am) 
-    : slot==='PM'? (locale==='fr'? t.search_part_pm : t.search_part_pm)
-    : (locale==='fr'? t.search_part_sunset : t.search_part_sunset);
+  const partLabel = getBookingPartLabel(t as Record<string, string>, slot);
   async function createDeposit(formData: FormData){
     'use server';
     // future: déporter côté client pour Stripe Checkout (car redirection)

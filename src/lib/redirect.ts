@@ -10,12 +10,58 @@ export function getPublicSiteUrlFromEnv(): string {
   return String(url).replace(/\/$/, '');
 }
 
+function normalizeSiteOrigin(url: string): string {
+  return url.replace(/\/$/, '');
+}
+
+function tryParseOrigin(raw: string | null | undefined): string | null {
+  if (!raw?.trim()) return null;
+  const value = raw.trim();
+  try {
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return normalizeSiteOrigin(new URL(value).origin);
+    }
+    return normalizeSiteOrigin(new URL(`https://${value}`).origin);
+  } catch {
+    return null;
+  }
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
 /**
- * URL publique pour retours Stripe / liens utilisateur : priorité au Host réel de la requête
- * (préprod vs prod). Si NEXTAUTH_URL pointe encore vers la prod alors que l’utilisateur est sur préprod,
- * on évite de le renvoyer sur le mauvais domaine (cookies / session perdus).
+ * URL publique pour retours Stripe / liens utilisateur.
+ * Priorité : origine explicite (client) → Origin → Referer → Host proxy → .env
  */
-export function getPublicSiteUrl(req: Request): string {
+export function getPublicSiteUrl(req: Request, explicitOrigin?: string | null): string {
+  const fromRequest: (string | null | undefined)[] = [
+    explicitOrigin,
+    req.headers.get('origin'),
+  ];
+
+  const referer = req.headers.get('referer');
+  if (referer) {
+    try {
+      fromRequest.push(new URL(referer).origin);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  for (const candidate of fromRequest) {
+    const origin = tryParseOrigin(candidate);
+    if (!origin) continue;
+    try {
+      const { hostname } = new URL(origin);
+      if (!isLoopbackHost(hostname)) return origin;
+      if (process.env.NODE_ENV !== 'production') return origin;
+    } catch {
+      /* ignore */
+    }
+  }
+
   const rawHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
   const host = rawHost?.split(',')[0]?.trim();
 
@@ -31,8 +77,8 @@ export function getPublicSiteUrl(req: Request): string {
     }
   }
 
-  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
-    return `${protocol}://${host}`.replace(/\/$/, '');
+  if (host && !isLoopbackHost(host.split(':')[0])) {
+    return normalizeSiteOrigin(`${protocol}://${host}`);
   }
 
   return getPublicSiteUrlFromEnv();

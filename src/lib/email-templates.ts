@@ -3,6 +3,7 @@
  */
 
 import { getPublicSiteUrlFromEnv } from './redirect';
+import { formatPartLabel } from './part-labels';
 
 interface ReservationData {
   id: string;
@@ -70,9 +71,7 @@ interface UserAccountData {
  * Template pour nouvelle réservation
  */
 export async function newReservationEmail(data: ReservationData, locale: 'fr' | 'en' = 'fr', logoUrl?: string | null): Promise<{ subject: string; html: string }> {
-  const partLabel = locale === 'fr' 
-    ? (data.part === 'FULL' ? 'Journée complète' : data.part === 'AM' ? 'Matin' : data.part === 'PM' ? 'Après-midi' : data.part === 'SUNSET' ? 'Sunset' : data.part)
-    : (data.part === 'FULL' ? 'Full day' : data.part === 'AM' ? 'Morning' : data.part === 'PM' ? 'Afternoon' : data.part === 'SUNSET' ? 'Sunset' : data.part);
+  const partLabel = formatPartLabel(data.part, locale);
 
   const statusLabel = locale === 'fr'
     ? (data.status === 'pending_deposit' ? 'Acompte en attente' : data.status === 'deposit_paid' ? 'Acompte payé' : data.status === 'completed' ? 'Terminée' : data.status)
@@ -591,9 +590,7 @@ export function reservationStatusChangeEmail(data: ReservationData, oldStatus: s
  * Template pour nouvelle demande d'agence
  */
 export function newAgencyRequestEmail(data: AgencyRequestData, locale: 'fr' | 'en' = 'fr'): { subject: string; html: string } {
-  const partLabel = locale === 'fr' 
-    ? (data.part === 'FULL' ? 'Journée complète' : data.part === 'AM' ? 'Matin' : data.part === 'PM' ? 'Après-midi' : data.part)
-    : (data.part === 'FULL' ? 'Full day' : data.part === 'AM' ? 'Morning' : data.part === 'PM' ? 'Afternoon' : data.part);
+  const partLabel = formatPartLabel(data.part, locale);
 
   const subject = locale === 'fr'
     ? `Nouvelle demande agence - ${data.boatName} - ${data.startDate}`

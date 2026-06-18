@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { formatPartLabel } from './part-labels';
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib';
 import fs from 'fs/promises';
 import path from 'path';
@@ -94,7 +95,7 @@ export async function generateInvoicePDF(reservationId: string): Promise<Buffer 
     })();
 
     const part = reservation.part || 'FULL';
-    const partLabel = part === 'FULL' ? 'Journée entière' : part === 'AM' ? 'Matin' : part === 'PM' ? '½ journée' : part === 'SUNSET' ? 'Sunset (2h)' : part;
+    const partLabel = formatPartLabel(part, 'fr');
     const nbJours = (() => {
       const s = new Date(reservation.startDate);
       const e = new Date(reservation.endDate);

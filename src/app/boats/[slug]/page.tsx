@@ -10,6 +10,7 @@ import BoatOptionsAndBooking from '@/components/BoatOptionsAndBooking';
 import RichTextViewer from '@/components/RichTextViewer';
 import { getServerSession } from '@/lib/auth';
 import { getLabelsWithSettings } from '@/lib/settings';
+import { getBoatPriceForPart, getBookingPartLabel, parseBookingPart } from '@/lib/boat-pricing';
 
 interface Props { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; start?: string; end?: string; startTime?: string; endTime?: string; part?: string; departurePort?: string; }> }
 
@@ -17,7 +18,7 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
   const { slug } = await params;
   const sp = (await searchParams) || {};
   const { start, end, part: rawPart, departurePort: departurePortFromUrl } = sp;
-  const part = (rawPart==='AM' || rawPart==='PM' || rawPart==='FULL' || rawPart==='SUNSET') ? rawPart : (rawPart === 'HALF' ? 'AM' : 'FULL');
+  const part = parseBookingPart(rawPart);
   const locale: Locale = sp?.lang === 'en' ? 'en' : 'fr';
   const t = messages[locale];
   type BoatType = {
@@ -33,9 +34,11 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
     pricePerDay: number;
     priceAm: number | null;
     pricePm: number | null;
+    priceSunset: number | null;
     priceAgencyPerDay: number | null;
     priceAgencyAm: number | null;
     priceAgencyPm: number | null;
+    priceAgencySunset: number | null;
     capacity: number;
     enginePower: number | null;
     year: number | null;
@@ -82,31 +85,7 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
     } catch { /* ignore */ }
   }
   // Total selon part (sans fallback moitié)
-  // Calcul du prix agence : prix public - 20% sur la coque nue (hors taxe)
-  const calculateAgencyPrice = (publicPrice: number): number => {
-    return Math.round(publicPrice * 0.8); // -20% sur la coque nue
-  };
-  
-  let total: number | null = null;
-  if (isAgency) {
-    // Prix agence : utiliser prix agence défini ou calculer automatiquement (-20%)
-    if (part==='FULL') {
-      total = boat.priceAgencyPerDay ? boat.priceAgencyPerDay * nbJours : calculateAgencyPrice(boat.pricePerDay) * nbJours;
-    } else if (part==='AM') {
-      total = boat.priceAgencyAm ?? (boat.priceAm ? calculateAgencyPrice(boat.priceAm) : calculateAgencyPrice(Math.round(boat.pricePerDay / 2)));
-    } else if (part==='PM') {
-      total = boat.priceAgencyPm ?? (boat.pricePm ? calculateAgencyPrice(boat.pricePm) : calculateAgencyPrice(Math.round(boat.pricePerDay / 2)));
-    }
-  } else {
-    // Prix public
-    if (part==='FULL') {
-      total = boat.pricePerDay * nbJours;
-    } else if (part==='AM') {
-      total = boat.priceAm != null ? boat.priceAm : null;
-    } else if (part==='PM') {
-      total = boat.pricePm != null ? boat.pricePm : null;
-    }
-  }
+  let total: number | null = getBoatPriceForPart(boat, part, nbJours, isAgency);
   // Validation cohérence (option 1)
   const mismatch = boat.priceAm!=null && boat.pricePm!=null && (boat.priceAm + boat.pricePm !== boat.pricePerDay);
   let photos: string[] = [];
@@ -120,7 +99,9 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
   if (part) backQuery.set('part', part);
   const backHref = `/search?${backQuery.toString()}`;
   // Libellé total
-  const totalLabel = part==='FULL' ? (nbJours>1 ? `${nbJours} jours` : '1 jour') : (locale==='fr' ? 'Demi-journée' : 'Half-day');
+  const totalLabel = part==='FULL'
+    ? (nbJours>1 ? `${nbJours} jours` : '1 jour')
+    : getBookingPartLabel(t as Record<string, string>, part);
   const needDates = !start; // si aucune date passée
 
   // --- Validation anti-manipulation URL ---
@@ -138,7 +119,7 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
       if (part==='FULL') {
         const diff = Math.round((eD.getTime()-sD.getTime())/86400000)+1;
         if (diff>6) invalidDates = true;
-      } else if ((part === 'AM' || part === 'PM') && end && end !== start) {
+      } else if ((part === 'HALF' || part === 'AM' || part === 'PM') && end && end !== start) {
         // demi-journée doit être sur un seul jour
         invalidDates = true;
       }
@@ -170,10 +151,8 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
         let dayValid = false;
         if (part === 'FULL') {
           dayValid = parts.has('FULL') || (parts.has('AM') && parts.has('PM'));
-        } else if (part === 'AM') {
-          dayValid = parts.has('AM') || parts.has('FULL');
-        } else if (part === 'PM') {
-          dayValid = parts.has('PM') || parts.has('FULL');
+        } else if (part === 'HALF' || part === 'AM' || part === 'PM') {
+          dayValid = parts.has('HALF') || parts.has('AM') || parts.has('PM') || parts.has('FULL');
         } else if (part === 'SUNSET') {
           dayValid = parts.has('SUNSET') || parts.has('FULL');
         }
@@ -332,10 +311,10 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
             baseTotal={total}
             baseTotalLabel={totalLabel}
             pricePerDay={isAgency 
-              ? (boat.priceAgencyPerDay ?? calculateAgencyPrice(boat.pricePerDay))
+              ? (boat.priceAgencyPerDay ?? Math.round(boat.pricePerDay * 0.8))
               : boat.pricePerDay
             }
-            part={part as any}
+            part={part}
             nbJours={nbJours}
             options={boatOptions}
             disabled={disabledAction}

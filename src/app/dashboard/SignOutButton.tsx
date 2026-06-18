@@ -1,5 +1,7 @@
 "use client";
-import { signOut } from "next-auth/react";
+
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase-client";
 
 interface SignOutButtonProps {
   variant?: "light" | "dark";
@@ -7,12 +9,24 @@ interface SignOutButtonProps {
 }
 
 export default function SignOutButton({ variant = "light", locale = "fr" }: SignOutButtonProps) {
+  const router = useRouter();
   const isDark = variant === "dark";
-  
+
+  const handleSignOut = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    }
+    router.push("/");
+    router.refresh();
+  };
+
   return (
     <button
       type="button"
-      onClick={() => signOut({ callbackUrl: "/" })}
+      onClick={handleSignOut}
       className={`
         inline-flex items-center justify-center w-full gap-2 rounded-lg text-sm h-9 px-3 transition-colors
         ${isDark

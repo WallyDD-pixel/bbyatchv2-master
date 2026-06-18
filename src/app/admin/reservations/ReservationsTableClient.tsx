@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { formatPartLabel } from "@/lib/part-labels";
 
 interface Reservation {
   id: string;
@@ -46,20 +47,7 @@ export default function ReservationsTableClient({
     const e = new Date(r.endDate);
     return Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
   };
-  const partLabel = (p: string | null | undefined) =>
-    p === "FULL"
-      ? locale === "fr"
-        ? "Journée entière"
-        : "Full day"
-      : p === "AM"
-      ? locale === "fr"
-        ? "Matin"
-        : "Morning"
-      : p === "PM"
-      ? locale === "fr"
-        ? "Après-midi"
-        : "Afternoon"
-      : "—";
+  const partLabel = (p: string | null | undefined) => formatPartLabel(p, locale);
   const money = (v: number | undefined | null) =>
     v == null ? "—" : (v / 1).toLocaleString(locale === "fr" ? "fr-FR" : "en-US") + " €";
   const statusLabel = (s: string) => {

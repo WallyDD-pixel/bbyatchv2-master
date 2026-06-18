@@ -39,6 +39,8 @@ export default function SearchBar({
   hideCity,
   hidePassengers,
   partFixed,
+  initialPart,
+  initialValues,
   locale,
   boatSlug,
 }: {
@@ -50,6 +52,8 @@ export default function SearchBar({
   hideCity?: boolean;
   hidePassengers?: boolean;
   partFixed?: 'FULL'|'AM'|'PM'|'SUNSET';
+  initialPart?: 'FULL'|'HALF'|'SUNSET'|null;
+  initialValues?: Partial<SearchValues> & { part?: 'FULL' | 'HALF' | 'SUNSET' | null };
   locale?: string;
   boatSlug?: string;
 }) {
@@ -93,17 +97,24 @@ export default function SearchBar({
       }
     }, [cityDropdownOpen]);
   const [values, setValues] = useState<SearchValues>({
-    city: mode==='experience'? '': '',
-    startDate: '',
-    endDate: '',
-    startTime: '08:00',
-    endTime: '18:00',
-    passengers: 2,
+    city: initialValues?.city ?? (mode==='experience'? '': ''),
+    startDate: initialValues?.startDate ?? '',
+    endDate: initialValues?.endDate ?? '',
+    startTime: initialValues?.startTime ?? '08:00',
+    endTime: initialValues?.endTime ?? '18:00',
+    passengers: initialValues?.passengers ?? 2,
   });
+  const resolvedInitialPart = initialValues?.part ?? initialPart ?? null;
   const [part, setPart] = useState<"FULL" | "HALF" | "SUNSET" | null>(
-    partFixed === 'AM' || partFixed === 'PM' ? 'HALF' : (partFixed || null)
+    partFixed === 'AM' || partFixed === 'PM' ? 'HALF' : (partFixed || resolvedInitialPart || null)
   );
-  const [passengersField, setPassengersField] = useState('2');
+
+  useEffect(() => {
+    if (partFixed) return;
+    const nextPart = initialValues?.part ?? initialPart;
+    if (nextPart) setPart(nextPart);
+  }, [initialPart, initialValues?.part, partFixed]);
+  const [passengersField, setPassengersField] = useState(String(initialValues?.passengers ?? 2));
   const [otherCityNotice, setOtherCityNotice] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const needsCity = mode !== 'experience';
@@ -317,7 +328,8 @@ export default function SearchBar({
     if (!startDate || mode === 'experience') return;
     setLoadingEndDates(true);
     try {
-      const partParam = part === 'FULL' ? 'FULL' : part === 'HALF' ? 'AM' : 'AM'; // Utiliser AM comme fallback pour HALF
+      const partParam =
+        part === 'FULL' ? 'FULL' : part === 'SUNSET' ? 'SUNSET' : part === 'HALF' ? 'AM' : 'AM';
       const res = await fetch(`/api/availability/boats?from=${startDate}&to=${startDate}&part=${partParam}`);
       if (res.ok) {
         const data = await res.json();
@@ -347,7 +359,8 @@ export default function SearchBar({
     }
 
     try {
-      const partParam = part === 'FULL' ? 'FULL' : part === 'HALF' ? 'AM' : 'AM';
+      const partParam =
+        part === 'FULL' ? 'FULL' : part === 'SUNSET' ? 'SUNSET' : part === 'HALF' ? 'AM' : 'AM';
       const start = tempStart < endDate ? tempStart : endDate;
       const end = tempStart < endDate ? endDate : tempStart;
       

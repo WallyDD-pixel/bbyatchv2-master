@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation';
 import { type Locale } from '@/i18n/messages';
 
 // Créneaux
-const PARTS: { key: 'FULL'|'AM'|'PM'; label: string; start: string; end: string }[] = [
+const PARTS: { key: 'FULL'|'HALF'; label: string; start: string; end: string }[] = [
   { key:'FULL', label:'Journée entière', start:'08:00', end:'18:00' },
-  { key:'AM', label:'Matin', start:'08:00', end:'12:00' },
-  { key:'PM', label:'Après-midi', start:'13:00', end:'18:00' },
+  { key:'HALF', label:'Demi-journée', start:'08:00', end:'12:00' },
 ];
 
 export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Record<string, string> }) {
@@ -20,7 +19,7 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
   const [email, setEmail] = useState('');
   const [tel, setTel] = useState('');
   const [rgpd, setRgpd] = useState(false);
-  const [part, setPart] = useState<'FULL'|'AM'|'PM'|null>(null);
+  const [part, setPart] = useState<'FULL'|'HALF'|null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [tempStart, setTempStart] = useState<string|null>(null);
@@ -78,7 +77,7 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
     const ref = startDate || endDate || fmtDate(new Date()); const d = new Date(ref+'T00:00:00'); setCalMonth({ y:d.getFullYear(), m:d.getMonth() }); setPickerOpen(true);
   };
 
-  const applyPart = (p:'FULL'|'AM'|'PM') => {
+  const applyPart = (p:'FULL'|'HALF') => {
     setPart(p); setTempStart(null); if(p!=='FULL' && startDate) { setEndDate(startDate); }
   };
 
@@ -227,7 +226,7 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
                   <div className="flex-1">
                     <p className="font-semibold text-emerald-900 mb-1">Bateau sélectionné</p>
                     <p className="text-emerald-800"><span className="font-medium">{selectedBoat.name}</span>{selectedBoat.capacity? ` • ${selectedBoat.capacity} pax` : ''}</p>
-                    <p className="text-emerald-700/80">{part==='FULL' ? 'Créneau journée' : (part==='AM'? 'Matin':'Après-midi')} {startDate && `le ${startDate}${(part==='FULL' && endDate && endDate!==startDate)? ' → '+endDate:''}`}</p>
+                    <p className="text-emerald-700/80">{part==='FULL' ? 'Créneau journée' : 'Demi-journée'} {startDate && `le ${startDate}${(part==='FULL' && endDate && endDate!==startDate)? ' → '+endDate:''}`}</p>
                     {selectedBoat.pricePerDay && (
                       <p className="mt-1 text-emerald-900 font-medium">Prix total estimé: {new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(selectedBoat.pricePerDay * totalDays)} {totalDays>1? `(${totalDays} jours)` : ''}</p>
                     )}
@@ -381,8 +380,7 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
                         <p className="text-sm font-semibold leading-tight line-clamp-2">{b.name}</p>
                         <div className="grid grid-cols-3 gap-1 text-[9px]">
                           <div className="rounded bg-black/5 px-1 py-1 text-center"><span className="font-semibold">{b.fullCount}</span><br/>FULL</div>
-                          <div className="rounded bg-black/5 px-1 py-1 text-center"><span className="font-semibold">{b.amCount}</span><br/>AM</div>
-                          <div className="rounded bg-black/5 px-1 py-1 text-center"><span className="font-semibold">{b.pmCount}</span><br/>PM</div>
+                          <div className="rounded bg-black/5 px-1 py-1 text-center col-span-2"><span className="font-semibold">{(b.amCount||0)+(b.pmCount||0)}</span><br/>½j</div>
                         </div>
                         {b.pricePerDay && part==='FULL' && totalDays>1 && <p className="text-[10px] text-black/60">≈ {new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(b.pricePerDay * totalDays)} ({totalDays} j)</p>}
                         <button type="button" onClick={()=>{ setSelectedBoat(b); setAttemptedClose(false); setShowBoatsModal(false); }} className={`mt-auto text-[11px] h-9 rounded-full font-medium transition-colors ${selectedBoat?.id===b.id? 'bg-emerald-600 hover:bg-emerald-700 text-white':'bg-blue-600 hover:bg-blue-700 text-white'}`}>{selectedBoat?.id===b.id? 'Sélectionné':'Sélectionner'}</button>

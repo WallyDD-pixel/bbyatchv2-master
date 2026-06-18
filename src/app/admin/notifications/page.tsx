@@ -268,6 +268,7 @@ export default function AdminNotificationsPage() {
               />
               <p className="text-xs text-black/50 mt-1">
                 Toutes les notifications seront envoyées à cette adresse email.
+                Les messages du formulaire contact y sont toujours envoyés.
               </p>
             </label>
           </div>
@@ -349,7 +350,7 @@ export default function AdminNotificationsPage() {
                   />
                   <div>
                     <span className="font-medium text-sm">Nouveau message de contact</span>
-                    <p className="text-xs text-black/50">Notification lorsqu'un nouveau message est reçu via le formulaire de contact.</p>
+                    <p className="text-xs text-black/50">Les formulaires contact envoient toujours un email (page contact, autre ville, bateau d&apos;occasion).</p>
                   </div>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer">

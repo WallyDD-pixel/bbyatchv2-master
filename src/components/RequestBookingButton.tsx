@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import { getBookingPartLabel } from '@/lib/boat-pricing';
 import { useRouter } from 'next/navigation';
 import SearchBar, { type SearchValues } from './SearchBar';
 
@@ -19,7 +20,7 @@ interface Props {
   disabledMessage?: string;
   startDate?: string;
   endDate?: string;
-  part?: 'FULL'|'AM'|'PM';
+  part?: 'FULL'|'AM'|'PM'|'SUNSET';
   optionIds?: number[]; // nouvelles options sélectionnées
   needsSkipper?: boolean;
   additionalInfo?: AdditionalInfo;
@@ -84,7 +85,7 @@ export default function RequestBookingButton({ t, locale, slug, hasDates, disabl
     const [y,m,dd] = parts;
     return locale==='fr' ? `${dd}/${m}` : `${m}/${dd}`;
   };
-  const partLabel = part==='FULL'? t.search_part_full : part==='AM'? t.search_part_am : t.search_part_pm;
+  const partLabel = getBookingPartLabel(t, part);
   const dateDisplay = hasDates && startDate ? (part==='FULL' && endDate && endDate!==startDate ? `${formatDate(startDate)} → ${formatDate(endDate)}` : formatDate(startDate)) : '';
 
   return (

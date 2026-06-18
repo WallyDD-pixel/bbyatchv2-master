@@ -1,6 +1,7 @@
 import { getServerSession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { formatPartLabel } from '@/lib/part-labels';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
@@ -70,14 +71,7 @@ export default async function UserReservationDetailPage(
   const end = dateFmt(reservation.endDate);
   const dayCount = Math.round((reservation.endDate.getTime() - reservation.startDate.getTime()) / 86400000) + 1;
 
-  const partLabel = (p: string | null | undefined) =>
-    p === 'FULL'
-      ? locale === 'fr' ? 'Journée entière' : 'Full day'
-      : p === 'AM'
-      ? locale === 'fr' ? 'Matin' : 'Morning'
-      : p === 'PM'
-      ? locale === 'fr' ? 'Après-midi' : 'Afternoon'
-      : '—';
+  const partLabel = (p: string | null | undefined) => formatPartLabel(p, locale);
 
   const statusLabel = (s: string) => {
     switch(s){

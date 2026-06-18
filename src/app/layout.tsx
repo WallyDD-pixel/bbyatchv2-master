@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { ForceLight } from '@/components/ForceLight';
 import { AppProviders } from '@/components/Providers';
@@ -7,6 +8,7 @@ import SEOTracking, {
   GoogleTagManagerNoScript,
 } from '@/components/SEOTracking';
 import PageLoader from '@/components/PageLoader';
+import { ClientBootRecovery } from '@/components/ClientBootRecovery';
 import { prisma } from '@/lib/prisma';
 
 // Les fonts Google sont chargées via <link> dans le <head>
@@ -17,6 +19,11 @@ export const metadata: Metadata = {
   title: "BB SERVICES CHARTER - Location de yachts sur la Côte d'Azur",
   description:
     "Réservez votre yacht de luxe pour une expérience inoubliable sur la Côte d'Azur et la Riviera italienne. Location de bateaux avec skipper professionnel.",
+};
+
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#ffffff",
 };
 
 export const dynamic = 'force-dynamic';
@@ -35,7 +42,7 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning style={{ colorScheme: "light only" }}>
       <head>
         {/* Google Tag Manager — le plus haut possible dans <head> (instructions Google) */}
         {settings?.googleTagManagerId ? (
@@ -45,7 +52,7 @@ export default async function RootLayout({
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
         {/* Script d'init light forcé */}
-        <script dangerouslySetInnerHTML={{__html:`(function(){try{document.documentElement.classList.remove('dark');localStorage.setItem('theme','light');}catch(e){}})();`}}/>
+        <script dangerouslySetInnerHTML={{__html:`(function(){try{var r=document.documentElement;r.classList.remove('dark');r.style.colorScheme='light only';localStorage.setItem('theme','light');}catch(e){}})();`}}/>
         {/* Google Fonts chargées côté client (pas pendant le build) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -56,8 +63,11 @@ export default async function RootLayout({
           <GoogleTagManagerNoScript containerId={settings.googleTagManagerId} />
         ) : null}
         <ForceLight />
+        <ClientBootRecovery />
         <AppProviders>
-          <PageLoader />
+          <Suspense fallback={null}>
+            <PageLoader />
+          </Suspense>
           {children}
         </AppProviders>
         <SEOTracking

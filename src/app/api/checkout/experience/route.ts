@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
 import { getPublicSiteUrl } from '@/lib/redirect';
+import { blockAvailabilityForNewReservation } from '@/lib/reservation-availability';
 import Stripe from 'stripe';
 import type { ExperienceCheckoutBody, DayPart, SettingsStripe } from '@/types/domain';
 
@@ -125,6 +126,8 @@ export async function POST(req: Request) {
       }
     });
 
+    await blockAvailabilityForNewReservation(boat.id, s, e);
+
     const mode = settings?.stripeMode === 'live' ? 'live' : 'test';
     const secretKey = mode === 'live' ? settings?.stripeLiveSk : settings?.stripeTestSk;
     if (!secretKey) return NextResponse.json({ error: 'stripe_key_missing' }, { status: 500 });
@@ -135,7 +138,7 @@ export async function POST(req: Request) {
       ? `Acompte expérience: ${experience.titleFr}`
       : `Experience deposit: ${experience.titleEn || experience.titleFr}`;
 
-    const baseUrl = getPublicSiteUrl(req);
+    const baseUrl = getPublicSiteUrl(req, raw?.siteOrigin);
     const successUrl = `${baseUrl}/booking/experience/success?res=${reservation.id}`;
     const cancelUrl = `${baseUrl}/checkout/cancel?res=${reservation.id}${locale === 'en' ? '&lang=en' : ''}`;
 

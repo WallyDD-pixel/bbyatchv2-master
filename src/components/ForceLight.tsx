@@ -5,8 +5,10 @@ import { useEffect } from 'react';
 export function ForceLight() {
   useEffect(() => {
     try {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme','light');
+      const root = document.documentElement;
+      root.classList.remove('dark');
+      root.style.colorScheme = 'light only';
+      localStorage.setItem('theme', 'light');
     } catch {}
   }, []);
   return null;

@@ -6,6 +6,8 @@ interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  /** Formulaires contact : envoi toujours tenté si SMTP configuré */
+  always?: boolean;
   attachments?: Array<{
     filename: string;
     content: Buffer | string;
@@ -65,7 +67,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
     const settings = await prisma.settings.findFirst();
 
-    if (!settings?.notificationEmailEnabled) {
+    if (!options.always && !settings?.notificationEmailEnabled) {
       console.log('📧 Email notifications are disabled (notificationEmailEnabled=false)');
       return false;
     }

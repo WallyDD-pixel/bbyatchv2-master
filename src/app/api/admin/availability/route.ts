@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureAdmin, getCurrentUser } from '@/lib/security/auth-helpers';
+import { syncAvailabilityWithReservations } from '@/lib/reservation-availability';
 
 // Fonction helper pour obtenir l'admin (retourne l'utilisateur ou null)
 async function getAdminUser() {
@@ -50,7 +51,7 @@ export async function GET(req: Request) {
         select: { id: true, boatId: true, date: true, part: true, status: true, note: true }
       }),
       (prisma as any).reservation.findMany({
-        where: { startDate: { lte: end }, endDate: { gte: start }, status: { not: 'canceled' } },
+        where: { startDate: { lte: end }, endDate: { gte: start }, status: { not: 'cancelled' } },
         include: {
           boat: { 
             select: {
@@ -110,7 +111,13 @@ export async function GET(req: Request) {
         }
       })
     ]);
-    return NextResponse.json({ boats, slots, reservations, agencyRequests });
+    // Retirer automatiquement les créneaux restants sur les jours déjà réservés
+    await syncAvailabilityWithReservations(reservations);
+    const slotsAfterSync = await (prisma as any).availabilitySlot.findMany({
+      where: { date: { gte: start, lte: end } },
+      select: { id: true, boatId: true, date: true, part: true, status: true, note: true },
+    });
+    return NextResponse.json({ boats, slots: slotsAfterSync, reservations, agencyRequests });
   } catch (e) {
     return NextResponse.json({ error: 'failed' }, { status: 500 });
   }
@@ -139,7 +146,7 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch {}
   const { boatId, date, part, note, addOnly } = body || {};
   if (!boatId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
-  if (!['AM','PM','FULL'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
+  if (!['AM','PM','FULL','HALF','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
   
   // Normaliser la date en UTC pour correspondre à la recherche
   const dateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -163,10 +170,14 @@ export async function POST(req: Request) {
       await (prisma as any).availabilitySlot.delete({ where: { id: existing.id } });
       return NextResponse.json({ toggled: 'removed', id: existing.id });
     }
-    // If creating FULL remove AM/PM for that day for this boat (sauf en addOnly pour ne pas casser des créneaux existants)
+    // If creating FULL remove half-day slots; if HALF remove FULL and legacy AM/PM
     if (!addOnly) {
       if (part === 'FULL') {
-        await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: { in: ['AM','PM'] } } });
+        await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: { in: ['AM','PM','HALF'] } } });
+      } else if (part === 'HALF') {
+        await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: { in: ['FULL','AM','PM'] } } });
+      } else if (part === 'AM' || part === 'PM') {
+        await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: { in: ['FULL','HALF'] } } });
       } else {
         await (prisma as any).availabilitySlot.deleteMany({ where: { boatId: Number(boatId), date: day, part: 'FULL' } });
       }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { formatPartLabel } from '@/lib/part-labels';
 import { getServerSession } from '@/lib/auth';
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib';
 import fs from 'fs/promises';
@@ -115,7 +116,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     
     // Calculer les montants détaillés
     const part = reservation.part || 'FULL';
-    const partLabel = part==='FULL'? 'Journée entière' : part==='AM'? 'Matin' : part==='PM'? 'Après-midi' : part==='SUNSET'? 'Sunset (2h)' : part;
+    const partLabel = formatPartLabel(part, 'fr');
     const nbJours = (()=>{ 
       const s = new Date(reservation.startDate); 
       const e = new Date(reservation.endDate); 

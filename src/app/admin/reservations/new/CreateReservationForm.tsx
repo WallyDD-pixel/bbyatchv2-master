@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { formatPartLabelShort } from '@/lib/part-labels';
 
 interface AgencyUser {
   id: string;
@@ -52,7 +53,7 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
     boatId: '',
     startDate: '',
     endDate: '',
-    part: 'FULL' as 'FULL' | 'AM' | 'PM' | 'SUNSET',
+    part: 'FULL' as 'FULL' | 'HALF' | 'SUNSET',
     passengers: '',
     selectedOptions: [] as number[],
     totalPrice: '',
@@ -86,10 +87,10 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
       } else if (selectedBoat.pricePerDay) {
         basePrice = Math.round(selectedBoat.pricePerDay * 0.8 * nbJours); // -20% si pas de prix agence
       }
-    } else if (part === 'AM') {
-      basePrice = selectedBoat.priceAgencyAm ?? (selectedBoat.priceAm ? Math.round(selectedBoat.priceAm * 0.8) : 0);
-    } else if (part === 'PM') {
-      basePrice = selectedBoat.priceAgencyPm ?? (selectedBoat.pricePm ? Math.round(selectedBoat.pricePm * 0.8) : 0);
+    } else if (part === 'HALF' || part === 'AM' || part === 'PM') {
+      const halfPublic = selectedBoat.priceAm ?? selectedBoat.pricePm;
+      const halfAgency = selectedBoat.priceAgencyAm ?? selectedBoat.priceAgencyPm;
+      basePrice = halfAgency ?? (halfPublic ? Math.round(halfPublic * 0.8) : 0);
     } else if (part === 'SUNSET') {
       basePrice = selectedBoat.priceAgencySunset ?? (selectedBoat.priceSunset ? Math.round(selectedBoat.priceSunset * 0.8) : 0);
     }
@@ -257,31 +258,23 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
         <label className="block text-sm font-semibold text-black/70 mb-2">
           {locale === 'fr' ? 'Type de prestation *' : 'Service type *'}
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {(['FULL', 'AM', 'PM', 'SUNSET'] as const).map((p) => {
-            const labels: Record<typeof p, { fr: string; en: string }> = {
-              FULL: { fr: 'Journée entière', en: 'Full day' },
-              AM: { fr: 'Matin', en: 'Morning' },
-              PM: { fr: 'Après-midi', en: 'Afternoon' },
-              SUNSET: { fr: 'Sunset (2h)', en: 'Sunset (2h)' },
-            };
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => {
-                  setFormData({ ...formData, part: p, endDate: p === 'FULL' || p === 'SUNSET' ? formData.endDate : formData.startDate });
-                }}
-                className={`h-11 rounded-lg border text-sm font-medium transition ${
-                  formData.part === p
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-black/15 bg-white text-black/70 hover:border-black/30'
-                }`}
-              >
-                {labels[p][locale]}
-              </button>
-            );
-          })}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {(['FULL', 'HALF', 'SUNSET'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => {
+                setFormData({ ...formData, part: p, endDate: p === 'FULL' || p === 'SUNSET' ? formData.endDate : formData.startDate });
+              }}
+              className={`h-11 rounded-lg border text-sm font-medium transition ${
+                formData.part === p
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-black/15 bg-white text-black/70 hover:border-black/30'
+              }`}
+            >
+              {formatPartLabelShort(p, locale)}
+            </button>
+          ))}
         </div>
       </div>
 

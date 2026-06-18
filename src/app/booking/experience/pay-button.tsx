@@ -45,7 +45,8 @@ export default function ExperiencePayButton({ expSlug, boatId, start, end, part,
           departurePort: bookingData.departurePort,
           preferredTime: bookingData.preferredTime,
           children: bookingData.children,
-          specialRequest: bookingData.specialRequest
+          specialRequest: bookingData.specialRequest,
+          siteOrigin: typeof window !== 'undefined' ? window.location.origin : undefined,
         }) 
       });
       const json = await res.json();

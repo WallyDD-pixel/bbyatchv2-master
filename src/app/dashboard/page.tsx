@@ -9,6 +9,7 @@ import ProfileCardClient from "@/app/dashboard/ProfileCardClient";
 import ReservationRow from "@/app/dashboard/ReservationRow";
 import ReservationCard from "@/app/dashboard/ReservationCard";
 import { prisma } from "@/lib/prisma";
+import { formatPartLabel } from "@/lib/part-labels";
 
 export default async function DashboardPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }) {
   const session = (await getServerSession()) as any;
@@ -77,13 +78,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
     const diff = Math.round((end.getTime()-start.getTime())/86400000)+1;
     return diff; // pour AM/PM diff sera 1
   };
-  const partLabel = (p:string|undefined|null) => {
-    if(!p) return '—';
-    if(p==='FULL') return locale==='fr'? 'Journée entière':'Full day';
-    if(p==='AM') return locale==='fr'? 'Matin':'Morning';
-    if(p==='PM') return locale==='fr'? 'Après-midi':'Afternoon';
-    return p;
-  };
+  const partLabel = (p:string|undefined|null) => formatPartLabel(p ?? null, locale);
   const getExp = (r:any) => {
     if(!r.metadata) return null; try { const m = JSON.parse(r.metadata); return m; } catch { return null; }
   };

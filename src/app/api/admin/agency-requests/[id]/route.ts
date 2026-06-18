@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createRedirectUrl } from '@/lib/redirect';
+import { blockAvailabilityForNewReservation } from '@/lib/reservation-availability';
 
 async function ensureAdmin(){
   const session = await getServerSession() as any;
@@ -117,6 +118,12 @@ export async function POST(req:Request, { params }:{ params:Promise<{ id:string 
           }
         });
         
+        await blockAvailabilityForNewReservation(
+          agencyRequest.boatId,
+          agencyRequest.startDate,
+          agencyRequest.endDate
+        );
+
         // Mettre à jour la demande d'agence avec le statut et l'ID de réservation
         await (prisma as any).agencyRequest.update({ 
           where: { id }, 

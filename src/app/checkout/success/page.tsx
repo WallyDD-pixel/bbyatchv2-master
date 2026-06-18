@@ -1,6 +1,7 @@
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { prisma } from '@/lib/prisma';
+import { blockAvailabilityForNewReservation } from '@/lib/reservation-availability';
 import { messages, type Locale } from '@/i18n/messages';
 import { notFound } from 'next/navigation';
 import Stripe from 'stripe';
@@ -74,6 +75,12 @@ export default async function CheckoutSuccessPage({ searchParams }: Props){
         include: { boat: true, user: true }
       });
       
+      await blockAvailabilityForNewReservation(
+        reservation.boatId,
+        reservation.startDate,
+        reservation.endDate
+      );
+
       console.log(`[success] ✅ Réservation créée: ${reservation.id} (${reservation.reference})`);
       
       // Envoyer une notification

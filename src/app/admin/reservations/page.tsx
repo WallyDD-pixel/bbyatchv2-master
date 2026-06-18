@@ -1,6 +1,7 @@
 import { getServerSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { formatPartLabel } from "@/lib/part-labels";
 import { messages, type Locale } from "@/i18n/messages";
 import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
@@ -88,7 +89,7 @@ export default async function AdminReservationsPage({ searchParams }: { searchPa
 
   const dateFmt = (d: Date) => d.toISOString().slice(0,10);
   const dayCount = (r:any) => { const s=new Date(r.startDate), e=new Date(r.endDate); return Math.round((e.getTime()-s.getTime())/86400000)+1; };
-  const partLabel = (p:string|null|undefined) => p==='FULL'? (locale==='fr'? 'Journée entière':'Full day') : p==='AM'? (locale==='fr'? 'Matin':'Morning') : p==='PM'? (locale==='fr'? 'Après-midi':'Afternoon') : '—';
+  const partLabel = (p:string|null|undefined) => formatPartLabel(p, locale);
   const money = (v:number|undefined|null)=> v==null? '—' : (v/1).toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €';
   const statusLabel = (s:string)=>{
     switch(s){

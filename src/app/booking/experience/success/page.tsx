@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { messages, type Locale } from '@/i18n/messages';
 import { notFound } from 'next/navigation';
 import Stripe from 'stripe';
+import { formatPartLabel } from '@/lib/part-labels';
 
 interface Props { searchParams?: Promise<{ lang?: string; res?: string }> }
 
@@ -53,7 +54,7 @@ export default async function ExperienceSuccessPage({ searchParams }: Props){
   const end = reservation.endDate.toISOString().slice(0,10);
   const isMulti = end!==start;
   const part = reservation.part || 'FULL';
-  const partLabel = part==='FULL'? (locale==='fr'? 'Journée entière':'Full day') : part==='AM'? (locale==='fr'? 'Matin':'Morning') : (locale==='fr'? 'Après-midi':'Afternoon');
+  const partLabel = formatPartLabel(part, locale);
   const deposit = reservation.depositAmount ?? 0;
   const remaining = reservation.remainingAmount ?? 0;
 

@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     const structuredMessage = [
       `📍 Ville/Port: ${ville}`,
       `📅 Dates: ${startDate}${endDate && endDate !== startDate ? ` → ${endDate}` : ''}`,
-      `⏰ Créneau: ${part === 'FULL' ? 'Journée entière' : part === 'AM' ? 'Matin' : 'Après-midi'}`,
+      `⏰ Créneau: ${part === 'FULL' ? 'Journée entière' : part === 'AM' || part === 'PM' || part === 'HALF' ? 'Demi-journée' : part}`,
       `👥 Nombre de personnes: ${sanitizedPassagers}`,
       `🎯 Type d'expérience: ${experience}`,
       sanitizedBoatId ? `🚤 Bateau sélectionné (ID): ${sanitizedBoatId}` : '',
@@ -95,11 +95,11 @@ export async function POST(req: Request) {
     });
     console.log('Autre-ville message created with ID:', created.id);
     
-    // Envoyer un email à charter@bb-yachts.com pour notifier d'un nouveau message "autre"
+    // Notification email → toujours l'adresse configurée dans Admin > Notifications
     try {
-      const { sendEmail } = await import('@/lib/email');
+      const { sendEmail, getNotificationEmail } = await import('@/lib/email');
       const { newContactMessageEmail } = await import('@/lib/email-templates');
-      
+
       const emailData = {
         name: ville,
         email,
@@ -107,13 +107,15 @@ export async function POST(req: Request) {
         message: structuredMessage,
         sourcePage: 'autre-ville',
       };
-      
+
       const { subject, html } = newContactMessageEmail(emailData, 'fr');
-      
+      const recipientEmail = await getNotificationEmail();
+
       await sendEmail({
-        to: 'charter@bb-yachts.com',
+        to: recipientEmail,
         subject,
         html,
+        always: true,
       });
     } catch (emailErr) {
       console.error('Error sending autre-ville notification email:', emailErr);

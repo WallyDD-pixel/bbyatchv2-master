@@ -1,6 +1,7 @@
 import { getServerSession } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { formatPartLabel } from '@/lib/part-labels';
 import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
@@ -192,7 +193,7 @@ export default async function AgencyRequestDetailPage(
           <div className='grid gap-1 text-sm'>
             <span className='text-black/50'>{locale==='fr'? 'Dates':'Dates'}</span>
             <span>{dateDisplay}</span>
-            <span className='text-xs text-black/50'>{locale==='fr'? 'Partie':'Part'}: {row.part ? (row.part === 'AM' ? (locale==='fr'? 'Matin':'AM') : row.part === 'PM' ? (locale==='fr'? 'Après-midi':'PM') : row.part) : (locale==='fr'? 'Journée':'FULL')}</span>
+            <span className='text-xs text-black/50'>{locale==='fr'? 'Partie':'Part'}: {formatPartLabel(row.part || 'FULL', locale)}</span>
           </div>
           <div className='grid gap-1 text-sm'>
             <span className='text-black/50'>{locale==='fr'? 'Passagers':'Passengers'}</span>

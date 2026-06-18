@@ -45,9 +45,22 @@ const nextConfig: NextConfig = {
   },
 
 
-  // Headers de sécurité
+  // Headers de sécurité + cache HTML (évite pages obsolètes en cache navigateur)
   async headers() {
     return [
+      {
+        // Pages HTML dynamiques : jamais en cache disque
+        source: '/((?!_next/static|_next/image|favicon|.*\\.).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'private, no-cache, no-store, must-revalidate, max-age=0',
+          },
+          { key: 'Pragma', value: 'no-cache' },
+          { key: 'Expires', value: '0' },
+          { key: 'Vary', value: 'Cookie' },
+        ],
+      },
       {
         source: '/:path*',
         headers: [
