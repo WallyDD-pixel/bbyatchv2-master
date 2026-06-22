@@ -65,16 +65,23 @@ export function clearLegacyAuthCookies(
   }
 }
 
-/** Ne purge les cookies que si le refresh est définitivement impossible. */
+/** Session expirée / cookies orphelins — comportement normal, pas de log. */
+function isStaleSessionError(error: AuthError | null): boolean {
+  if (!error) return false;
+  const msg = error.message.toLowerCase();
+  return msg.includes('session missing') || msg.includes('auth session missing');
+}
+
+/** Refresh impossible (token corrompu) — purge + log occasionnel. */
 export function isIrrecoverableAuthError(error: AuthError | null): boolean {
   if (!error) return false;
   const msg = error.message.toLowerCase();
   if (msg.includes('fetch failed') || msg.includes('network')) return false;
+  if (isStaleSessionError(error)) return false;
   return (
     msg.includes('refresh token') ||
     msg.includes('invalid jwt') ||
     msg.includes('jwt malformed') ||
-    msg.includes('session missing') ||
     msg.includes('session not found') ||
     msg.includes('invalid claim') ||
     msg.includes('token is expired') ||
@@ -82,27 +89,30 @@ export function isIrrecoverableAuthError(error: AuthError | null): boolean {
   );
 }
 
+function finalizeDocumentResponse(
+  request: NextRequest,
+  response: NextResponse
+): NextResponse {
+  applyDocumentCacheHeaders(response);
+  clearLegacyAuthCookies(request, response);
+  return response;
+}
+
 /**
  * Rafraîchit la session Supabase (pattern officiel @supabase/ssr).
- * Sans sync request + response dans setAll, la 2e visite peut échouer.
+ * getSession() d'abord (local) → getUser() seulement si session valide en cookie.
  */
 export async function updateSupabaseSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey || supabaseAnonKey.includes('...')) {
-    const response = NextResponse.next({ request });
-    applyDocumentCacheHeaders(response);
-    clearLegacyAuthCookies(request, response);
-    return response;
+    return finalizeDocumentResponse(request, NextResponse.next({ request }));
   }
 
-  // Visiteur sans session : pas d'appel réseau Supabase (évite timeouts → 502 nginx)
+  // Visiteur sans cookie auth : pas d'appel Supabase
   if (!hasSupabaseAuthCookies(request)) {
-    const response = NextResponse.next({ request });
-    applyDocumentCacheHeaders(response);
-    clearLegacyAuthCookies(request, response);
-    return response;
+    return finalizeDocumentResponse(request, NextResponse.next({ request }));
   }
 
   let supabaseResponse = NextResponse.next({ request });
@@ -128,23 +138,39 @@ export async function updateSupabaseSession(request: NextRequest) {
     },
   });
 
-  clearLegacyAuthCookies(request, supabaseResponse);
-
   try {
+    // Lecture locale — pas d'appel réseau
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    // Cookies présents mais session illisible / expirée → purge silencieuse
+    if (!session) {
+      clearSupabaseAuthCookies(request, supabaseResponse);
+      return finalizeDocumentResponse(request, supabaseResponse);
+    }
+
+    // Session en cookie → valider / rafraîchir côté serveur Supabase
     const result = await withTimeout(supabase.auth.getUser(), AUTH_REFRESH_TIMEOUT_MS);
     if (result === null) {
-      console.warn('[middleware] Supabase auth refresh timeout — continuing without purge');
-    } else {
-      const { error } = result;
-      if (error && isIrrecoverableAuthError(error)) {
+      // Timeout réseau : on laisse passer sans purger (session peut encore être valide)
+      return finalizeDocumentResponse(request, supabaseResponse);
+    }
+
+    const { error } = result;
+    if (!error) {
+      return finalizeDocumentResponse(request, supabaseResponse);
+    }
+
+    if (isStaleSessionError(error) || isIrrecoverableAuthError(error)) {
+      clearSupabaseAuthCookies(request, supabaseResponse);
+      if (isIrrecoverableAuthError(error)) {
         console.warn('[middleware] Supabase auth purge:', error.message);
-        clearSupabaseAuthCookies(request, supabaseResponse);
       }
     }
   } catch (err) {
     console.error('[middleware] Supabase auth error:', err);
   }
 
-  applyDocumentCacheHeaders(supabaseResponse);
-  return supabaseResponse;
+  return finalizeDocumentResponse(request, supabaseResponse);
 }
