@@ -9,7 +9,7 @@ import SEOTracking, {
 } from '@/components/SEOTracking';
 import PageLoader from '@/components/PageLoader';
 import { ClientBootRecovery } from '@/components/ClientBootRecovery';
-import { prisma } from '@/lib/prisma';
+import { getCachedSiteSettings } from '@/lib/site-settings';
 
 // Les fonts Google sont chargées via <link> dans le <head>
 // Les variables CSS sont définies dans globals.css
@@ -36,10 +36,12 @@ export default async function RootLayout({
   // Charger les paramètres SEO et tracking
   let settings = null;
   try {
-    settings = await prisma.settings.findFirst();
+    settings = await getCachedSiteSettings();
   } catch {
     // Ignorer les erreurs de DB pendant le build
   }
+
+  const buildId = process.env.BUILD_ID || 'dev';
 
   return (
     <html lang="fr" suppressHydrationWarning style={{ colorScheme: "light only" }}>
@@ -51,8 +53,9 @@ export default async function RootLayout({
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
-        {/* Script d'init light forcé */}
-        <script dangerouslySetInnerHTML={{__html:`(function(){try{var r=document.documentElement;r.classList.remove('dark');r.style.colorScheme='light only';localStorage.setItem('theme','light');}catch(e){}})();`}}/>
+        <meta name="bb-build-id" content={buildId} />
+        {/* Script d'init light forcé + détection nouveau build avant les chunks JS */}
+        <script dangerouslySetInnerHTML={{__html:`(function(){try{var r=document.documentElement;r.classList.remove('dark');r.style.colorScheme='light only';localStorage.setItem('theme','light');var m=document.querySelector('meta[name="bb-build-id"]');var id=m&&m.getAttribute('content');if(id){var k='__bb_build_id__';var p=sessionStorage.getItem(k);if(p&&p!==id){sessionStorage.setItem(k,id);sessionStorage.removeItem('__bb_chunk_reload__');location.replace(location.pathname+location.search+(location.search?'&':'?')+'_bb='+Date.now());return;}sessionStorage.setItem(k,id);}}catch(e){}})();`}}/>
         {/* Google Fonts chargées côté client (pas pendant le build) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

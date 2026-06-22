@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // API : pas de refresh session (évite latence / timeouts sur webhooks, signup, etc.)
+  // API health + webhooks : pas de refresh session
   if (pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
