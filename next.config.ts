@@ -61,6 +61,8 @@ const nextConfig: NextConfig = {
           { key: 'Vary', value: 'Cookie' },
           { key: 'CDN-Cache-Control', value: 'no-store' },
           { key: 'Surrogate-Control', value: 'no-store' },
+          // Évite que nginx bufferise/coupe un flux RSC en cours (race TransformStream)
+          { key: 'X-Accel-Buffering', value: 'no' },
         ],
       },
       {

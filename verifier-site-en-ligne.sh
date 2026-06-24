@@ -23,15 +23,14 @@ else
 fi
 echo ""
 
-# 4. Tester l'endpoint local
-echo "🌐 Test de l'endpoint local (http://localhost:3003):"
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3003 2>/dev/null || echo "000")
-if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
-    echo "✅ Le site répond (HTTP $HTTP_CODE)"
-    echo "   Test de la page d'accueil:"
-    curl -s -I http://localhost:3003 | head -5
+# 4. Tester l'endpoint local (JSON, pas de streaming RSC — évite race TransformStream)
+echo "🌐 Test de l'endpoint local (http://localhost:3003/api/health):"
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3003/api/health 2>/dev/null || echo "000")
+if [ "$HTTP_CODE" = "200" ]; then
+    echo "✅ L'app répond (HTTP $HTTP_CODE)"
+    curl -s http://localhost:3003/api/health | head -1
 else
-    echo "❌ Le site ne répond pas (HTTP $HTTP_CODE)"
+    echo "❌ L'app ne répond pas (HTTP $HTTP_CODE)"
     echo "   Vérifiez les logs d'erreur:"
     echo "   pm2 logs bbyatch --err --lines 30"
 fi
