@@ -12,7 +12,13 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     videoUrls: boat.videoUrls ?? [],
     skipperRequired: boat.skipperRequired !== undefined ? boat.skipperRequired : true // Par défaut true
   });
-  const initialPhotos: string[] = Array.isArray(boat.photoUrls) ? boat.photoUrls : [];
+  const initialPhotos: string[] = (() => {
+    const fromList = Array.isArray(boat.photoUrls) ? boat.photoUrls.filter(Boolean) : [];
+    if (boat.imageUrl && !fromList.includes(boat.imageUrl)) {
+      return [boat.imageUrl, ...fromList];
+    }
+    return fromList;
+  })();
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
   const [photoKeys, setPhotoKeys] = useState<Map<string, string>>(() => {
     const map = new Map<string, string>();
@@ -111,6 +117,10 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
 
   const videos = useMemo(() => parseVideos(videoInput), [videoInput]);
 
+  const appendExistingVideos = (fd: FormData) => {
+    if (videosList.length) fd.append("videoUrls", JSON.stringify(videosList));
+  };
+
   const removePhoto = (index: number) => {
     if (!confirm('Supprimer cette image ?')) return;
     setPhotos(p => p.filter((_, i) => i !== index));
@@ -203,7 +213,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       if (form.fuel != null) fd.append('fuel', String(form.fuel));
       if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
       if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
-      if (videos.length) fd.append('videoUrls', JSON.stringify(videos));
+      appendExistingVideos(fd);
       Array.from(files).forEach(f => fd.append('imageFiles', f));
 
       const res = await fetch(`/api/admin/boats/${boat.id}`, { method: 'PUT', body: fd });
@@ -244,7 +254,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
       if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
       if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
-      if (videos.length) fd.append('videoUrls', JSON.stringify(videos));
+      appendExistingVideos(fd);
       
       // Uploader l'image recadrée
       fd.append('imageFiles', croppedFile);
@@ -452,7 +462,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
       (() => { const h = form.priceAgencyAm ?? form.priceAgencyPm; if (h != null) { fd.append('priceAgencyAm', String(h)); fd.append('priceAgencyPm', String(h)); } })();
       if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
-      if (videos.length) fd.append('videoUrls', JSON.stringify(videos));
+      appendExistingVideos(fd);
       fd.append('imageFile', file);
       const res = await fetch(`/api/admin/boats/${boat.id}`, { 
         method: 'PUT', 
@@ -598,9 +608,43 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     }
   };
 
-  const removeVideo = (url: string) => {
-    if (!confirm('Supprimer cette vidéo ?')) return;
-    setVideosList(v => v.filter(x => x !== url));
+  const removeVideo = async (url: string) => {
+    if (!confirm(locale === 'fr' ? 'Supprimer cette vidéo ?' : 'Remove this video?')) return;
+    const newList = videosList.filter(x => x !== url);
+    setVideosList(newList);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('photoUrls', JSON.stringify(photos));
+      fd.append('slug', form.slug || '');
+      fd.append('name', form.name || '');
+      if (form.city) fd.append('city', form.city);
+      if (form.pricePerDay != null) fd.append('pricePerDay', String(form.pricePerDay));
+      (() => { const h = form.priceAm ?? form.pricePm; if (h != null) { fd.append('priceAm', String(h)); fd.append('pricePm', String(h)); } })();
+      if (form.priceSunset != null) fd.append('priceSunset', String(form.priceSunset));
+      if (form.priceAgencyPerDay != null) fd.append('priceAgencyPerDay', String(form.priceAgencyPerDay));
+      (() => { const h = form.priceAgencyAm ?? form.priceAgencyPm; if (h != null) { fd.append('priceAgencyAm', String(h)); fd.append('priceAgencyPm', String(h)); } })();
+      if (form.priceAgencySunset != null) fd.append('priceAgencySunset', String(form.priceAgencySunset));
+      if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
+      if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
+      fd.append('videoUrls', JSON.stringify(newList));
+      const res = await fetch(`/api/admin/boats/${boat.id}`, {
+        method: 'PUT',
+        body: fd,
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'save_failed' }));
+        throw new Error(errorData.error || errorData.message || 'save_failed');
+      }
+      const data = await res.json();
+      if (Array.isArray(data.videoUrls)) setVideosList(data.videoUrls);
+    } catch (e: any) {
+      setVideosList(videosList);
+      alert(e?.message || (locale === 'fr' ? 'Erreur lors de la suppression' : 'Error removing video'));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const toggleExperience = (id:number) => {
@@ -975,7 +1019,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
                         <span className="text-4xl">▶</span>
                       </div>
                     ) : isVideoFile ? (
-                      <video src={url} className="w-full h-full object-cover" />
+                      <video src={url} className="w-full h-full object-cover" controls muted playsInline preload="metadata" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-black/10">
                         <span className="text-sm text-black/50">{locale === 'fr' ? 'URL vidéo' : 'Video URL'}</span>

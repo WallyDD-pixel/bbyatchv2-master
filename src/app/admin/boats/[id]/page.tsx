@@ -18,7 +18,7 @@ export default async function AdminBoatDetailPage({ params, searchParams }: { pa
   const locale: Locale = resolvedSearchParams.lang === "en" ? "en" : "fr";
   const t = messages[locale];
 
-  const rawBoat = await (prisma as any).boat.findUnique({ where: { id: Number(id) }, include:{ options:true, boatExperiences:{ include:{ experience:true } } } }).catch(() => null);
+  const rawBoat = await (prisma as any).boat.findUnique({ where: { id: Number(id) }, include:{ options:true, city:true, boatExperiences:{ include:{ experience:true } } } }).catch(() => null);
   if (!rawBoat) return notFound();
   const experiences = await (prisma as any).experience.findMany({ orderBy:{ id:'asc' } });
   const safeParse = (v: any) => {
@@ -27,6 +27,7 @@ export default async function AdminBoatDetailPage({ params, searchParams }: { pa
   };
   const boat = {
     ...rawBoat,
+    city: rawBoat.city?.name ?? null,
     videoUrls: safeParse(rawBoat.videoUrls),
     photoUrls: safeParse(rawBoat.photoUrls),
   };

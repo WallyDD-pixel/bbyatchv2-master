@@ -113,7 +113,7 @@ export const messages: Record<Locale, Record<string, string>> = {
     checkout_proceed: "Procéder au paiement",
     checkout_missing_price: "Tarif indisponible pour ce créneau.",
     boat_invalid_dates: "Plage de dates invalide ou modifiée.",
-    boat_invalid_slot: "Créneau indisponible pour ce bateau à cette date.",
+    boat_invalid_slot: "Créneau indisponible ou déjà réservé pour ce bateau à cette date.",
     checkout_deposit_now: "Acompte (20%)",
     checkout_deposit_remaining: "Solde à régler à l'agence",
     checkout_subtotal_rental_options: "Sous-total location & options (base de l'acompte)",
@@ -149,6 +149,15 @@ export const messages: Record<Locale, Record<string, string>> = {
     checkout_success_instructions: "L'équipe vous contactera pour finaliser les détails (horaires, options, embarquement). Conservez la référence de réservation.",
     checkout_success_back_fleet: "Retour à la flotte",
     checkout_success_go_dashboard: "Voir mon espace",
+    thank_you_contact_title: "Merci pour votre demande",
+    thank_you_contact_subtitle:
+      "Notre équipe vous recontactera dans les plus brefs délais.",
+    thank_you_deposit_title: "Merci pour votre paiement",
+    thank_you_deposit_subtitle:
+      "Votre acompte a bien été enregistré. Notre équipe vous contactera pour finaliser les détails de votre réservation.",
+    thank_you_next_steps:
+      "Vous recevrez un email de confirmation si ce n'est pas déjà fait.",
+    thank_you_back_home: "Retour à l'accueil",
     about_title: "Qui sommes-nous ?",
     about_subtitle: "Une équipe passionnée dédiée à créer des moments d'exception en Méditerranée.",
     about_body: "Fondée par des amoureux de la mer, BB YACHTS sélectionne des bateaux performants et des expériences authentiques. Notre mission : transformer chaque sortie en mer en souvenir mémorable – sécurité, confort, service attentif & émotions garanties.",
@@ -266,7 +275,7 @@ export const messages: Record<Locale, Record<string, string>> = {
     checkout_proceed: "Proceed to payment",
     checkout_missing_price: "Price unavailable for this slot.",
     boat_invalid_dates: "Invalid or tampered date range.",
-    boat_invalid_slot: "Slot not available for this boat on that date.",
+    boat_invalid_slot: "Slot not available or already reserved for this boat on that date.",
     checkout_deposit_now: "Deposit (20%)",
     checkout_deposit_remaining: "Balance due to agency",
     checkout_subtotal_rental_options: "Subtotal — rental & options (deposit base)",
@@ -302,6 +311,15 @@ export const messages: Record<Locale, Record<string, string>> = {
     checkout_success_instructions: "Our team will contact you to finalize details (schedule, options, boarding). Keep your booking reference.",
     checkout_success_back_fleet: "Back to fleet",
     checkout_success_go_dashboard: "Go to my space",
+    thank_you_contact_title: "Thank you for your request",
+    thank_you_contact_subtitle:
+      "Our team will get back to you as soon as possible.",
+    thank_you_deposit_title: "Thank you for your payment",
+    thank_you_deposit_subtitle:
+      "Your deposit has been recorded. Our team will contact you to finalize your booking details.",
+    thank_you_next_steps:
+      "You will receive a confirmation email if you have not already.",
+    thank_you_back_home: "Back to home",
     about_title: "Who are we?",
     about_subtitle: "A passionate team crafting exceptional Mediterranean moments.",
     about_body: "Founded by sea lovers, BB YACHTS curates quality boats and authentic experiences. Our mission: turn every charter into a lasting memory – safety, comfort, attentive service & genuine emotions.",

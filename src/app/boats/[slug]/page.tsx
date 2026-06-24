@@ -11,6 +11,7 @@ import RichTextViewer from '@/components/RichTextViewer';
 import { getServerSession } from '@/lib/auth';
 import { getLabelsWithSettings } from '@/lib/settings';
 import { getBoatPriceForPart, getBookingPartLabel, parseBookingPart } from '@/lib/boat-pricing';
+import { findBoatReservationConflict } from '@/lib/reservation-availability';
 
 interface Props { params: Promise<{ slug: string }>; searchParams?: Promise<{ lang?: string; start?: string; end?: string; startTime?: string; endTime?: string; part?: string; departurePort?: string; }> }
 
@@ -130,12 +131,23 @@ export default async function BoatDetailPage({ params, searchParams }: Props){
       const [startY, startM, startD] = start.split('-').map(Number);
       const endStr = end || start;
       const [endY, endM, endD] = endStr.split('-').map(Number);
-      let dayStart = new Date(Date.UTC(startY, startM - 1, startD, 0, 0, 0, 0));
+      const rangeStart = new Date(Date.UTC(startY, startM - 1, startD, 0, 0, 0, 0));
       const checkEnd = part === 'FULL'
         ? new Date(Date.UTC(endY, endM - 1, endD, 23, 59, 59, 999))
         : new Date(Date.UTC(startY, startM - 1, startD, 23, 59, 59, 999));
 
-      while (dayStart <= checkEnd) {
+      const conflict = await findBoatReservationConflict(
+        boat.id,
+        rangeStart,
+        checkEnd,
+        part
+      );
+      if (conflict) {
+        invalidSlot = true;
+      }
+
+      let dayStart = new Date(rangeStart);
+      while (!invalidSlot && dayStart <= checkEnd) {
         const dayEnd = new Date(dayStart.getTime() + 86400000 - 1);
 
         const daySlots = await prisma.availabilitySlot.findMany({

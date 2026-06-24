@@ -1,16 +1,18 @@
 "use client";
 import { useState, FormEvent, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { BoatNewMediaProvider, useBoatNewMediaGetterRef } from "./boat-new-media-context";
 
 interface BoatCreateFormProps {
   locale: "fr" | "en";
   children: React.ReactNode;
 }
 
-export default function BoatCreateForm({ locale, children }: BoatCreateFormProps) {
+function BoatCreateFormInner({ locale, children }: BoatCreateFormProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const mediaGetterRef = useBoatNewMediaGetterRef();
   const router = useRouter();
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -39,24 +41,27 @@ export default function BoatCreateForm({ locale, children }: BoatCreateFormProps
         }
       }
 
-      // Récupérer et ajouter les fichiers d'images depuis l'input
-      const imageFilesInput = form.querySelector<HTMLInputElement>('input[name="imageFiles"]');
-      if (imageFilesInput?.files && imageFilesInput.files.length > 0) {
-        Array.from(imageFilesInput.files).forEach((file) => {
-          formData.append('imageFiles', file);
-        });
-      }
+      // Fichiers médias depuis l'état React (fiable après recadrage) avec repli DOM
+      const mediaSnapshot = mediaGetterRef?.current?.();
+      const imageFilesToUpload = mediaSnapshot
+        ? mediaSnapshot.imageFiles
+        : Array.from(form.querySelector<HTMLInputElement>('input[name="imageFiles"]')?.files ?? []);
+      const videoFilesToUpload = mediaSnapshot
+        ? mediaSnapshot.videoFiles
+        : Array.from(form.querySelector<HTMLInputElement>('input[name="videoFiles"]')?.files ?? []);
 
-      // Récupérer et ajouter les fichiers vidéo
-      const videoFilesInput = form.querySelector<HTMLInputElement>('input[name="videoFiles"]');
-      if (videoFilesInput?.files && videoFilesInput.files.length > 0) {
-        console.log(`📹 ${videoFilesInput.files.length} fichier(s) vidéo détecté(s)`);
-        Array.from(videoFilesInput.files).forEach((file, index) => {
+      imageFilesToUpload.forEach((file) => {
+        formData.append("imageFiles", file);
+      });
+
+      if (videoFilesToUpload.length > 0) {
+        console.log(`📹 ${videoFilesToUpload.length} fichier(s) vidéo détecté(s)`);
+        videoFilesToUpload.forEach((file, index) => {
           console.log(`📹 Vidéo ${index + 1}:`, { name: file.name, type: file.type, size: file.size });
-          formData.append('videoFiles', file);
+          formData.append("videoFiles", file);
         });
       } else {
-        console.log('📹 Aucun fichier vidéo détecté');
+        console.log("📹 Aucun fichier vidéo détecté");
       }
 
       // Récupérer les URLs de photos externes depuis le textarea
@@ -174,5 +179,13 @@ export default function BoatCreateForm({ locale, children }: BoatCreateFormProps
         </button>
       </div>
     </form>
+  );
+}
+
+export default function BoatCreateForm(props: BoatCreateFormProps) {
+  return (
+    <BoatNewMediaProvider>
+      <BoatCreateFormInner {...props} />
+    </BoatNewMediaProvider>
   );
 }

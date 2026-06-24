@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { messages, type Locale } from '@/i18n/messages';
+import { type Locale } from '@/i18n/messages';
+import { thankYouPath } from '@/lib/thank-you-url';
 
 export default function ContactForm() {
   const searchParams = useSearchParams();
@@ -42,15 +43,7 @@ export default function ContactForm() {
       });
 
       if (response.ok || response.redirected) {
-        setSubmitted(true);
-        setName('');
-        setEmail('');
-        setPhone('');
-        setMessage('');
-        // Si redirection, la page se rechargera avec ?sent=1
-        if (response.redirected) {
-          router.push(`/contact?sent=1${locale === 'en' ? '&lang=en' : ''}`);
-        }
+        router.push(thankYouPath('contact', locale));
       } else {
         const data = await response.json();
         setError(data.error === 'missing_fields' 

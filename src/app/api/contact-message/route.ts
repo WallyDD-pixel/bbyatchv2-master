@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createRedirectUrl } from '@/lib/redirect';
+import { thankYouPath } from '@/lib/thank-you-url';
 import { validateEmail, validateName, validatePhone, sanitizeHtml } from '@/lib/security/validation';
 import { checkContactRateLimit, getClientIP } from '@/lib/security/rate-limit';
 
@@ -83,10 +84,7 @@ export async function POST(req: Request){
       // Ne pas bloquer l'enregistrement du message si l'email échoue
     }
     
-    // Si c'est un message depuis la page contact (pas de slug), rediriger vers /contact
-    const redirectPath = slug && usedBoatId 
-      ? `/used-sale/${slug}?sent=1`
-      : `/contact?sent=1${locale ? `&lang=${locale}` : ''}`;
+    const redirectPath = thankYouPath('contact', locale || 'fr');
     const redirectUrl = createRedirectUrl(redirectPath, req);
     return NextResponse.redirect(redirectUrl, 303);
   } catch(e){

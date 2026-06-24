@@ -3,9 +3,10 @@ import Footer from '@/components/Footer';
 import { prisma } from '@/lib/prisma';
 import { blockAvailabilityForNewReservation } from '@/lib/reservation-availability';
 import { messages, type Locale } from '@/i18n/messages';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Stripe from 'stripe';
 import CheckoutSuccessSessionSync from './CheckoutSuccessSessionSync';
+import { thankYouPath } from '@/lib/thank-you-url';
 
 interface Props { searchParams?: Promise<{ lang?: string; session_id?: string; res?: string }> }
 
@@ -179,6 +180,11 @@ export default async function CheckoutSuccessPage({ searchParams }: Props){
   if(!reservation) notFound();
 
   const paid = !!reservation.depositPaidAt;
+
+  if (paid) {
+    redirect(thankYouPath('deposit', locale));
+  }
+
   const start = reservation.startDate.toISOString().slice(0,10);
   const end = reservation.endDate.toISOString().slice(0,10);
   const isMulti = end!==start;

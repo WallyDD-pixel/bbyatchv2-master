@@ -107,8 +107,16 @@ export default function SEOTrackingForm({ settings, locale }: { settings: any; l
               className='w-full h-11 rounded-lg border border-black/15 px-3'
             />
             <p className='text-xs text-black/50 mt-1'>
-              Format: GTM-XXXXXXX (optionnel)
+              Format: GTM-XXXXXXX (optionnel). Utilisez l&apos;ID du conteneur GTM, pas GT- ni G-.
             </p>
+            {formData.googleTagManagerId &&
+              !/^GTM-[A-Z0-9]+$/i.test(formData.googleTagManagerId.trim()) && (
+                <p className='text-xs text-red-600 mt-1'>
+                  {locale === 'fr'
+                    ? 'Format invalide : l\'ID doit commencer par GTM- (ex. GTM-ABC1234). GT- et G- ne sont pas des conteneurs GTM.'
+                    : 'Invalid format: ID must start with GTM- (e.g. GTM-ABC1234). GT- and G- are not GTM container IDs.'}
+                </p>
+              )}
           </div>
 
           {/* Section SEO */}

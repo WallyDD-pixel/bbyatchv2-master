@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureAdmin, getCurrentUser } from '@/lib/security/auth-helpers';
-import { syncAvailabilityWithReservations } from '@/lib/reservation-availability';
+import { syncAvailabilityWithReservations, findBoatReservationConflict } from '@/lib/reservation-availability';
 
 // Fonction helper pour obtenir l'admin (retourne l'utilisateur ou null)
 async function getAdminUser() {
@@ -158,6 +158,20 @@ export async function POST(req: Request) {
   
   const day = new Date(Date.UTC(year, month - 1, dayNum, 0, 0, 0, 0));
   if (isNaN(day.getTime())) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
+
+  const slotPart = part === 'HALF' ? 'HALF' : part;
+  const conflict = await findBoatReservationConflict(
+    Number(boatId),
+    day,
+    day,
+    slotPart
+  );
+  if (conflict) {
+    return NextResponse.json(
+      { error: 'date_reserved', message: 'Ce jour est déjà réservé pour ce bateau.' },
+      { status: 409 }
+    );
+  }
   
   console.log(`[availability] ${addOnly ? 'Add only' : 'Toggle'}: boatId=${boatId}, date=${date} -> UTC: ${day.toISOString()}`);
 

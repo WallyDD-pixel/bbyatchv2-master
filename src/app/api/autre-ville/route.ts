@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createRedirectUrl } from '@/lib/redirect';
+import { thankYouPath } from '@/lib/thank-you-url';
 import { validateEmail, validateName, validatePhone, sanitizeHtml } from '@/lib/security/validation';
 import { checkContactRateLimit, getClientIP } from '@/lib/security/rate-limit';
 
@@ -122,8 +123,7 @@ export async function POST(req: Request) {
       // Ne pas bloquer la création du message si l'email échoue
     }
     
-    // Redirection vers la page d'accueil avec un message de succès
-    const redirectUrl = createRedirectUrl('/?autre-ville-sent=1', req);
+    const redirectUrl = createRedirectUrl(thankYouPath('contact', 'fr'), req);
     return NextResponse.redirect(redirectUrl, 303);
   } catch (e: any) {
     console.error('Error saving autre-ville request:', e);

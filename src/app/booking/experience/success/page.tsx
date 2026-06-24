@@ -2,9 +2,10 @@ import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { prisma } from '@/lib/prisma';
 import { messages, type Locale } from '@/i18n/messages';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Stripe from 'stripe';
 import { formatPartLabel } from '@/lib/part-labels';
+import { thankYouPath } from '@/lib/thank-you-url';
 
 interface Props { searchParams?: Promise<{ lang?: string; res?: string }> }
 
@@ -46,6 +47,11 @@ export default async function ExperienceSuccessPage({ searchParams }: Props){
   }
 
   const paid = !!reservation.depositPaidAt;
+
+  if (paid) {
+    redirect(thankYouPath('deposit', locale));
+  }
+
   let meta: any = null;
   try { meta = reservation.metadata? JSON.parse(reservation.metadata) : null; } catch {}
   const experienceTitle = locale==='fr'? (meta?.experienceTitleFr || 'Expérience') : (meta?.experienceTitleEn || meta?.experienceTitleFr || 'Experience');

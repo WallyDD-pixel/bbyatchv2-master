@@ -116,6 +116,45 @@ export async function syncAvailabilityWithReservations(
   return { boatSlots, experienceSlots };
 }
 
+/** Filtre Prisma : réservation active en conflit avec une plage + créneau demandé. */
+export function reservationOverlapFilter(
+  boatId: number,
+  start: Date,
+  end: Date,
+  part: string
+) {
+  const halfParts = part === 'HALF' || part === 'AM' || part === 'PM';
+  return {
+    boatId,
+    status: { not: 'cancelled' as const },
+    startDate: { lte: end },
+    endDate: { gte: start },
+    OR: [
+      { part: 'FULL' as const },
+      { part: part as any },
+      ...(part === 'FULL' || part === 'SUNSET'
+        ? [{ part: 'AM' as const }, { part: 'PM' as const }]
+        : []),
+      ...(halfParts ? [{ part: 'AM' as const }, { part: 'PM' as const }] : []),
+      { part: null },
+    ],
+  };
+}
+
+export async function findBoatReservationConflict(
+  boatId: number,
+  start: Date | string,
+  end: Date | string,
+  part: string
+) {
+  const s = parseToUtcDay(start);
+  const e = parseToUtcDay(end);
+  return prisma.reservation.findFirst({
+    where: reservationOverlapFilter(boatId, s, e, part),
+    select: { id: true, startDate: true, endDate: true, part: true, reference: true },
+  });
+}
+
 /** À appeler après chaque nouvelle réservation confirmée. */
 export async function blockAvailabilityForNewReservation(
   boatId: number | null | undefined,

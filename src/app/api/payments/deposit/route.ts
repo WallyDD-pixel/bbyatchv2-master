@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { getServerSession } from '@/lib/auth';
 import { getPublicSiteUrl } from '@/lib/redirect';
 import { getBoatPriceForPart, parseBookingPart } from '@/lib/boat-pricing';
+import { findBoatReservationConflict } from '@/lib/reservation-availability';
 
 export async function POST(req: Request){
   try {
@@ -170,73 +171,27 @@ export async function POST(req: Request){
     }
     const effectiveSkipperPrice = skipperPricePerDay;
 
-    // Vérification dynamique de chevauchement (Option 1)
-    // Conflit si plage de dates recouvre et si parties incompatibles (FULL avec tout, AM avec FULL ou AM, etc.)
-    // IMPORTANT: Pour les agences, on permet quand même la demande (sera examinée par l'admin)
-    // On vérifie uniquement pour les réservations directes (non-agence)
-    if(userRole !== 'agency') {
-      // Log pour debug
-      console.log(`[deposit] Checking overlap for boat ${boat.id}, dates: ${s.toISOString()} to ${e.toISOString()}, part: ${part}`);
-      
-      const overlap = await prisma.reservation.findFirst({
-        where: {
-          boatId: boat.id,
-          status: { not: 'cancelled' },
-          startDate: { lte: e },
-          endDate: { gte: s },
-          OR: [
-            { part: 'FULL' },
-            { part: part },
-            ...((part === 'FULL' || part === 'SUNSET') ? [{ part: 'AM' }, { part: 'PM' }] : []),
-            { part: null }
-          ]
-        },
-        select: { 
-          id: true, 
-          reference: true, 
-          startDate: true, 
-          endDate: true, 
-          part: true, 
-          status: true,
-          userId: true,
-          createdAt: true
-        }
+    // Conflit avec une réservation existante (tous les utilisateurs, y compris agences)
+    console.log(`[deposit] Checking overlap for boat ${boat.id}, dates: ${s.toISOString()} to ${e.toISOString()}, part: ${part}`);
+    const overlap = await findBoatReservationConflict(boat.id, s, e, part);
+    if (overlap) {
+      console.log(`[deposit] Overlap found! Conflicting reservation:`, {
+        id: overlap.id,
+        reference: overlap.reference,
+        startDate: overlap.startDate.toISOString(),
+        endDate: overlap.endDate.toISOString(),
+        part: overlap.part,
       });
-      
-      if(overlap){
-        // Récupérer les infos utilisateur pour le log
-        const user = await prisma.user.findUnique({ 
-          where: { id: overlap.userId }, 
-          select: { email: true, name: true } 
-        }).catch(() => null);
-        
-        console.log(`[deposit] Overlap found! Conflicting reservation:`, {
+      return NextResponse.json({
+        error: 'slot_unavailable',
+        conflictingReservation: {
           id: overlap.id,
           reference: overlap.reference,
-          startDate: overlap.startDate.toISOString(),
-          endDate: overlap.endDate.toISOString(),
-          part: overlap.part,
-          status: overlap.status,
-          userId: overlap.userId,
-          userEmail: user?.email || 'unknown',
-          userName: user?.name || 'unknown',
-          createdAt: overlap.createdAt.toISOString()
-        });
-        return NextResponse.json({ 
-          error: 'slot_unavailable',
-          conflictingReservation: {
-            id: overlap.id,
-            reference: overlap.reference,
-            status: overlap.status
-          }
-        }, { status: 409 });
-      } else {
-        console.log(`[deposit] No overlap found, slot is available`);
-      }
+        },
+      }, { status: 409 });
     }
 
-    // Vérification de disponibilité pour tous les jours de la plage
-    // IMPORTANT: Pour les agences, on saute cette vérification (demande sera examinée par l'admin)
+    // Vérification des créneaux ouverts — les agences peuvent soumettre une demande sans slot
     if(userRole !== 'agency') {
       // Fonction helper pour normaliser une date au début de la journée en UTC
       // Les slots sont stockés en UTC à minuit (ex: 2026-01-31T00:00:00.000Z)

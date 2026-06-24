@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { type Locale } from '@/i18n/messages';
+import { thankYouPath } from '@/lib/thank-you-url';
 
 // Créneaux
 const PARTS: { key: 'FULL'|'HALF'; label: string; start: string; end: string }[] = [
@@ -130,8 +131,7 @@ export default function AutreVilleClient({ locale, t }: { locale: Locale; t: Rec
       });
       
       if(response.ok || response.redirected) {
-        setShowSuccess(true);
-        setTimeout(()=>{ router.push('/'); }, 2500);
+        router.push(thankYouPath('contact', locale));
       } else {
         const data = await response.json();
         alert(data.error === 'missing_fields' 

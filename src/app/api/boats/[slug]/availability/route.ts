@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { syncAvailabilityWithReservations } from '@/lib/reservation-availability';
 
 // GET /api/boats/[slug]/availability?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Retourne les disponibilités pour un bateau spécifique
@@ -80,7 +81,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       }
     }
     
-    // Récupérer les slots pour ce bateau spécifique
+    // Retirer les créneaux orphelins sur jours réservés (ex. ajout admin après une resa)
+    await syncAvailabilityWithReservations(reservations);
+
+    // Récupérer les slots pour ce bateau spécifique (après sync)
     const slots: { date: Date; part: string }[] = await (prisma as any).availabilitySlot.findMany({
       where: { 
         boatId: boat.id,
