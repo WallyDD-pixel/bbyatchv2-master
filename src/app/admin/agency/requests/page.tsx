@@ -6,6 +6,77 @@ import HeaderBar from '@/components/HeaderBar';
 import Footer from '@/components/Footer';
 import { messages, type Locale } from '@/i18n/messages';
 
+async function handleAgencyRequestAction(formData: FormData) {
+  'use server';
+  const { getServerSession } = await import('@/lib/auth');
+  const id = formData.get('id') as string;
+  const action = formData.get('action') as string;
+  const session = await getServerSession() as any;
+  if (!session?.user) return;
+  const me = await prisma.user.findUnique({ where: { email: session.user.email }, select: { role: true } });
+  if (me?.role !== 'admin') return;
+  if (!id || !action) return;
+
+  const statusMap: Record<string, string> = { approve: 'approved', reject: 'rejected', convert: 'converted' };
+  const newStatus = statusMap[action];
+  if (!newStatus) return;
+
+  const agencyRequest = await prisma.agencyRequest.findUnique({
+    where: { id },
+    select: {
+      userId: true,
+      boatId: true,
+      startDate: true,
+      endDate: true,
+      part: true,
+      passengers: true,
+      totalPrice: true,
+      locale: true,
+      currency: true,
+      reservationId: true,
+      metadata: true,
+    },
+  });
+  if (!agencyRequest) return;
+
+  if (newStatus === 'converted' && !agencyRequest.reservationId) {
+    const { findBoatReservationConflict, blockAvailabilityForNewReservation } = await import('@/lib/reservation-availability');
+    const overlap = agencyRequest.boatId
+      ? await findBoatReservationConflict(
+          agencyRequest.boatId,
+          agencyRequest.startDate,
+          agencyRequest.endDate,
+          agencyRequest.part || 'FULL'
+        )
+      : null;
+    if (overlap) redirect('/admin/agency/requests?error=overlap');
+
+    const reservation = await prisma.reservation.create({
+      data: {
+        userId: agencyRequest.userId,
+        boatId: agencyRequest.boatId,
+        startDate: agencyRequest.startDate,
+        endDate: agencyRequest.endDate,
+        part: agencyRequest.part,
+        passengers: agencyRequest.passengers,
+        totalPrice: agencyRequest.totalPrice,
+        status: 'pending_deposit',
+        locale: agencyRequest.locale,
+        currency: agencyRequest.currency || 'eur',
+        metadata: agencyRequest.metadata ?? undefined,
+      },
+    });
+    await blockAvailabilityForNewReservation(reservation.boatId, reservation.startDate, reservation.endDate);
+    await prisma.agencyRequest.update({
+      where: { id },
+      data: { status: 'converted', reservationId: reservation.id },
+    });
+    return;
+  }
+
+  await prisma.agencyRequest.update({ where: { id }, data: { status: newStatus } });
+}
+
 export default async function AdminAgencyRequestsPage({ searchParams }: { searchParams?: Promise<{ lang?: string }> }){
   const session = await getServerSession() as any;
   if(!session?.user) redirect('/signin');
@@ -85,12 +156,7 @@ export default async function AdminAgencyRequestsPage({ searchParams }: { search
                     <td className='py-2.5 px-3 text-right font-medium'>{r.totalPrice!=null? (r.totalPrice.toLocaleString(locale==='fr'? 'fr-FR':'en-US')+' €'):'—'}</td>
                     <td className='py-2.5 px-3'><span className={`inline-flex items-center rounded-full px-2.5 h-6 text-[10px] font-semibold ${badge(r.status)}`}>{statusLabel(r.status)}</span></td>
                     <td className='py-2.5 px-3 min-w-[170px]'>
-                      <form action={async(formData)=>{ 'use server'; const { getServerSession } = await import('@/lib/auth'); const id=formData.get('id') as string; const action=formData.get('action') as string; const session= await getServerSession() as any; if(!session?.user) return; const me= await prisma.user.findUnique({ where:{ email: session.user.email }, select:{ role:true } }); if(me?.role!=='admin') return; if(!id||!action) return; const map:any={ approve:'approved', reject:'rejected', convert:'converted' }; const newStatus=map[action]; if(!newStatus) return; await prisma.agencyRequest.update({ where:{ id }, data:{ status:newStatus } }); if(newStatus==='converted' && !r.reservationId){
-                        // Vérification overlap avant conversion
-                        const overlap = await prisma.reservation.findFirst({ where:{ boatId: r.boatId || undefined, status:{ not:'cancelled' }, startDate:{ lte: r.endDate }, endDate:{ gte: r.startDate }, OR:[ { part:'FULL' }, { part: r.part }, ...(r.part==='FULL'? [{ part:'AM' },{ part:'PM' }]:[]), { part:null } ] }, select:{ id:true } });
-                        if(overlap) return; // on ne crée pas (créneau déjà pris)
-                        const res= await prisma.reservation.create({ data:{ userId:r.userId, boatId:r.boatId, startDate:r.startDate, endDate:r.endDate, part:r.part, passengers:r.passengers, totalPrice:r.totalPrice, status:'pending_deposit', locale:r.locale, currency:r.currency, metadata: r.metadata ?? undefined } }); const { blockAvailabilityForNewReservation } = await import('@/lib/reservation-availability'); await blockAvailabilityForNewReservation(res.boatId, res.startDate, res.endDate); await prisma.agencyRequest.update({ where:{ id }, data:{ reservationId: res.id } }); }
-                        }} className='flex items-center gap-1'>
+                      <form action={handleAgencyRequestAction} className='flex items-center gap-1'>
                         <input type='hidden' name='id' value={r.id} />
                         {r.status==='pending' && <button name='action' value='approve' className='h-7 px-3 rounded-md bg-emerald-500 text-white text-[11px] hover:brightness-110'>✔</button>}
                         {r.status==='pending' && <button name='action' value='reject' className='h-7 px-3 rounded-md bg-red-500 text-white text-[11px] hover:brightness-110'>✖</button>}

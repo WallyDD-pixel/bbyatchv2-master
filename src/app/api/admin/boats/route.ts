@@ -128,7 +128,7 @@ export async function POST(req: Request) {
       if (videoFiles.length > 0 && validVideoFiles.length === 0) {
         return NextResponse.json({
           error: 'video_upload_failed',
-          message: videoErrors[0] || 'Aucune vidéo valide. Formats: MP4, WebM, OGG, MOV. Max 200 Mo.',
+          message: videoErrors[0] || 'Aucune vidéo valide. Formats: MP4, WebM, OGG, MOV. Max 100 Mo.',
         }, { status: 400 });
       }
       

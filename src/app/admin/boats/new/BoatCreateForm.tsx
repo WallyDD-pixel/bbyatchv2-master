@@ -112,7 +112,7 @@ function BoatCreateFormInner({ locale, children }: BoatCreateFormProps) {
           }
         } else if (errorData.error === 'video_upload_failed') {
           if (!errorData.message && !errorData.details) {
-            errorMessage = locale === "fr" ? "Erreur lors de l'upload des vidéos (formats: MP4, WebM, OGG, MOV, max 200 Mo)" : "Error uploading videos (formats: MP4, WebM, OGG, MOV, max 200MB)";
+            errorMessage = locale === "fr" ? "Erreur lors de l'upload des vidéos (formats: MP4, WebM, OGG, MOV, max 100 Mo)" : "Error uploading videos (formats: MP4, WebM, OGG, MOV, max 100MB)";
           }
         } else if (errorData.error === 'server_error') {
           errorMessage = locale === "fr" ? "Erreur serveur" : "Server error";

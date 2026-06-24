@@ -27,11 +27,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     });
     return map;
   });
-  const [videoInput, setVideoInput] = useState(() => {
-    if (!boat.videoUrls) return "";
-    if (Array.isArray(boat.videoUrls)) return boat.videoUrls.join(", ");
-    return typeof boat.videoUrls === "string" ? boat.videoUrls : JSON.stringify(boat.videoUrls);
-  });
+  const [videoInput, setVideoInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [videosList, setVideosList] = useState<string[]>(() => Array.isArray(boat.videoUrls) ? boat.videoUrls : []);
@@ -117,8 +113,18 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
 
   const videos = useMemo(() => parseVideos(videoInput), [videoInput]);
 
+  const getMergedVideoUrls = () => {
+    const fromTextarea = parseVideos(videoInput);
+    const merged = [...videosList];
+    for (const url of fromTextarea) {
+      if (!merged.includes(url)) merged.push(url);
+    }
+    return merged;
+  };
+
   const appendExistingVideos = (fd: FormData) => {
-    if (videosList.length) fd.append("videoUrls", JSON.stringify(videosList));
+    const merged = getMergedVideoUrls();
+    if (merged.length) fd.append("videoUrls", JSON.stringify(merged));
   };
 
   const removePhoto = (index: number) => {
@@ -327,7 +333,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       const agencyHalfDay = toPrice(form.priceAgencyAm) ?? toPrice(form.priceAgencyPm);
       const payload = {
         ...form,
-        videoUrls: videosList,
+        videoUrls: getMergedVideoUrls(),
         photoUrls: photos,
         options: cleanedOptions,
         experiences: cleanedExperiences,
@@ -560,6 +566,25 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
   const onUploadVideos = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !files.length) return;
+    const maxVideoMB = 100;
+    const maxVideoBytes = maxVideoMB * 1024 * 1024;
+    const validFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.size > maxVideoBytes) {
+        alert(
+          locale === 'fr'
+            ? `Vidéo trop volumineuse (${(file.size / 1024 / 1024).toFixed(2)} Mo). Limite : ${maxVideoMB} Mo.`
+            : `Video too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Limit: ${maxVideoMB}MB.`
+        );
+        continue;
+      }
+      validFiles.push(file);
+    }
+    if (!validFiles.length) {
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     try {
       const fd = new FormData();
@@ -576,8 +601,8 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
       if (form.fuel != null) fd.append('fuel', String(form.fuel));
       if (form.available != null) fd.append('available', form.available ? 'true' : 'false');
       if (form.imageUrl) fd.append('imageUrl', form.imageUrl);
-      if (videosList.length) fd.append('videoUrls', JSON.stringify(videosList));
-      Array.from(files).forEach(f => fd.append('videoFiles', f));
+      appendExistingVideos(fd);
+      validFiles.forEach(f => fd.append('videoFiles', f));
       const res = await fetch(`/api/admin/boats/${boat.id}`, { 
         method: 'PUT', 
         body: fd,
@@ -612,6 +637,7 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
     if (!confirm(locale === 'fr' ? 'Supprimer cette vidéo ?' : 'Remove this video?')) return;
     const newList = videosList.filter(x => x !== url);
     setVideosList(newList);
+    setVideoInput(prev => parseVideos(prev).filter(x => x !== url).join(", "));
     setUploading(true);
     try {
       const fd = new FormData();
@@ -994,8 +1020,8 @@ export default function BoatEditClient({ boat, locale }: { boat: any; locale: "f
             </label>
             <p className="text-xs text-black/50">
               {locale === "fr" 
-                ? "Formats acceptés: MP4, WebM, OGG, MOV (max 200 Mo par fichier)"
-                : "Accepted formats: MP4, WebM, OGG, MOV (max 200MB per file)"}
+                ? "Formats acceptés: MP4, WebM, OGG, MOV (max 100 Mo par fichier)"
+                : "Accepted formats: MP4, WebM, OGG, MOV (max 100MB per file)"}
             </p>
           </label>
         </div>

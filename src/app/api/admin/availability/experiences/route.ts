@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   let body: any = {}; try { body = await req.json(); } catch {}
   const { experienceId, boatId, date, part, note, experiencePrice, addOnly, deleteOnly } = body || {};
   if (!experienceId || !date || !part) return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
-  if (!['AM','PM','FULL','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
+  if (!['AM','PM','FULL','HALF','SUNSET'].includes(part)) return NextResponse.json({ error: 'bad_part' }, { status: 400 });
   const dateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!dateMatch) return NextResponse.json({ error: 'bad_date' }, { status: 400 });
   const [, y, m, d] = dateMatch.map(Number);
@@ -97,9 +97,10 @@ export async function POST(req: Request) {
     if (!addOnly) {
       // Ne pas utiliser Prisma pour DELETE: certaines colonnes peuvent être absentes côté DB.
       const partsToDelete =
-        part === 'FULL' ? ['AM', 'PM', 'SUNSET'] :
-        part === 'SUNSET' ? ['FULL', 'AM', 'PM'] :
-        ['FULL', 'SUNSET'];
+        part === 'FULL' ? ['AM', 'PM', 'HALF', 'SUNSET'] :
+        part === 'HALF' ? ['FULL', 'AM', 'PM'] :
+        part === 'SUNSET' ? ['FULL', 'AM', 'PM', 'HALF'] :
+        ['FULL', 'HALF', 'SUNSET'];
 
       const boatCond = bId !== null ? `"boatId" = ${bId}` : `"boatId" IS NULL`;
       const partIn = partsToDelete.map(p => `'${p}'`).join(',');

@@ -22,10 +22,10 @@ const MAX_ACCEPTED_SIZES: Record<string, number> = {
   'image/png': 20 * 1024 * 1024, // 20MB (sera compressé automatiquement à 2MB max)
   'image/gif': 10 * 1024 * 1024, // 10MB (GIF animés peuvent être plus lourds)
   'image/webp': 20 * 1024 * 1024, // 20MB (sera compressé automatiquement à 2MB max)
-  'video/mp4': 200 * 1024 * 1024, // 200MB (augmenté pour permettre des vidéos de meilleure qualité)
-  'video/quicktime': 200 * 1024 * 1024, // 200MB (.mov)
-  'video/webm': 200 * 1024 * 1024, // 200MB
-  'video/ogg': 200 * 1024 * 1024, // 200MB
+  'video/mp4': 100 * 1024 * 1024, // 100MB (aligné nginx client_max_body_size)
+  'video/quicktime': 100 * 1024 * 1024, // 100MB (.mov)
+  'video/webm': 100 * 1024 * 1024, // 100MB
+  'video/ogg': 100 * 1024 * 1024, // 100MB
 };
 
 // Tailles maximales APRÈS compression (cibles)

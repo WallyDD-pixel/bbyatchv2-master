@@ -195,7 +195,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
             videoErrors.push(msg);
           }
         } else {
-          const msg = `${file.name}: Type non autorisé (${mime}). Utilisez MP4, WebM, OGG ou MOV (max 200 Mo).`;
+          const msg = `${file.name}: Type non autorisé (${mime}). Utilisez MP4, WebM, OGG ou MOV (max 100 Mo).`;
           videoErrors.push(msg);
         }
       }
@@ -203,7 +203,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       if (videoFiles.length > 0 && validVideoFiles.length === 0) {
         return NextResponse.json({
           error: 'video_upload_failed',
-          message: videoErrors[0] || 'Aucune vidéo valide. Formats acceptés : MP4, WebM, OGG, MOV. Max 200 Mo par fichier.',
+          message: videoErrors[0] || 'Aucune vidéo valide. Formats acceptés : MP4, WebM, OGG, MOV. Max 100 Mo par fichier.',
           details: videoErrors.join(' ; '),
         }, { status: 400 });
       }

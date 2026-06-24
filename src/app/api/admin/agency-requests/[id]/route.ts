@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createRedirectUrl } from '@/lib/redirect';
-import { blockAvailabilityForNewReservation } from '@/lib/reservation-availability';
+import { blockAvailabilityForNewReservation, findBoatReservationConflict } from '@/lib/reservation-availability';
 
 async function ensureAdmin(){
   const session = await getServerSession() as any;
@@ -78,22 +78,15 @@ export async function POST(req:Request, { params }:{ params:Promise<{ id:string 
       
       // Si conversion et pas encore de réservation créée
       if (status === 'converted' && !agencyRequest.reservationId) {
-        // Vérifier qu'il n'y a pas de chevauchement avec d'autres réservations
-        const overlap = await (prisma as any).reservation.findFirst({
-          where: {
-            boatId: agencyRequest.boatId || undefined,
-            status: { not: 'cancelled' },
-            startDate: { lte: agencyRequest.endDate },
-            endDate: { gte: agencyRequest.startDate },
-            OR: [
-              { part: 'FULL' },
-              { part: agencyRequest.part },
-              ...(agencyRequest.part === 'FULL' ? [{ part: 'AM' }, { part: 'PM' }] : []),
-              { part: null }
-            ]
-          },
-          select: { id: true }
-        });
+        // Vérifier qu'il n'y a pas de chevauchement avec d'autres réservations (HALF vs AM/PM inclus)
+        const overlap = agencyRequest.boatId
+          ? await findBoatReservationConflict(
+              agencyRequest.boatId,
+              agencyRequest.startDate,
+              agencyRequest.endDate,
+              agencyRequest.part || 'FULL'
+            )
+          : null;
         
         if (overlap) {
           // Il y a un chevauchement, on ne crée pas la réservation

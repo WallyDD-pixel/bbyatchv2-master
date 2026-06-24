@@ -168,7 +168,20 @@ export default function BoatMediaUpload({ locale }: BoatMediaUploadProps) {
   const handleVideoFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    setVideoFiles((prev) => [...prev, ...Array.from(files)]);
+    const maxVideoMB = 100;
+    const maxVideoBytes = maxVideoMB * 1024 * 1024;
+    const validFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.size > maxVideoBytes) {
+        console.warn(
+          `⚠️ Vidéo trop volumineuse (${(file.size / 1024 / 1024).toFixed(2)}MB), limite: ${maxVideoMB}MB`
+        );
+        continue;
+      }
+      validFiles.push(file);
+    }
+    if (validFiles.length) setVideoFiles((prev) => [...prev, ...validFiles]);
     e.target.value = "";
   };
 
@@ -297,8 +310,8 @@ export default function BoatMediaUpload({ locale }: BoatMediaUploadProps) {
           />
           <p className="text-xs text-black/60">
             {locale === "fr"
-              ? "Formats acceptés: MP4, WebM, OGG, MOV (max 200MB par fichier)"
-              : "Accepted formats: MP4, WebM, OGG, MOV (max 200MB per file)"}
+              ? "Formats acceptés: MP4, WebM, OGG, MOV (max 100MB par fichier)"
+              : "Accepted formats: MP4, WebM, OGG, MOV (max 100MB per file)"}
           </p>
         </label>
 

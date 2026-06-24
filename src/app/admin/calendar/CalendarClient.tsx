@@ -216,6 +216,9 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         } else if (s.part === 'PM') {
           start.setHours(13, 30, 0, 0);
           end.setHours(18, 0, 0, 0);
+        } else if (s.part === 'HALF') {
+          start.setHours(8, 0, 0, 0);
+          end.setHours(12, 0, 0, 0);
         } else if (s.part === 'SUNSET') {
           start.setHours(18, 0, 0, 0);
           end.setHours(20, 0, 0, 0);
@@ -318,6 +321,9 @@ export default function CalendarClient({ locale }: { locale: 'fr'|'en' }) {
         } else if (s.part === 'PM') {
           start.setHours(13, 30, 0, 0);
           end.setHours(18, 0, 0, 0);
+        } else if (s.part === 'HALF') {
+          start.setHours(8, 0, 0, 0);
+          end.setHours(12, 0, 0, 0);
         } else if (s.part === 'SUNSET') {
           start.setHours(18, 0, 0, 0);
           end.setHours(20, 0, 0, 0);

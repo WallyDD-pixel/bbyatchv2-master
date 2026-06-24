@@ -16,7 +16,7 @@
 #   CPU_WATCHDOG_LOG, CPU_WATCHDOG_STATE, CPU_HIGH_PCT, CPU_BAD_CYCLES, CPU_WATCHDOG_INTERVAL
 #   CPU_TRUSTED_PREFIXES   préfixes sûrs pour le binaire, séparés par virgule
 #                            défaut: /usr,/opt,/snap,/nix
-#   CPU_HOME_TRUST_PREFIX   ex: /home/ec2-user — autorise node/nvm sous ce HOME + apps dedans
+#   CPU_HOME_TRUST_PREFIX   ex: /home/ec2-user,/home/ubuntu — auto-détecté si absent
 #   CPU_SAFE_CMD_REGEX      motifs dans la cmdline pour services connus (Next, nginx, pm2…)
 #   CPU_BAD_CYCLES_SHORT    cycles avant kill si binaire hors préfixes de confiance (défaut: 3)
 #
@@ -37,7 +37,19 @@ INTERVAL="${CPU_WATCHDOG_INTERVAL:-0}"
 CPU_TRUSTED_PREFIXES="${CPU_TRUSTED_PREFIXES:-/usr,/opt,/snap,/nix}"
 
 # Déploiement typique : autoriser Node via nvm + projet sous ce home (séparer par virgule)
-CPU_HOME_TRUST_PREFIX="${CPU_HOME_TRUST_PREFIX:-/home/ec2-user}"
+default_home_trust_prefix() {
+  local found=()
+  for h in /home/ec2-user /home/ubuntu; do
+    [[ -d "$h" ]] && found+=("$h")
+  done
+  if ((${#found[@]} > 0)); then
+    local IFS=,
+    echo "${found[*]}"
+  else
+    echo "/home/ec2-user,/home/ubuntu"
+  fi
+}
+CPU_HOME_TRUST_PREFIX="${CPU_HOME_TRUST_PREFIX:-$(default_home_trust_prefix)}"
 
 # Si la cmdline ressemble à un service que tu héberges, ne pas tuer au moindre doute
 # (reste combiné avec binaire non suspect ou sous HOME/nvm)
