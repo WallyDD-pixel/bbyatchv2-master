@@ -112,12 +112,18 @@ export async function POST(req: Request) {
       const { subject, html } = newContactMessageEmail(emailData, 'fr');
       const recipientEmail = await getNotificationEmail();
 
-      await sendEmail({
+      const sent = await sendEmail({
         to: recipientEmail,
         subject,
         html,
         always: true,
       });
+      if (!sent) {
+        console.warn('[autre-ville] Notification email not sent', {
+          recipientEmail,
+          smtpHint: 'Configure SMTP in Admin > Notifications',
+        });
+      }
     } catch (emailErr) {
       console.error('Error sending autre-ville notification email:', emailErr);
       // Ne pas bloquer la création du message si l'email échoue

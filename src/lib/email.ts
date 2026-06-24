@@ -106,11 +106,14 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     const info = await transporter.sendMail(mailOptions);
 
     if (isJsonTransport) {
-      console.log('📧 Email (logged to console, SMTP not configured):', JSON.stringify({ to: mailOptions.to, subject: mailOptions.subject }, null, 2));
-    } else {
-      console.log('📧 Email sent:', info?.messageId ?? 'ok');
+      console.warn('📧 Email NOT sent — SMTP not configured. Configure Admin > Notifications (host, user, password).', {
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+      });
+      return false;
     }
 
+    console.log('📧 Email sent:', info?.messageId ?? 'ok');
     return true;
   } catch (error) {
     console.error('❌ Error sending email:', error);

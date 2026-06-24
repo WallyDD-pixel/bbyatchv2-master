@@ -147,12 +147,12 @@ export default function AdminNotificationsPage() {
                 <input
                   type="password"
                   name="smtpPassword"
-                  defaultValue={settings?.smtpPassword || ''}
-                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  placeholder={settings?.smtpPassword ? 'Mot de passe enregistré — laisser vide pour conserver' : '••••••••'}
                   className="w-full mt-1 border border-black/15 rounded-lg px-3 py-2 text-sm"
                 />
                 <p className="text-xs text-black/50 mt-1">
-                  Pour Gmail, utilisez un "Mot de passe d'application" (pas votre mot de passe normal).
+                  Pour Gmail, utilisez un &quot;Mot de passe d&apos;application&quot; (pas votre mot de passe normal). Laissez vide pour conserver le mot de passe actuel.
                 </p>
               </label>
               <div className="grid grid-cols-2 gap-4">

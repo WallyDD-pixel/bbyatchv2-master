@@ -39,17 +39,42 @@ export default function ContactForm() {
 
       const response = await fetch('/api/contact-message', {
         method: 'POST',
+        headers: { Accept: 'application/json' },
         body: formData,
+        redirect: 'manual',
       });
 
-      if (response.ok || response.redirected) {
+      const redirectStatuses = [301, 302, 303, 307];
+      if (
+        redirectStatuses.includes(response.status) ||
+        response.type === 'opaqueredirect' ||
+        response.status === 0
+      ) {
         router.push(thankYouPath('contact', locale));
-      } else {
-        const data = await response.json();
-        setError(data.error === 'missing_fields' 
-          ? (locale === 'fr' ? 'Veuillez remplir tous les champs obligatoires.' : 'Please fill in all required fields.')
-          : (locale === 'fr' ? 'Une erreur est survenue. Veuillez réessayer.' : 'An error occurred. Please try again.')
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json().catch(() => ({}));
+        router.push(
+          typeof data.redirect === 'string' ? data.redirect : thankYouPath('contact', locale)
         );
+        return;
+      }
+
+      let data: { error?: string } = {};
+      try {
+        data = await response.json();
+      } catch {
+        /* réponse non-JSON */
+      }
+      const errorKey = data.error;
+      if (errorKey === 'missing_fields') {
+        setError(locale === 'fr' ? 'Veuillez remplir tous les champs obligatoires.' : 'Please fill in all required fields.');
+      } else if (errorKey === 'rate_limit_exceeded') {
+        setError(locale === 'fr' ? 'Trop de messages envoyés. Réessayez plus tard.' : 'Too many messages sent. Please try again later.');
+      } else {
+        setError(locale === 'fr' ? 'Une erreur est survenue. Veuillez réessayer.' : 'An error occurred. Please try again.');
       }
     } catch (err) {
       setError(locale === 'fr' ? 'Une erreur est survenue. Veuillez réessayer.' : 'An error occurred. Please try again.');

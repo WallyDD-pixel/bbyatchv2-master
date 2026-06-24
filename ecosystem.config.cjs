@@ -29,6 +29,20 @@ function loadEnv() {
 
 loadEnv();
 
+function readBuildId() {
+  try {
+    const buildIdPath = path.join(__dirname, '.next/BUILD_ID');
+    if (fs.existsSync(buildIdPath)) {
+      return fs.readFileSync(buildIdPath, 'utf8').trim();
+    }
+  } catch {
+    /* ignore */
+  }
+  return process.env.BUILD_ID;
+}
+
+const buildId = readBuildId();
+
 module.exports = {
   apps: [
     {
@@ -38,6 +52,7 @@ module.exports = {
       cwd: __dirname,
       env: {
         NODE_ENV: 'production',
+        ...(buildId ? { BUILD_ID: buildId } : {}),
         PORT: process.env.PORT || 3003,
         DATABASE_URL: process.env.DATABASE_URL,
         NEXTAUTH_URL: process.env.NEXTAUTH_URL,

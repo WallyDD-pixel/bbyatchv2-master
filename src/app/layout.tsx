@@ -9,6 +9,7 @@ import SEOTracking, {
 } from '@/components/SEOTracking';
 import PageLoader from '@/components/PageLoader';
 import { ClientBootRecovery } from '@/components/ClientBootRecovery';
+import { getBuildId } from '@/lib/build-id';
 import { getCachedSiteSettings } from '@/lib/site-settings';
 
 // Les fonts Google sont chargées via <link> dans le <head>
@@ -41,7 +42,7 @@ export default async function RootLayout({
     // Ignorer les erreurs de DB pendant le build
   }
 
-  const buildId = process.env.BUILD_ID || 'dev';
+  const buildId = getBuildId();
 
   return (
     <html lang="fr" suppressHydrationWarning style={{ colorScheme: "light only" }}>

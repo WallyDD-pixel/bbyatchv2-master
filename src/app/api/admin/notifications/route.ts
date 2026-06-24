@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const smtpHost = (data.get('smtpHost') || '').toString().trim() || null;
     const smtpPort = (data.get('smtpPort') || '').toString().trim();
     const smtpUser = (data.get('smtpUser') || '').toString().trim() || null;
-    const smtpPassword = (data.get('smtpPassword') || '').toString().trim() || null;
+    const smtpPassword = (data.get('smtpPassword') || '').toString().trim();
     const smtpFromEmail = (data.get('smtpFromEmail') || '').toString().trim() || null;
     const smtpFromName = (data.get('smtpFromName') || '').toString().trim() || null;
 
@@ -35,7 +35,10 @@ export async function POST(req: Request) {
     updateData.smtpHost = smtpHost;
     updateData.smtpPort = smtpPort ? (parseInt(smtpPort, 10) || 587) : 587;
     updateData.smtpUser = smtpUser;
-    updateData.smtpPassword = smtpPassword;
+    // Ne pas écraser le mot de passe si le champ est laissé vide (formulaire admin)
+    if (smtpPassword) {
+      updateData.smtpPassword = smtpPassword;
+    }
     updateData.smtpFromEmail = smtpFromEmail;
     updateData.smtpFromName = smtpFromName;
 
@@ -43,7 +46,7 @@ export async function POST(req: Request) {
       smtpHost: smtpHost ? '✅ Set' : '❌ Empty',
       smtpPort: updateData.smtpPort,
       smtpUser: smtpUser ? '✅ Set' : '❌ Empty',
-      smtpPassword: smtpPassword ? '✅ Set (hidden)' : '❌ Empty',
+      smtpPassword: smtpPassword ? '✅ Set (hidden)' : '(unchanged if already configured)',
       smtpFromEmail: smtpFromEmail || 'Using default',
       smtpFromName: smtpFromName || 'Using default',
     });

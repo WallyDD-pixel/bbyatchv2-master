@@ -73,18 +73,32 @@ export async function POST(req: Request){
       const { subject, html } = newContactMessageEmail(emailData, (locale as 'fr' | 'en') || 'fr');
       const recipientEmail = await getNotificationEmail();
 
-      await sendEmail({
+      const sent = await sendEmail({
         to: recipientEmail,
         subject,
         html,
         always: true,
       });
+      if (!sent) {
+        console.warn('[contact-message] Notification email not sent', {
+          recipientEmail,
+          sourcePage,
+          smtpHint: 'Configure SMTP in Admin > Notifications',
+        });
+      }
     } catch (emailErr) {
       console.error('Error sending contact message notification email:', emailErr);
       // Ne pas bloquer l'enregistrement du message si l'email échoue
     }
     
     const redirectPath = thankYouPath('contact', locale || 'fr');
+
+    // Fetch client (ContactForm) : JSON pour éviter qu'une 303 cross-origin casse le fetch
+    const acceptHeader = req.headers.get('accept') || '';
+    if (acceptHeader.includes('application/json')) {
+      return NextResponse.json({ ok: true, redirect: redirectPath });
+    }
+
     const redirectUrl = createRedirectUrl(redirectPath, req);
     return NextResponse.redirect(redirectUrl, 303);
   } catch(e){
