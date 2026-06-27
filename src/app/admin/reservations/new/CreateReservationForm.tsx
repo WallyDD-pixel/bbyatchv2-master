@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { formatPartLabelShort, isHalfDayPart } from '@/lib/part-labels';
+import { formatPartLabelShort } from '@/lib/part-labels';
+import { getBoatPriceForPart } from '@/lib/boat-pricing';
 
 interface AgencyUser {
   id: string;
@@ -60,6 +61,7 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
     depositAmount: '',
     notes: '',
   });
+  const [priceManuallyEdited, setPriceManuallyEdited] = useState(false);
 
   const selectedBoat = boats.find(b => b.id.toString() === formData.boatId) as Boat | undefined;
   const selectedUser = agencyUsers.find(u => u.id === formData.userId);
@@ -72,38 +74,16 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
     return Math.max(1, Math.round((e.getTime() - s.getTime()) / 86400000) + 1);
   })();
 
-  // Calculer le prix estimé
+  // Calculer le prix estimé (prix agence via getBoatPriceForPart + skipper + options)
   const calculateEstimatedPrice = () => {
     if (!selectedBoat) return null;
-    const part = formData.part;
-    const isAgency = true; // Toujours agence pour cette interface
-    
-    let basePrice = 0;
-    // PRIORITÉ AUX PRIX AGENCE : toujours utiliser les prix agence s'ils existent
-    if (part === 'FULL') {
-      // Pour agence : utiliser priceAgencyPerDay en priorité, sinon calculer -20% du prix public
-      if (selectedBoat.priceAgencyPerDay) {
-        basePrice = selectedBoat.priceAgencyPerDay * nbJours;
-      } else if (selectedBoat.pricePerDay) {
-        basePrice = Math.round(selectedBoat.pricePerDay * 0.8 * nbJours); // -20% si pas de prix agence
-      }
-    } else if (isHalfDayPart(part)) {
-      const halfPublic = selectedBoat.priceAm ?? selectedBoat.pricePm;
-      const halfAgency = selectedBoat.priceAgencyAm ?? selectedBoat.priceAgencyPm;
-      basePrice = halfAgency ?? (halfPublic ? Math.round(halfPublic * 0.8) : 0);
-    } else if (part === 'SUNSET') {
-      basePrice = selectedBoat.priceAgencySunset ?? (selectedBoat.priceSunset ? Math.round(selectedBoat.priceSunset * 0.8) : 0);
-    }
 
-    // Skipper : Pour les agences, toujours 350€ par jour, peu importe le type
-    const settings = { defaultSkipperPrice: 350 }; // TODO: récupérer depuis API si besoin
-    const skipperPrice = selectedBoat.skipperPrice ?? settings.defaultSkipperPrice;
-    // Pour les agences : toujours 1 jour de skipper (350€), même pour AM/PM
-    // Pour les clients directs : FULL/SUNSET = nbJours, AM/PM = 1 jour
-    const skipperDays = 1; // Pour les agences, toujours 1 jour (350€)
-    const skipperTotal = selectedBoat.skipperRequired ? (skipperPrice * skipperDays) : 0;
+    const basePrice = getBoatPriceForPart(selectedBoat, formData.part, nbJours, true);
+    if (basePrice == null) return null;
 
-    // Options
+    const skipperPrice = selectedBoat.skipperPrice ?? 350;
+    const skipperTotal = selectedBoat.skipperRequired ? skipperPrice : 0;
+
     const optionsTotal = (selectedBoat.options || [])
       .filter((opt) => formData.selectedOptions.includes(opt.id))
       .reduce((sum, opt) => sum + (opt.price || 0), 0);
@@ -112,13 +92,22 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
   };
 
   const estimatedPrice = calculateEstimatedPrice();
-  
-  // Auto-remplir le prix total avec le prix estimé quand il change
+
+  // Réinitialiser la saisie manuelle quand les paramètres de tarification changent
   useEffect(() => {
-    if (estimatedPrice !== null && estimatedPrice > 0 && !formData.totalPrice) {
-      setFormData(prev => ({ ...prev, totalPrice: estimatedPrice.toString() }));
+    setPriceManuallyEdited(false);
+  }, [formData.boatId, formData.part, formData.startDate, formData.endDate, formData.selectedOptions]);
+
+  // Synchroniser le prix total avec l'estimation (sauf si l'admin l'a modifié manuellement)
+  useEffect(() => {
+    if (estimatedPrice !== null && estimatedPrice > 0 && !priceManuallyEdited) {
+      setFormData(prev => (
+        prev.totalPrice === estimatedPrice.toString()
+          ? prev
+          : { ...prev, totalPrice: estimatedPrice.toString() }
+      ));
     }
-  }, [estimatedPrice]);
+  }, [estimatedPrice, priceManuallyEdited]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -207,7 +196,10 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
         <select
           required
           value={formData.boatId}
-          onChange={(e) => setFormData({ ...formData, boatId: e.target.value })}
+          onChange={(e) => {
+            setPriceManuallyEdited(false);
+            setFormData({ ...formData, boatId: e.target.value, selectedOptions: [] });
+          }}
           className="w-full h-11 rounded-lg border border-black/15 px-3 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
         >
           <option value="">{locale === 'fr' ? 'Sélectionner un bateau...' : 'Select a boat...'}</option>
@@ -264,6 +256,7 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
               key={p}
               type="button"
               onClick={() => {
+                setPriceManuallyEdited(false);
                 setFormData({ ...formData, part: p, endDate: p === 'FULL' || p === 'SUNSET' ? formData.endDate : formData.startDate });
               }}
               className={`h-11 rounded-lg border text-sm font-medium transition ${
@@ -371,7 +364,10 @@ export default function CreateReservationForm({ locale, agencyUsers, boats }: Pr
           min="0"
           step="1"
           value={formData.totalPrice}
-          onChange={(e) => setFormData({ ...formData, totalPrice: e.target.value })}
+          onChange={(e) => {
+            setPriceManuallyEdited(true);
+            setFormData({ ...formData, totalPrice: e.target.value });
+          }}
           placeholder={estimatedPrice?.toString() || '0'}
           className="w-full h-11 rounded-lg border border-black/15 px-3 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
         />

@@ -7,14 +7,19 @@ interface ImageCropperProps {
   onCrop: (croppedFile: File) => void;
   onCancel: () => void;
   aspectRatio?: number; // Ratio largeur/hauteur (ex: 16/9, 4/3, 1 pour carré)
+  /** Largeur max de l'image exportée (px) — aligné sur compressImageClient */
+  outputMaxWidth?: number;
   locale?: "fr" | "en";
 }
+
+const DEFAULT_OUTPUT_MAX_WIDTH = 1920;
 
 export default function ImageCropper({
   imageUrl,
   onCrop,
   onCancel,
   aspectRatio = 16 / 9, // Rectangle paysage par défaut (mieux pour bannières, cartes, galeries)
+  outputMaxWidth = DEFAULT_OUTPUT_MAX_WIDTH,
   locale = "fr",
 }: ImageCropperProps) {
   const [scale, setScale] = useState(1);
@@ -63,14 +68,15 @@ export default function ImageCropper({
 
       const scaleX = cropWidth / img.naturalWidth;
       const scaleY = cropHeight / img.naturalHeight;
-      const initialScale = Math.max(scaleX, scaleY, 0.01) * 1.1;
+      // Contain : montrer l'image entière par défaut (évite un zoom agressif type cover)
+      const initialScale = Math.max(Math.min(scaleX, scaleY), 0.01);
 
       setScale(initialScale);
       const displayW = img.naturalWidth * initialScale;
       const displayH = img.naturalHeight * initialScale;
       setPosition({
-        x: cropX - (displayW - cropWidth) / 2,
-        y: cropY - (displayH - cropHeight) / 2,
+        x: cropX + (cropWidth - displayW) / 2,
+        y: cropY + (cropHeight - displayH) / 2,
       });
     };
 
@@ -115,12 +121,24 @@ export default function ImageCropper({
     const crop = getCropArea();
     const displayWidth = imageSize.width * scale;
     const displayHeight = imageSize.height * scale;
-    // Limiter le déplacement pour que la zone de recadrage reste couverte par l'image
-    const minX = crop.x + crop.width - displayWidth;
-    const maxX = crop.x;
-    const minY = crop.y + crop.height - displayHeight;
-    const maxY = crop.y;
-    
+    // Limiter le déplacement : couverture si l'image déborde, centrage si plus petite que la zone
+    const minX =
+      displayWidth >= crop.width
+        ? crop.x + crop.width - displayWidth
+        : crop.x;
+    const maxX =
+      displayWidth >= crop.width
+        ? crop.x
+        : crop.x + crop.width - displayWidth;
+    const minY =
+      displayHeight >= crop.height
+        ? crop.y + crop.height - displayHeight
+        : crop.y;
+    const maxY =
+      displayHeight >= crop.height
+        ? crop.y
+        : crop.y + crop.height - displayHeight;
+
     setPosition({
       x: Math.max(minX, Math.min(maxX, newX)),
       y: Math.max(minY, Math.min(maxY, newY)),
@@ -176,11 +194,20 @@ export default function ImageCropper({
     const sourceYClamp = Math.max(0, Math.min(img.naturalHeight - 1, sourceY));
     const sourceWidth = Math.max(1, Math.min(img.naturalWidth - sourceXClamp, cropWidth));
     const sourceHeight = Math.max(1, Math.min(img.naturalHeight - sourceYClamp, cropHeight));
-    
-    // Définir la taille du canvas
-    canvas.width = cropArea.width;
-    canvas.height = cropArea.height;
-    
+
+    // Exporter à la résolution native du recadrage (pas la taille écran du modal)
+    let outputWidth = Math.round(sourceWidth);
+    let outputHeight = Math.round(sourceHeight);
+    const maxW = outputMaxWidth > 0 ? outputMaxWidth : DEFAULT_OUTPUT_MAX_WIDTH;
+    if (outputWidth > maxW) {
+      const ratio = maxW / outputWidth;
+      outputWidth = maxW;
+      outputHeight = Math.max(1, Math.round(outputHeight * ratio));
+    }
+
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
+
     // Dessiner l'image recadrée
     const ctx = canvas.getContext("2d");
     if (ctx) {
@@ -193,8 +220,8 @@ export default function ImageCropper({
           sourceHeight,
           0,
           0,
-          cropArea.width,
-          cropArea.height
+          outputWidth,
+          outputHeight
         );
         
         // Convertir en blob puis en File
